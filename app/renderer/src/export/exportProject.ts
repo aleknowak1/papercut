@@ -1,16 +1,18 @@
 // Exports a project document to .mp4 bytes (DOC-03 §4.3): loads the assets
 // the first scene uses, mixes its audio clips, draws every frame with the
-// PixiJS frame source, and encodes through the WebCodecs pipeline.
+// shared scene renderer (scene/sceneStage.ts — the same code the live
+// canvas shows), and encodes through the WebCodecs pipeline.
 //
-// Phase 2 scope: the first scene only, prop layers, asset audio clips.
-// Phase 9 (real export) extends the same pipeline to scenes, transitions,
-// and presets; nothing here depends on the editor UI.
+// Scope so far: the first scene only, asset audio clips. Phase 9 (real
+// export) extends the same pipeline to scenes, transitions, and presets;
+// nothing here depends on the editor UI.
 
 import type { ProjectDocument } from '../../../shared/document/types';
 import { EXPORT_SAMPLE_RATE, mixClips, type MixClip } from '../../../shared/export/audioMix';
 import { parseWav } from '../../../shared/export/wav';
+import { sceneImageAssetIds } from '../scene/sceneStage';
 import { encodeMp4, type EncoderChoice } from './encodePipeline';
-import { createPrototypeFrameSource } from './frameSource';
+import { createSceneFrameSource } from './frameSource';
 
 export interface ProjectExportRequest {
   readonly document: ProjectDocument;
@@ -48,13 +50,9 @@ export async function exportProject(request: ProjectExportRequest): Promise<Proj
   const fps = doc.fps;
   const frameCount = Math.round(scene.durationSeconds * fps);
 
-  // Load every image the scene references.
+  // Load every image the scene references (background, props, all poses).
   const assetById = new Map(doc.assets.map((a) => [a.id, a]));
-  const imageIds = new Set<string>();
-  if (scene.backgroundAssetId !== undefined) imageIds.add(scene.backgroundAssetId);
-  for (const layer of scene.layers) {
-    if (layer.source.kind === 'prop') imageIds.add(layer.source.assetId);
-  }
+  const imageIds = sceneImageAssetIds(doc, scene);
   const images = new Map<string, ImageBitmap>();
   for (const id of imageIds) {
     const asset = assetById.get(id);
@@ -83,7 +81,7 @@ export async function exportProject(request: ProjectExportRequest): Promise<Proj
   const audio = mixClips(mix, scene.durationSeconds, EXPORT_SAMPLE_RATE);
   const audioPeak = audio.reduce((max, s) => Math.max(max, Math.abs(s)), 0);
 
-  const frameSource = await createPrototypeFrameSource({
+  const frameSource = await createSceneFrameSource({
     document: doc,
     scene,
     width: request.width,

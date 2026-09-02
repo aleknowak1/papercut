@@ -1,19 +1,20 @@
 // Draws export frames off-screen with PixiJS (DOC-03 §4.3, ADR-013).
 //
 // The encode pipeline only ever asks a FrameSource "draw frame N" — it does
-// not know or care how frames are drawn. The prototype frame source below
-// draws the small slice of the document the Phase 2 prototype needs
-// (background, prop layers with linear keyframes). Phases 4/5 replace it
-// with the real renderer behind the same interface; the pipeline is reused
-// unchanged in Phase 9.
+// not know or care how frames are drawn. Since Phase 4 the drawing itself
+// lives in the shared scene stage (scene/sceneStage.ts), the SAME code the
+// live scene canvas shows on screen — so what the user sees is what
+// exports. This file only adds what export needs around it: an off-screen
+// renderer at the output resolution, and the dev/check-only debug overlay
+// (frame counter, timecode, beep flashes).
 
 // The window is sandboxed and disallows eval; this PixiJS module swaps its
 // eval-based fast path for a safe one.
 import 'pixi.js/unsafe-eval';
-import { Container, Graphics, Sprite, Text, Texture, WebGLRenderer } from 'pixi.js';
+import { Container, Graphics, Text, Texture, WebGLRenderer } from 'pixi.js';
 import type { ProjectDocument, Scene } from '../../../shared/document/types';
-import { sampleLayer } from '../../../shared/export/interpolate';
 import { REFERENCE_SIZE } from '../../../shared/scene/geometry';
+import { createSceneStage } from '../scene/sceneStage';
 
 export interface FrameSource {
   /** Draws frame `frameIndex` and returns the canvas holding the result. */
@@ -23,7 +24,7 @@ export interface FrameSource {
 
 export { REFERENCE_SIZE } from '../../../shared/scene/geometry';
 
-export interface PrototypeFrameSourceOptions {
+export interface SceneFrameSourceOptions {
   readonly document: ProjectDocument;
   readonly scene: Scene;
   readonly width: number;
@@ -46,11 +47,11 @@ function timecode(seconds: number): string {
   return `${pad(mins, 2)}:${pad(secs, 2)}.${pad(millis, 3)}`;
 }
 
-export async function createPrototypeFrameSource(
-  options: PrototypeFrameSourceOptions
+export async function createSceneFrameSource(
+  options: SceneFrameSourceOptions
 ): Promise<FrameSource> {
   const { width, height, fps, scene } = options;
-  const [refWidth] = REFERENCE_SIZE[options.document.format] ?? [width, height];
+  const [refWidth] = REFERENCE_SIZE[options.document.format];
   const scale = width / refWidth;
 
   const renderer = new WebGLRenderer();
@@ -66,31 +67,16 @@ export async function createPrototypeFrameSource(
 
   const stage = new Container();
 
-  // Background: stretched to fill the frame.
-  if (scene.backgroundAssetId !== undefined) {
-    const bitmap = options.images.get(scene.backgroundAssetId);
-    if (bitmap !== undefined) {
-      const bg = new Sprite(Texture.from(bitmap));
-      bg.width = width;
-      bg.height = height;
-      stage.addChild(bg);
-    }
+  // The shared scene picture, in reference pixels, scaled to the output.
+  const textures = new Map<string, Texture>();
+  for (const [assetId, bitmap] of options.images) {
+    textures.set(assetId, Texture.from(bitmap));
   }
+  const sceneStage = createSceneStage({ document: options.document, scene, textures });
+  sceneStage.container.scale.set(scale);
+  stage.addChild(sceneStage.container);
 
-  // One sprite per prop layer, positioned per frame from its keyframes.
-  // (Character and text layers arrive with Phases 3-5.)
-  const layerSprites: { layerId: string; sprite: Sprite }[] = [];
-  for (const layer of scene.layers) {
-    if (layer.source.kind !== 'prop') continue;
-    const bitmap = options.images.get(layer.source.assetId);
-    if (bitmap === undefined) continue;
-    const sprite = new Sprite(Texture.from(bitmap));
-    sprite.anchor.set(0.5);
-    stage.addChild(sprite);
-    layerSprites.push({ layerId: layer.id, sprite });
-  }
-
-  // Full-frame white flash, shown only during flash frames.
+  // Full-frame white flash, shown only during flash frames (checks only).
   const flash = new Graphics().rect(0, 0, width, height).fill(0xffffff);
   flash.visible = false;
   flash.alpha = 0.6;
@@ -116,20 +102,7 @@ export async function createPrototypeFrameSource(
   return {
     drawFrame(frameIndex: number): HTMLCanvasElement | OffscreenCanvas {
       const time = frameIndex / fps;
-
-      for (const { layerId, sprite } of layerSprites) {
-        const layer = scene.layers.find((l) => l.id === layerId);
-        const sample = layer && sampleLayer(layer, time);
-        if (sample === undefined) {
-          sprite.visible = false;
-          continue;
-        }
-        sprite.visible = true;
-        sprite.position.set(sample.x * scale, sample.y * scale);
-        sprite.scale.set(sample.scale * scale * (sample.flipX ? -1 : 1), sample.scale * scale);
-        sprite.rotation = (sample.rotation * Math.PI) / 180; // degrees in the document
-        sprite.alpha = sample.opacity;
-      }
+      sceneStage.update(time);
 
       flash.visible = flashFrameStarts.some(
         (start) => frameIndex >= start && frameIndex < start + options.flashFrames
@@ -143,6 +116,8 @@ export async function createPrototypeFrameSource(
       return renderer.canvas;
     },
     destroy(): void {
+      sceneStage.destroy();
+      for (const texture of textures.values()) texture.destroy(false);
       stage.destroy({ children: true });
       renderer.destroy();
     }
