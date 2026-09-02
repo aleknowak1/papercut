@@ -3,6 +3,14 @@ import { BrowserWindow, app, session } from 'electron';
 import { registerIpcHandlers } from './ipc';
 import { isRequestAllowed } from './networkPolicy';
 
+// Development only: lets Claude Code drive the real app for live testing
+// (the DevTools protocol on a local port). Off unless the env var is set;
+// impossible in packaged builds.
+const debugPort = process.env['PAPERCUT_REMOTE_DEBUG_PORT'];
+if (debugPort !== undefined && !app.isPackaged) {
+  app.commandLine.appendSwitch('remote-debugging-port', debugPort);
+}
+
 // The export check and measurement runs (scripts/check-export.mjs) start the
 // app with one of these set: the window stays hidden, the UI runs the export
 // on the test project, reports the result, and the app exits (ADR-015).

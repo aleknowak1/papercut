@@ -12,6 +12,7 @@
 **Verified by Alek (CL-0017):** all Phase 1 manual tests passed.
 **Phase 2 — Export prototype: USABLE, decision made (CL-0018/CL-0019).** ADR-013 is proven on real hardware: the ten-second test project exports to a correct .mp4 through Windows' own encoders, 60 s of 1080p30 extrapolates to ≈ 43 s even without a GPU (target: under 3 minutes), audio drift ≤ 9.6 ms. OQ-019 closed, ADR-013 now plainly Accepted, mp4-muxer locked (MIT). Full numbers in DOC-12. Windows 10 remains untested (no machine).
 **Next action:** Alek watches/listens to the exported test video (§5), then Phase 3 (assets and cutouts) can start — checking OQ-020 (onnxruntime-node vs Smart App Control) first.
+**Rule of thumb after any code update (CL-0020):** close the running app and start it again with `npm run dev` — an app window left running from before an update cannot load the new code and shows a plain-language message saying so.
 **Watch out:** OQ-020 — Windows Smart App Control blocks unsigned native Node modules on the dev laptop; check onnxruntime-node before Phase 3 work begins.
 
 ## 2. Build order and phase status

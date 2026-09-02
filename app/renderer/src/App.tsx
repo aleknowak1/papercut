@@ -40,7 +40,17 @@ function DevProjectButtons({
     void import('./dev/devTools')
       .then(tool)
       .then(setStatus)
-      .catch((error: unknown) => setStatus(String(error)))
+      .catch((error: unknown) => {
+        // A dev server started before the last code update cannot load the
+        // newly added modules; the fix is a restart, so say that plainly.
+        const text = String(error);
+        setStatus(
+          text.includes('Failed to fetch dynamically imported module')
+            ? 'The running app is older than the code. Close it, then start it again ' +
+                'with npm run dev, and retry. (' + text + ')'
+            : text
+        );
+      })
       .finally(() => setBusy(false));
   };
 
