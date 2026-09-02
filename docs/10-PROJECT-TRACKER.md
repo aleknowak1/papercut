@@ -1,7 +1,7 @@
 # DOC-10 — Project Tracker
 
 **Status:** Active
-**Last updated:** 2026-09-02 (Alek verified Phase 3 — CL-0034; brush cursor added to the mask editor — CL-0035; Phase 4 next)
+**Last updated:** 2026-09-02 (Phase 4 started — plan approved, document fields + scene check in, CL-0037)
 **Purpose:** The one page to read when returning to the project. Where we are, what is done, what is next, and what is waiting on Alek. Updated with every change-log entry (DOC-04).
 
 ---
@@ -13,7 +13,8 @@
 **Phase 2 — Export prototype: USABLE, decision made (CL-0018/CL-0019).** ADR-013 is proven on real hardware: the ten-second test project exports to a correct .mp4 through Windows' own encoders, 60 s of 1080p30 extrapolates to ≈ 43 s even without a GPU (target: under 3 minutes), audio drift ≤ 9.6 ms. OQ-019 closed, ADR-013 now plainly Accepted, mp4-muxer locked (MIT). Full numbers in DOC-12. Windows 10 remains untested (no machine).
 **Phase 3 — Assets and cutouts: IN PROGRESS.** The OQ-020 gate is closed (ADR-017): Smart App Control never objected (onnxruntime-node is Microsoft-signed throughout), and Alek chose fp32-on-CPU with revised targets (< 15 s reference machine, ≤ 45 s minimum-spec, always a background queue). Full evidence trail in DOC-13. Step 2 is built and green (CL-0027): the segmentation worker runs BiRefNet fp32 in an Electron utility process with a one-at-a-time job queue, status updates, cancellation, and the original-pixels+alpha output rule enforced byte-for-byte by a check; memory arena off (measured faster and frees ~everything between jobs); worker process ends when the queue goes idle. Measured on this laptop: lite ≈32–37 s/photo, HD ≈54 s, model load ≈5–8 s.
 **Phase 3 — Assets and cutouts: COMPLETE (CL-0033).** Everything in the phase is built, checked, live-verified and in the manual: image import (JPG/PNG/WebP + HEIC via Windows' decoder) with the Assets panel; automatic cutouts in a background queue (one at a time, cancellable, ≈half a minute per photo on this laptop); characters with poses; the mask editor (brush add/erase, feather, zoom/pan, local stroke undo, versioned saves that document-undo repoints between, Reset to automatic, HD cutout); audio import (MP3/WAV/M4A/OGG) with durations and Play. Undo/redo and auto-save are wired through everything. Alek verified the foundations by hand (CL-0030); his remaining spot-checks are in §5.
-**Next action:** Alek does the §5 spot-checks, then Phase 4 (Scene and layers) begins — per §2 an **Opus** session: *"Read CLAUDE.md and DOC-10, then start Phase 4: scene canvas with background, character/prop layers, ordering, opacity, lock/hide, placing and sizing (DOC-01 §5.1, DOC-03 §3)."* Plan-first is recommended (DOC-11 §4 step 3) since Phase 4 introduces the PixiJS scene renderer.
+**Phase 4 — Scene and layers: IN PROGRESS.** Plan approved by Alek (decisions a–i in DOC-11 Appendix E addendum); building alone, one feature at a time. Step 1 done (CL-0037): Layer.hidden/locked and Scene.backgroundFit in the document (old files load unchanged), reorder/hide/lock/fit edits, shared pure geometry (reference space, cover/stretch, default placement, canvas↔reference mapping), scene check green. Next steps: 2 shared scene renderer (sceneStage + export rewired through it), 3 canvas + Layers panel (M-3.1/M-3.2), 4 placing and sizing (M-3.3).
+**Next action:** Continue Phase 4 step 2 — extract the shared PixiJS sceneStage and rewire the export frame source through it (character layers and background cover/stretch included), keeping the export check green.
 
 ### 1b. Hand-off notes (now historical — the work below was completed by Fable in CL-0031..33, built to these decisions)
 
@@ -35,7 +36,7 @@ Phases run in this order; a phase does not start until the previous one is usabl
 | 1 | **Scaffold** | Empty Electron/TypeScript/React app opens to the Home screen on Windows; project document format defined; undo/redo; check suite running (save/reopen, undo, license, network, AI-spend guard) | **Usable** | Fable |
 | 2 | **Export prototype** (OQ-019) | Ten-second test project exports to .mp4 using Windows' built-in encoders with correct duration, resolution, audio sync | **Usable** (checks green, DOC-12 written, OQ-019 closed; Complete once Alek has watched the export) | Fable |
 | 3 | **Assets and cutouts** | Import images/audio; BiRefNet_lite auto-cutout; HD cutout; mask editor; HEIC handling | **Complete** (CL-0033: every feature ☑, all M-2 manual sections written; Alek's spot-checks in §5 — mask editor on a real photo, HEIC, real MP3/OGG) | Fable (Alek's choice, CL-0030) |
-| 4 | **Scene and layers** | Background, character/prop layers, ordering, opacity, lock/hide, placing and sizing on canvas | Not started | Opus |
+| 4 | **Scene and layers** | Background, character/prop layers, ordering, opacity, lock/hide, placing and sizing on canvas | **In progress** (step 1 of 4: document fields + scene check, CL-0037) | Fable |
 | 5 | **Animation** | Keyframes (position, scale, rotation, flip, opacity), easing, motion presets, pose swapping, camera pan/zoom, render snapshot checks | Not started | Fable for keyframe engine → Opus |
 | 6 | **Timeline and audio** | Multi-track timeline, scrub/snap/zoom, audio clips (volume, fade, trim), imported sounds | Not started | Opus |
 | 7 | **Scenes and transitions** | Multiple scenes, reorder, seven transition types | Not started | Opus |

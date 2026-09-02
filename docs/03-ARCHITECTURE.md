@@ -71,9 +71,12 @@ project
   fps: 30
   assets[]           → id, type (image | cutout | audio), file, metadata
   characters[]       → id, name, poses[] (each pose = a cutout asset), voice
-  scenes[]           → id, name, duration, background asset, camera keyframes,
+  scenes[]           → id, name, duration, background asset, background fit
+                        (cover, the default, or stretch), camera keyframes,
                         layers[], audioClips[], transitionOut
-    layers[]         → id, source (character+pose | prop | text), keyframes[]
+    layers[]         → id, source (character+pose | prop | text), keyframes[],
+                        hidden (not drawn anywhere, export included),
+                        locked (still renders; refuses selection/dragging)
     keyframes[]      → time, x, y, scale, rotation, flipX, opacity, easing, pose
     audioClips[]     → asset or ttsLine, start, volume, fades, attachedTo (layer)
     ttsLine          → character, text, delivery instruction, voice, cached audio asset

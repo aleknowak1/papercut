@@ -13,6 +13,7 @@ import 'pixi.js/unsafe-eval';
 import { Container, Graphics, Sprite, Text, Texture, WebGLRenderer } from 'pixi.js';
 import type { ProjectDocument, Scene } from '../../../shared/document/types';
 import { sampleLayer } from '../../../shared/export/interpolate';
+import { REFERENCE_SIZE } from '../../../shared/scene/geometry';
 
 export interface FrameSource {
   /** Draws frame `frameIndex` and returns the canvas holding the result. */
@@ -20,12 +21,7 @@ export interface FrameSource {
   destroy(): void;
 }
 
-/** The coordinate space keyframes are authored in, per project format. */
-export const REFERENCE_SIZE: Record<string, readonly [number, number]> = {
-  '16:9': [1920, 1080],
-  '9:16': [1080, 1920],
-  '1:1': [1080, 1080]
-};
+export { REFERENCE_SIZE } from '../../../shared/scene/geometry';
 
 export interface PrototypeFrameSourceOptions {
   readonly document: ProjectDocument;

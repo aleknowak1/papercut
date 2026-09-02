@@ -8,6 +8,7 @@
 import type {
   Asset,
   AudioClip,
+  BackgroundFit,
   Character,
   Keyframe,
   Layer,
@@ -180,6 +181,14 @@ export function setSceneBackground(
   return replaceScene(doc, sceneId, (s) => ({ ...s, backgroundAssetId }));
 }
 
+export function setSceneBackgroundFit(
+  doc: ProjectDocument,
+  sceneId: string,
+  backgroundFit: BackgroundFit
+): ProjectDocument {
+  return replaceScene(doc, sceneId, (s) => ({ ...s, backgroundFit }));
+}
+
 export function setSceneTransition(
   doc: ProjectDocument,
   sceneId: string,
@@ -199,6 +208,53 @@ export function removeLayer(doc: ProjectDocument, sceneId: string, layerId: stri
     ...s,
     layers: s.layers.filter((l) => l.id !== layerId)
   }));
+}
+
+/**
+ * Moves a layer to a new position in its scene's list (clamped). layers[0]
+ * is at the back of the picture; the last entry is front-most.
+ */
+export function reorderLayer(
+  doc: ProjectDocument,
+  sceneId: string,
+  layerId: string,
+  newIndex: number
+): ProjectDocument {
+  return replaceScene(doc, sceneId, (scene) => {
+    const from = scene.layers.findIndex((l) => l.id === layerId);
+    if (from < 0) return scene;
+    const to = Math.max(0, Math.min(scene.layers.length - 1, newIndex));
+    if (to === from) return scene;
+    const layers = [...scene.layers];
+    const [moved] = layers.splice(from, 1);
+    if (moved === undefined) return scene;
+    layers.splice(to, 0, moved);
+    return { ...scene, layers };
+  });
+}
+
+/** A hidden layer is not drawn anywhere — editor and export alike. */
+export function setLayerHidden(
+  doc: ProjectDocument,
+  sceneId: string,
+  layerId: string,
+  hidden: boolean
+): ProjectDocument {
+  return replaceScene(doc, sceneId, (scene) =>
+    replaceLayer(scene, layerId, (l) => ({ ...l, hidden }))
+  );
+}
+
+/** A locked layer still renders; it only refuses selection and dragging. */
+export function setLayerLocked(
+  doc: ProjectDocument,
+  sceneId: string,
+  layerId: string,
+  locked: boolean
+): ProjectDocument {
+  return replaceScene(doc, sceneId, (scene) =>
+    replaceLayer(scene, layerId, (l) => ({ ...l, locked }))
+  );
 }
 
 /**

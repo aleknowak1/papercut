@@ -522,3 +522,31 @@ the same commit as the code, and end each session with the report
 described in CLAUDE.md. Add this kickoff prompt to docs/11-WORKFLOW.md as
 Appendix E if it is not already there.
 ```
+
+### Appendix E addendum — Alek's Phase 4 decisions (given with the kickoff; apply, do not re-ask)
+
+a. Hidden layers are not drawn anywhere, export included. Locked layers
+   still render; locking only blocks selection and dragging in the editor.
+b. Background fit is the user's choice per scene: cover (scale to fill
+   and crop, centred — the default) or stretch. Same code in the live
+   canvas and export.
+c. Add a Flip button now (flipX already exists in the keyframe). Rotation
+   controls stay Phase 5, but rotation and flip from existing keyframes
+   must still render.
+d. The Layers panel shows the front-most layer at the top; layers[0] in
+   the document is at the back.
+e. A newly added layer is centred and scaled so it is at most half the
+   frame height.
+f. Keyframes stay in the reference space already used by the Phase 2
+   code (1920×1080, 1080×1920, 1080×1080); the canvas fits that space to
+   the available pixels.
+g. Static placement is the layer's keyframe at time 0 (created when the
+   layer is added; edited in place afterwards). Resize is uniform, since
+   the document has a single scale. Opacity is that keyframe's opacity;
+   the slider previews live and commits once on release.
+h. A canvas drag moves only the sprite while the mouse is down and makes
+   ONE setKeyframe edit on pointer-up (one undo step); Escape cancels with
+   no edit. Selection is UI state only — not saved, not undoable.
+i. Two optional fields on Layer (hidden, locked) and one on Scene
+   (backgroundFit); update DOC-03 §3 in the same commit. Existing
+   project.json files must load unchanged.

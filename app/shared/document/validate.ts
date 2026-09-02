@@ -22,6 +22,10 @@ function checkOptionalString(value: unknown, path: string): void {
   if (value !== undefined) checkString(value, path);
 }
 
+function checkOptionalBoolean(value: unknown, path: string): void {
+  if (value !== undefined && typeof value !== 'boolean') fail(path, 'true or false');
+}
+
 function checkNumber(value: unknown, path: string): void {
   if (typeof value !== 'number' || !Number.isFinite(value)) fail(path, 'a number');
 }
@@ -54,6 +58,8 @@ function checkLayer(value: unknown, path: string): void {
   }
   checkArray(value['keyframes'], `${path}.keyframes`);
   value['keyframes'].forEach((k, i) => checkKeyframe(k, `${path}.keyframes[${i}]`));
+  checkOptionalBoolean(value['hidden'], `${path}.hidden`);
+  checkOptionalBoolean(value['locked'], `${path}.locked`);
 }
 
 function checkAudioClip(value: unknown, path: string): void {
@@ -83,6 +89,10 @@ function checkScene(value: unknown, path: string): void {
   checkString(value['name'], `${path}.name`);
   checkNumber(value['durationSeconds'], `${path}.durationSeconds`);
   checkOptionalString(value['backgroundAssetId'], `${path}.backgroundAssetId`);
+  const fit = value['backgroundFit'];
+  if (fit !== undefined && fit !== 'cover' && fit !== 'stretch') {
+    fail(`${path}.backgroundFit`, '"cover" or "stretch"');
+  }
   checkArray(value['cameraKeyframes'], `${path}.cameraKeyframes`);
   checkArray(value['layers'], `${path}.layers`);
   value['layers'].forEach((l, i) => checkLayer(l, `${path}.layers[${i}]`));

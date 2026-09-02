@@ -22,6 +22,13 @@ export type TransitionType =
 
 export type AssetType = 'image' | 'cutout' | 'audio';
 
+/**
+ * How a scene's background image fills the frame: 'cover' scales it to fill
+ * and crops the overflow, centred (the default when absent); 'stretch'
+ * distorts it to fit exactly.
+ */
+export type BackgroundFit = 'cover' | 'stretch';
+
 export interface AssetMetadata {
   /** The file name the user imported, for display. */
   readonly originalFileName?: string;
@@ -93,6 +100,10 @@ export interface Layer {
   readonly name: string;
   readonly source: LayerSource;
   readonly keyframes: readonly Keyframe[];
+  /** A hidden layer is not drawn anywhere — editor and export alike. */
+  readonly hidden?: boolean;
+  /** A locked layer still renders; it only refuses selection and dragging. */
+  readonly locked?: boolean;
 }
 
 export interface TtsLine {
@@ -126,6 +137,8 @@ export interface Scene {
   readonly name: string;
   readonly durationSeconds: number;
   readonly backgroundAssetId?: string;
+  /** Absent means 'cover' — older project files never carry this field. */
+  readonly backgroundFit?: BackgroundFit;
   readonly cameraKeyframes: readonly CameraKeyframe[];
   readonly layers: readonly Layer[];
   readonly audioClips: readonly AudioClip[];
