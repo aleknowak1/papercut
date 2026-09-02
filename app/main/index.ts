@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { BrowserWindow, app, session } from 'electron';
+import { BrowserWindow, app, net, session } from 'electron';
 import { registerIpcHandlers } from './ipc';
 import { isRequestAllowed } from './networkPolicy';
 
@@ -21,6 +21,41 @@ function exportMode(): 'export-check' | 'export-measure' | undefined {
   return undefined;
 }
 
+// ---- Reliable start-up (CL-0021) ----
+//
+// The screen used to be loaded exactly once, with no wait and no retry. If
+// the development server was not answering yet at that instant, the window
+// stayed dark forever. Now: wait for the server, retry a failed load, and
+// if loading still fails, show a plain-text explanation — never a blank
+// window.
+
+const sleep = (millis: number): Promise<void> => new Promise((r) => setTimeout(r, millis));
+
+/** Waits (up to ~15 s) until the dev server answers HTTP at all. */
+async function waitForDevServer(url: string): Promise<void> {
+  for (let attempt = 0; attempt < 60; attempt++) {
+    try {
+      const response = await net.fetch(url, { method: 'HEAD', cache: 'no-store' });
+      if (response.status > 0) return;
+    } catch {
+      // Not answering yet; keep waiting.
+    }
+    await sleep(250);
+  }
+  console.warn(`Dev server at ${url} did not answer within 15 s; loading anyway (retries will follow).`);
+}
+
+/** Replaces a window that could not load with a readable explanation. */
+function showLoadFailure(win: BrowserWindow, target: string, description: string): void {
+  const text =
+    'PAPERCUT could not load its screen.\n\n' +
+    `Tried to load: ${target}\n` +
+    `Last error:    ${description}\n\n` +
+    'Close this window and start the app again with: npm run dev\n' +
+    'If this keeps happening, tell Claude Code about this message in the next session.';
+  void win.loadURL('data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+}
+
 function createWindow(): void {
   const mode = exportMode();
   const win = new BrowserWindow({
@@ -40,18 +75,50 @@ function createWindow(): void {
 
   if (mode === undefined) {
     win.once('ready-to-show', () => win.show());
+    // Belt and braces: whatever happens, never leave an invisible window.
+    setTimeout(() => {
+      if (!win.isDestroyed() && !win.isVisible()) win.show();
+    }, 15_000);
   }
 
   // In development the page is served by Vite; in the packaged app it is a file.
   const devUrl = process.env['ELECTRON_RENDERER_URL'];
-  const query = mode === undefined ? undefined : { papercutMode: mode };
-  if (devUrl) {
-    const url = new URL(devUrl);
-    if (mode !== undefined) url.searchParams.set('papercutMode', mode);
-    void win.loadURL(url.toString());
-  } else {
-    void win.loadFile(join(__dirname, '../renderer/index.html'), query ? { query } : undefined);
-  }
+  const loadApp = async (): Promise<void> => {
+    if (devUrl) {
+      const url = new URL(devUrl);
+      if (mode !== undefined) url.searchParams.set('papercutMode', mode);
+      await win.loadURL(url.toString());
+    } else {
+      const query = mode === undefined ? undefined : { papercutMode: mode };
+      await win.loadFile(join(__dirname, '../renderer/index.html'), query ? { query } : undefined);
+    }
+  };
+
+  // Retry failed loads for up to ~20 s before giving up visibly.
+  const MAX_RETRIES = 40;
+  let retries = 0;
+  win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+    if (!isMainFrame || win.isDestroyed()) return;
+    // -3 (ERR_ABORTED) means a newer load replaced this one — not a failure.
+    if (errorCode === -3) return;
+    if (retries < MAX_RETRIES) {
+      retries++;
+      console.warn(
+        `Screen load failed (${errorDescription}, code ${errorCode}); retrying (${retries}/${MAX_RETRIES})…`
+      );
+      setTimeout(() => {
+        if (!win.isDestroyed()) loadApp().catch(() => {});
+      }, 500);
+    } else {
+      console.error(`Screen load failed ${MAX_RETRIES} times; last error: ${errorDescription}`);
+      showLoadFailure(win, validatedURL || devUrl || 'the app files', errorDescription);
+    }
+  });
+
+  void (async () => {
+    if (devUrl) await waitForDevServer(devUrl);
+    if (!win.isDestroyed()) await loadApp().catch(() => {}); // failures land in did-fail-load
+  })();
 }
 
 app.whenReady().then(() => {
