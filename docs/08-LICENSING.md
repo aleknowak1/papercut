@@ -36,12 +36,13 @@ PAPERCUT is a paid, closed-source product. Every third-party component it ships,
 | A8 | BiRefNet_lite and BiRefNet (weights, ONNX) | Background removal | MIT | 2026-09-02, repo LICENSE and HF model card | Reproduce notice. Training data (DIS5K) has separate academic terms; the author's MIT license on the weights governs redistribution, and the model is in wide commercial use. | **Cleared** (OQ-001 closed) |
 | A9 | electron-builder | Installers (build-time only) | MIT | 2026-09-02, repo LICENSE | None at runtime | **Cleared** |
 | A10 | Windows Media Foundation H.264 and AAC encoders, via WebCodecs (Chromium) | Video/audio encoding for export | Part of Windows; licensed by Microsoft to Windows users | 2026-09-02 | Nothing shipped, nothing to attribute. Requires Windows 10+ (ADR-012). | **Cleared** (ADR-013) |
-| A11 | mp4-muxer | Writes the .mp4 container | MIT | Verify at dependency lock | Reproduce notice | **Cleared (pending lock)** |
+| A11 | mp4-muxer 5.2.2 (locked) | Writes the .mp4 container | MIT | 2026-09-02, package LICENSE in the installed version | Reproduce notice. Note: npm marks the package deprecated in favour of "Mediabunny" (MPL-2.0 — **not** on our allow-list); we stay on mp4-muxer 5.2.2, which is complete and sufficient. Replacing it would need a new ADR. | **Cleared** (OQ-019 closed) |
 | A12 | FFmpeg (fallback only, not planned) | Only if OQ-019 fails | LGPL 2.1+ | 2026-09-02, ffmpeg.org/legal | If ever used: LGPL build, separate process, publish source, attribute (§5.2). Never GPL builds or libx264. | **Not in use** |
 | A13 | HEIC image decoding | Importing iPhone photos | libheif and libde265 are LGPL; HEVC is patent-encumbered | 2026-09-02, libheif README | **Not bundled.** Use Windows' own decoder when the user has Microsoft's HEIF extension; otherwise show an "export as JPG" message. | **Cleared** (OQ-016 closed) |
 | A14 | Fonts for captions | Text overlays | Must be SIL Open Font License (OFL) or similar | per font, at selection | Reproduce OFL notice per font; do not sell fonts standalone | **Pending selection** |
 | A15 | Sound library clips | Bundled sounds | Must be CC0 or equivalent public-domain dedication only (no CC-BY, to avoid per-clip attribution in user videos) | per clip, at curation | Keep a per-clip source record in `sounds/SOURCES.csv` | **Pending curation** (OQ-004) |
 | A16 | Other npm packages | Utilities | Each must be MIT/BSD/Apache/ISC | Automated check at every build (§7) | Reproduce notices | **Ongoing** |
+| A19 | mp4box 2.4.1 (build/check-time only; not shipped) | Reads exported .mp4 files back in the Export check (ADR-015) | BSD-3-Clause | 2026-09-02, package LICENSE | None at runtime: dev dependency used only by the check; a production build was scanned to confirm it is absent. | **Cleared (check-time only)** |
 | A17 | caniuse-lite (build-time only; not shipped) | Browser-support data used inside the build tools (browserslist) | CC-BY-4.0 | 2026-09-02, repo LICENSE | None at runtime: it never enters the shipped app. The license check enforces that it stays out of the production dependency tree. | **Cleared (build-time exception)** |
 | A18 | truncate-utf8-bytes (build-time only; not shipped) | Filename utility inside electron-builder | WTFPL | 2026-09-02, repo LICENSE | None at runtime: build-time only, permissive do-anything license. The license check enforces that it stays out of the production dependency tree. | **Cleared (build-time exception)** |
 
@@ -92,6 +93,6 @@ H.264 is covered by patent pools regardless of which encoder software is used; a
 
 **Lawyer-free paths set:** terms and privacy via the merchant of record's checkout terms plus a template service (OQ-014); tax via the merchant of record (ADR-014).
 
-**Pending routine selection, no legal risk:** merchant of record (OQ-018), mp4-muxer version lock, fonts (OFL only), sound clips (CC0 only, OQ-004).
+**Pending routine selection, no legal risk:** merchant of record (OQ-018), fonts (OFL only), sound clips (CC0 only, OQ-004). (mp4-muxer is now locked at 5.2.2, MIT — row A11.)
 
 **No items require legal review.**

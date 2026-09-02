@@ -27,6 +27,7 @@ This is the master index for all PAPERCUT project documentation. Every document 
 | DOC-09 | AI Spend Policy | Rules that keep paid AI usage limited to real user results; caching, fake providers, caps | Active |
 | DOC-10 | Project Tracker | Where we are, phase and feature status, what is waiting on Alek. Read this first when returning. | Active |
 | DOC-11 | Development Workflow | Tools, session rhythm, roles, agents, CLAUDE.md standing orders, phase kickoff prompts | Active |
+| DOC-12 | Export Prototype Measurement Report | OQ-019 measurements on real hardware and the ADR-013 decision record | Active |
 
 ## 3. Conventions
 

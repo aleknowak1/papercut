@@ -179,7 +179,7 @@ Each entry records one decision: what was decided, why, what was rejected, and w
 
 ## ADR-013 — Video export uses the operating system's encoders; no FFmpeg
 
-**Date:** 2026-09-02 · **Status:** Accepted (subject to a week-one prototype)
+**Date:** 2026-09-02 · **Status:** Accepted (prototype condition met 2026-09-02: the Phase 2 measurements in DOC-12 beat every target — 60 s of 1080p30 extrapolates to ≈ 43 s without a GPU against a 180 s limit, drift ≤ 9.6 ms — closing OQ-019; Windows 11 measured, Windows 10 untested for lack of a machine)
 
 **Decision:** Export renders frames with PixiJS off-screen, encodes video (H.264) and audio (AAC) through the WebCodecs API built into Chromium/Electron, which uses the encoders that ship with Windows (Media Foundation: hardware-accelerated when available, Microsoft's software encoder otherwise), and writes the .mp4 with the MIT-licensed mp4-muxer library. No FFmpeg binary is shipped.
 
