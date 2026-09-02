@@ -1,0 +1,25 @@
+# Dependencies and build output
+node_modules/
+dist/
+out/
+release/
+.vite/
+*.tsbuildinfo
+
+# Secrets — never commit keys
+.env
+.env.*
+!.env.example
+
+# Local settings and caches
+.DS_Store
+Thumbs.db
+*.log
+.cache/
+coverage/
+
+# Large model files are fetched by a script, not committed
+models/*.onnx
+
+# Test output
+tests/output/
