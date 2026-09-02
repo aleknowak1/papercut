@@ -1,7 +1,7 @@
 # DOC-10 — Project Tracker
 
 **Status:** Active
-**Last updated:** 2026-09-02 (Phase 3 kickoff: housekeeping done — CL-0024; plan awaiting Alek's approval)
+**Last updated:** 2026-09-02 (Phase 3 gate run — STOPPED on performance, CL-0025; path decision with Alek)
 **Purpose:** The one page to read when returning to the project. Where we are, what is done, what is next, and what is waiting on Alek. Updated with every change-log entry (DOC-04).
 
 ---
@@ -11,10 +11,11 @@
 **Phase 1 — Scaffold: USABLE.** The app opens to the Home screen on Windows; projects can be created, saved, and reopened; the document format, undo/redo engine, provider fakes, and five automated checks exist and pass. Still open within Phase 1 scope: autosave, and wiring undo/redo into the UI (both arrive naturally with the editor phases). ADR-006 is Accepted; DOC-03 is Active.
 **Verified by Alek (CL-0017):** all Phase 1 manual tests passed.
 **Phase 2 — Export prototype: USABLE, decision made (CL-0018/CL-0019).** ADR-013 is proven on real hardware: the ten-second test project exports to a correct .mp4 through Windows' own encoders, 60 s of 1080p30 extrapolates to ≈ 43 s even without a GPU (target: under 3 minutes), audio drift ≤ 9.6 ms. OQ-019 closed, ADR-013 now plainly Accepted, mp4-muxer locked (MIT). Full numbers in DOC-12. Windows 10 remains untested (no machine).
-**Next action:** Alek watches/listens to the exported test video (§5), then Phase 3 (assets and cutouts) can start — checking OQ-020 (onnxruntime-node vs Smart App Control) first.
+**Phase 3 — Assets and cutouts: IN PROGRESS, gate STOPPED (CL-0025).** The OQ-020 gate ran per the approved plan. Good news: Smart App Control does **not** block onnxruntime-node — everything it ships is Microsoft-signed; it loads and runs in plain Node and in an Electron utility process with a clean event log. Bad news: the fp16 model runs at ≈27.7 minutes per photo on CPU (target: under 3 seconds) because ONNX Runtime's CPU engine has no native fp16 support. Per the plan, work STOPPED before any cutout feature was built.
+**Next action:** Alek reads DOC-13 (short) and chooses a path from its §6 — the natural first candidate to test is the fp32 model (needs approval for a 224 MB download); DirectML (built-in graphics) is the likely speed path on weak machines but would amend the CPU-baseline target. Then Phase 3 resumes at plan step 2.
 **Start-up reliability (CL-0021/CL-0022):** the blank-window cause is found and fixed (the dev server answered only on IPv6 while the window sometimes asked on IPv4; it now binds one concrete address). The app also waits for its screen server, retries failed loads, shows plain-text errors instead of ever staying blank, and writes every start-up step to logs/startup.log in the user-data folder — if a start ever misbehaves again, send that file.
 **Rule of thumb after any code update (CL-0020):** close the running app and start it again with `npm run dev` — an app window left running from before an update cannot load the new code and shows a plain-language message saying so.
-**Watch out:** OQ-020 — Windows Smart App Control blocks unsigned native Node modules on the dev laptop; check onnxruntime-node before Phase 3 work begins.
+**Watch out:** the dev laptop's CPU (Intel Core i3-N305, 8 efficiency cores) is below the "2020-era laptop CPU" reference in DOC-03 §5; performance numbers measured here are pessimistic but real for budget customer machines.
 
 ## 2. Build order and phase status
 
@@ -25,7 +26,7 @@ Phases run in this order; a phase does not start until the previous one is usabl
 | 0 | **Foundation** | Docs 00–10 written; every pre-build decision recorded as an ADR | **Complete** | Fable |
 | 1 | **Scaffold** | Empty Electron/TypeScript/React app opens to the Home screen on Windows; project document format defined; undo/redo; check suite running (save/reopen, undo, license, network, AI-spend guard) | **Usable** | Fable |
 | 2 | **Export prototype** (OQ-019) | Ten-second test project exports to .mp4 using Windows' built-in encoders with correct duration, resolution, audio sync | **Usable** (checks green, DOC-12 written, OQ-019 closed; Complete once Alek has watched the export) | Fable |
-| 3 | **Assets and cutouts** | Import images/audio; BiRefNet_lite auto-cutout; HD cutout; mask editor; HEIC handling | Not started | Fable → Opus |
+| 3 | **Assets and cutouts** | Import images/audio; BiRefNet_lite auto-cutout; HD cutout; mask editor; HEIC handling | **In progress** (OQ-020 gate: security passed, STOPPED on performance — DOC-13; path decision with Alek) | Fable → Opus |
 | 4 | **Scene and layers** | Background, character/prop layers, ordering, opacity, lock/hide, placing and sizing on canvas | Not started | Opus |
 | 5 | **Animation** | Keyframes (position, scale, rotation, flip, opacity), easing, motion presets, pose swapping, camera pan/zoom, render snapshot checks | Not started | Fable for keyframe engine → Opus |
 | 6 | **Timeline and audio** | Multi-track timeline, scrub/snap/zoom, audio clips (volume, fade, trim), imported sounds | Not started | Opus |
@@ -96,6 +97,7 @@ Run everything with one command: `npm run check` (49 tests + licenses + the expo
 
 | Item | Needed by | Ref |
 |------|-----------|-----|
+| Read DOC-13 (the segmentation gate report) and choose a path from §6 so Phase 3 can resume. If the choice is "measure fp32 first": approve the 224 MB download and Claude runs the same probe on it. | Now (unblocks Phase 3) | OQ-020, DOC-13 |
 | Watch and listen to the exported test video: open the app (`npm run dev`), open or create a project, click "Load test content (dev)" then "Export prototype (dev)", and play export-dev.mp4 from the project folder. The square should move smoothly, the counter should tick, and each beep should land exactly on its white flash. | Now (closes Phase 2) | DOC-12 §3 |
 | Create an OpenAI account, generate a key, set a small monthly hard cap, keep the key private | Phase 11 (not before) | DOC-09 §5 |
 | Choose merchant of record after Claude's comparison | Phase 10 | OQ-018 |
