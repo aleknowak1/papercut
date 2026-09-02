@@ -213,6 +213,7 @@ async function runProbe(options = {}) {
     pid: process.pid,
     cpu: os.cpus()[0]?.model?.trim() || 'unknown',
     logicalCores: os.cpus().length,
+    requestedProvider: options.ep || 'cpu',
     steps: [],
     pass: false,
   };
@@ -237,8 +238,10 @@ async function runProbe(options = {}) {
   }
 
   // 2. The model file is present (fetched by scripts/fetch-models.mjs).
+  const modelName = options.model || 'birefnet_lite_fp16.onnx';
   const modelPath = options.modelPath ||
-    path.join(__dirname, '..', '..', 'models', 'birefnet_lite_fp16.onnx');
+    path.join(__dirname, '..', '..', 'models', modelName);
+  report.model = path.basename(modelPath);
   if (!fs.existsSync(modelPath)) {
     step('model file present', {
       ok: false,
@@ -248,22 +251,41 @@ async function runProbe(options = {}) {
   }
   step('model file present', { ok: true, path: modelPath, bytes: fs.statSync(modelPath).size });
 
-  // 3. A session is created, CPU only.
+  // 3. A session is created with the requested engine. DirectML (the GPU
+  //    engine that ships, Microsoft-signed, inside onnxruntime-node) falls
+  //    back to CPU if it cannot start — and the report says so honestly.
   let session;
+  let providerUsed = 'cpu';
   const tSession = process.hrtime.bigint();
   try {
-    session = await ort.InferenceSession.create(modelPath, {
-      executionProviders: ['cpu'],
-      graphOptimizationLevel: 'all',
-    });
-    step('create session (CPU)', {
+    if ((options.ep || 'cpu') === 'dml') {
+      try {
+        session = await ort.InferenceSession.create(modelPath, {
+          executionProviders: ['dml'],
+          graphOptimizationLevel: 'all',
+          enableMemPattern: false, // DirectML requirement
+        });
+        providerUsed = 'dml';
+      } catch (dmlError) {
+        console.error(`[probe] DirectML unavailable, falling back to CPU: ${dmlError}`);
+        report.dmlFallbackError = String(dmlError);
+      }
+    }
+    if (!session) {
+      session = await ort.InferenceSession.create(modelPath, {
+        executionProviders: ['cpu'],
+        graphOptimizationLevel: 'all',
+      });
+    }
+    report.providerUsed = providerUsed;
+    step(`create session (${providerUsed})`, {
       ok: true,
       ms: Number(process.hrtime.bigint() - tSession) / 1e6,
       inputs: session.inputNames,
       outputs: session.outputNames,
     });
   } catch (error) {
-    step('create session (CPU)', { ok: false, error: String(error) });
+    step('create session', { ok: false, error: String(error) });
     return report;
   }
 
@@ -291,9 +313,12 @@ async function runProbe(options = {}) {
   const inputName = session.inputNames[0];
   const outputName = session.outputNames[0];
   const runOnce = async () => {
+    // Stage 1: shrink the photo to the model's fixed 1024x1024 input.
     const t0 = process.hrtime.bigint();
     const small = resizeRgbaBilinear(image.rgba, width, height, MODEL_INPUT, MODEL_INPUT);
     const f32 = toModelInput(small);
+    const t1 = process.hrtime.bigint();
+    // Stage 2: the model itself.
     let feeds;
     let usedType = 'float32';
     try {
@@ -307,6 +332,8 @@ async function runProbe(options = {}) {
       };
       results = await session.run(feeds);
     }
+    const t2 = process.hrtime.bigint();
+    // Stage 3: scale the mask back up to the photo's size.
     const out = results[outputName];
     let logits;
     if (out.type === 'float16') logits = float16BitsToFloat32(out.data);
@@ -314,8 +341,19 @@ async function runProbe(options = {}) {
     const mask1024 = new Float32Array(logits.length);
     for (let i = 0; i < logits.length; i++) mask1024[i] = sigmoid(logits[i]);
     const maskFull = resizeMaskBilinear(mask1024, MODEL_INPUT, MODEL_INPUT, width, height);
-    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
-    return { ms, usedType, outDims: out.dims, mask1024, maskFull };
+    const t3 = process.hrtime.bigint();
+    return {
+      ms: Number(t3 - t0) / 1e6,
+      stages: {
+        shrinkToModelMs: Math.round(Number(t1 - t0) / 1e6),
+        inferenceMs: Math.round(Number(t2 - t1) / 1e6),
+        maskUpscaleMs: Math.round(Number(t3 - t2) / 1e6),
+      },
+      usedType,
+      outDims: out.dims,
+      mask1024,
+      maskFull,
+    };
   };
 
   let result;
@@ -332,6 +370,7 @@ async function runProbe(options = {}) {
       ok: true,
       timedRunsMs: times.map((t) => Math.round(t)),
       medianMs: Math.round(sorted[Math.floor(sorted.length / 2)]),
+      lastRunStagesMs: result.stages,
       inputType: result.usedType,
       outputDims: result.outDims,
     });
@@ -371,6 +410,30 @@ async function runProbe(options = {}) {
     ...stats,
     criteria: { notEmpty, notSolid, figureBrighterThanBackground: separates },
   });
+
+  // Optional: save the full-size mask and cutout as PNGs so the upscaled
+  // result can be judged by eye (original pixels + new alpha, no canvas).
+  if (options.saveDir) {
+    const { encodePngRgba } = require('./png.cjs');
+    fs.mkdirSync(options.saveDir, { recursive: true });
+    const tag = `${path.basename(modelPath, '.onnx')}-${providerUsed}`;
+    const maskRgba = new Uint8Array(width * height * 4);
+    const cutoutRgba = new Uint8Array(width * height * 4);
+    for (let i = 0; i < width * height; i++) {
+      const a = Math.round(Math.max(0, Math.min(1, result.maskFull[i])) * 255);
+      maskRgba[i * 4] = maskRgba[i * 4 + 1] = maskRgba[i * 4 + 2] = a;
+      maskRgba[i * 4 + 3] = 255;
+      cutoutRgba[i * 4] = image.rgba[i * 4];
+      cutoutRgba[i * 4 + 1] = image.rgba[i * 4 + 1];
+      cutoutRgba[i * 4 + 2] = image.rgba[i * 4 + 2];
+      cutoutRgba[i * 4 + 3] = a;
+    }
+    const maskPath = path.join(options.saveDir, `${tag}-mask.png`);
+    const cutoutPath = path.join(options.saveDir, `${tag}-cutout.png`);
+    fs.writeFileSync(maskPath, encodePngRgba(maskRgba, width, height));
+    fs.writeFileSync(cutoutPath, encodePngRgba(cutoutRgba, width, height));
+    report.saved = { mask: maskPath, cutout: cutoutPath };
+  }
 
   report.memory = {
     rssMB: Math.round(process.memoryUsage().rss / 1e6),

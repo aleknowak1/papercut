@@ -12,6 +12,17 @@
       "license": "MIT",
       "convertedFrom": "ZhengPeng7/BiRefNet_lite (MIT weights)"
     },
+    "lite_fp32": {
+      "description": "BiRefNet_lite fp32 - full-precision variant, the format Microsoft recommends for CPU inference (DOC-13 gate measurements)",
+      "repo": "onnx-community/BiRefNet_lite",
+      "revision": "de15b22ba131738a16dff04aab8bdf8dc32e3ac1",
+      "remotePath": "onnx/model.onnx",
+      "localName": "birefnet_lite_fp32.onnx",
+      "sizeBytes": 224005088,
+      "sha256": "5600024376f572a557870a5eb0afb1e5961636bef4e1e22132025467d0f03333",
+      "license": "MIT",
+      "convertedFrom": "ZhengPeng7/BiRefNet_lite (MIT weights)"
+    },
     "full": {
       "description": "BiRefNet full fp16 - the 'HD cutout' option in the mask editor",
       "repo": "onnx-community/BiRefNet-ONNX",

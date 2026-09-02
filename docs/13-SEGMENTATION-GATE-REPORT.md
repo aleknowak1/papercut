@@ -136,3 +136,109 @@ chosen, that finding stands.
 question stays open only until the performance path is decided). The gate
 overall: STOPPED on performance, per plan step 1g.** No cutout feature is
 built until Alek chooses a path from §6.
+
+---
+
+## 9. Second measurement round (Alek's decision request, same day)
+
+Alek directed: confirm the probe's input size, then measure path 1 (fp32 on
+CPU) and path 3 (DirectML with CPU fallback) before choosing. Paths 4
+(WASM) and 5 (lighter model) are off the table by his decision.
+
+### 9.1 Input-size check (asked first, answered plainly)
+
+The probe always ran the model at its native 1024×1024. The ONNX file's
+input is physically fixed at 1×3×1024×1024 — it cannot accept anything
+else. The probe shrinks the 3000×4000 photo to 1024×1024, runs the model,
+and scales the mask back up. The 27.7-minute fp16 figure was therefore a
+fair baseline, not an 11×-too-big workload. The per-stage timings below
+prove where the time goes: the two resizes cost well under a second
+combined; the model is everything else.
+
+### 9.2 Results (same fixture, same probe, same laptop; model input 1024×1024)
+
+| Configuration | Time per photo | Of which: shrink / model / mask upscale | Peak worker memory | Threads | Mask quality (figure / background mean) |
+|---|---|---|---|---|---|
+| fp16, CPU, plain Node (round 1) | 1 661.7 s ≈ 27.7 min | — / ~1 661 s / — | 3.9–4.7 GB | 19 | 0.9977 / 0.0005 |
+| **fp32, CPU, plain Node** | **38.1 s** | 0.1 s / 37.8 s / 0.3 s | 3.8 GB | 19 | **0.9977 / 0.0005 — identical to four decimals** |
+| **fp32, CPU, Electron utility process** (the real home) | runs 30.7 / 33.2 / 43.7 s, **median 33.2 s** | 0.5 s / 43.0 s / 0.2 s (last run) | 4.8 GB | 31 | identical |
+| fp16, DirectML (GPU) | **fails** | graph compile 45.9 s first time (5.3 s cached), then out-of-memory during execution | — | — | — |
+| fp32, DirectML (GPU) | **fails** | same out-of-memory | — | — | — |
+
+The upscaled 3000×4000 mask was saved as a PNG and inspected: a clean,
+sharp silhouette, no bleed from the busy background. The cutout PNG was
+decoded byte-by-byte to confirm the output rule: background alpha 0, figure
+alpha 255, and the RGB values everywhere are the original pixels untouched.
+
+### 9.3 Why DirectML failed here, and what that means
+
+DirectML compiled the model but died executing it with Windows error
+8007000E, "not enough memory resources", twice in a row (and identically
+with fp32). This laptop has 8 GB of RAM total; its integrated Intel UHD
+graphics has no memory of its own — it borrows system RAM (up to ~3.9 GB),
+and BiRefNet at 1024×1024 wants more than was available. **8 GB is exactly
+our minimum spec (OQ-007), so DirectML cannot be the only path**: on
+customer machines like this one it will hit the same wall. On machines with
+16 GB or a real graphics card it would very likely run and be fast — it
+remains a candidate *accelerator*, never the baseline.
+
+### 9.4 Honest reading against the 3-second target
+
+Per Alek's instruction, 3 s (DOC-03 §5) is treated as the
+*reference-machine* target ("2020-era laptop CPU"); this i3-N305 is below
+that reference. fp32 CPU here: ~33–38 s per photo. A typical 2020 mid-range
+laptop CPU is perhaps 1.5–3× faster: roughly **12–25 s per photo** —
+better, but nowhere near 3 s. Path 2 (int8 quantisation, typically another
+2–4× over fp32 on CPU) would land maybe **10–20 s here, 4–10 s on the
+reference machine**. In plain words: **no CPU path measured or estimated
+reaches 3 s for this model at 1024×1024.** The realistic shape of the
+feature on CPU is a background queue with a progress bar and tens of
+seconds per photo — or DirectML acceleration where the hardware allows it.
+What number is acceptable on minimum-spec machines is Alek's call, to be
+recorded in DOC-07.
+
+### 9.5 Two pipeline rules, recorded (Alek's decision, binding for Phase 3)
+
+1. **The model always works at its native 1024×1024.** The photo is shrunk
+   to that for inference and the mask is scaled back up to the photo's
+   size. Not optional, never shown to the user.
+2. **Originals stay untouched in assets/images/ exactly as imported.** The
+   cutout and the mask editor's working copy are made from a version capped
+   at **4096 pixels on the long edge** (smaller photos are used as they
+   are).
+
+### 9.6 What the 4096 cap buys, and whether it is the right number
+
+On a 48-megapixel phone photo (8000×6000):
+
+| | Uncapped (8000×6000) | Capped (4096×3072) |
+|---|---|---|
+| Pixels | 48 MP | 12.6 MP (¼ of the work) |
+| One RGBA copy in memory | 192 MB | 50 MB |
+| Mask as floats in memory | 192 MB | 50 MB |
+| Every per-pixel step (resize, composite, PNG encode/decode, editor brush) | 4× slower | baseline |
+
+The model step is unchanged (it sees 1024×1024 either way), so the cap
+costs **zero mask quality**; it only bounds the cutout's pixel resolution
+and keeps a 48 MP import from ballooning worker and editor memory by
+~150 MB per copy in flight.
+
+**Is 4096 enough for a 2× camera zoom at 1080p?** Yes, with margin. A
+cutout filling the full 1920×1080 frame at 2× zoom needs ≥3840×2160 source
+pixels; the cap leaves 4096×3072 — enough on both axes (and ~2.8× zoom
+head-room for a figure filling the frame *height*). **2048 would fail**
+(only ~1.07× zoom for a frame-filling element) and **3072 would also fall
+short of 2×** (3072 < 3840), so 4096 is the right cap — the smallest
+power-of-two-ish step that satisfies the stated requirement. If a 4K export
+ever arrives (not in v1), 2× zoom there would want ~7680 px; because the
+untouched original is still in assets/images/, cutouts could be re-made
+under a bigger cap without re-importing anything.
+
+### 9.7 Status after round 2
+
+Measured, recorded, **no ADR changed, nothing built past the gate.** The
+remaining choice for Alek: adopt fp32-on-CPU (simplest; ~33 s here,
+~12–25 s reference, model files 224 MB lite + 973 MB full), pursue int8
+(fastest CPU option, adds an offline Python conversion step), and/or layer
+DirectML on top for capable machines — plus the acceptable per-photo time
+for minimum-spec machines, to record in DOC-07.

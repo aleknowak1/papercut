@@ -6,12 +6,18 @@
 const { runProbe } = require('./probe-core.cjs');
 
 const args = process.argv.slice(2);
-const runsArg = args.find((a) => a.startsWith('--runs='));
+const opt = (name) => {
+  const hit = args.find((a) => a.startsWith(`--${name}=`));
+  return hit ? hit.split('=')[1] : undefined;
+};
 process.parentPort.postMessage({ kind: 'pid', pid: process.pid });
 runProbe({
   environment: 'electron-utility-process',
   loadOnly: args.includes('--load-only'),
-  runs: runsArg ? Number(runsArg.split('=')[1]) : 3,
+  runs: opt('runs') ? Number(opt('runs')) : 3,
+  model: opt('model'),
+  ep: opt('ep'),
+  saveDir: opt('save'),
 })
   .then((report) => {
     process.parentPort.postMessage({ kind: 'report', report });
