@@ -42,6 +42,8 @@ PAPERCUT is a paid, closed-source product. Every third-party component it ships,
 | A14 | Fonts for captions | Text overlays | Must be SIL Open Font License (OFL) or similar | per font, at selection | Reproduce OFL notice per font; do not sell fonts standalone | **Pending selection** |
 | A15 | Sound library clips | Bundled sounds | Must be CC0 or equivalent public-domain dedication only (no CC-BY, to avoid per-clip attribution in user videos) | per clip, at curation | Keep a per-clip source record in `sounds/SOURCES.csv` | **Pending curation** (OQ-004) |
 | A16 | Other npm packages | Utilities | Each must be MIT/BSD/Apache/ISC | Automated check at every build (§7) | Reproduce notices | **Ongoing** |
+| A17 | caniuse-lite (build-time only; not shipped) | Browser-support data used inside the build tools (browserslist) | CC-BY-4.0 | 2026-09-02, repo LICENSE | None at runtime: it never enters the shipped app. The license check enforces that it stays out of the production dependency tree. | **Cleared (build-time exception)** |
+| A18 | truncate-utf8-bytes (build-time only; not shipped) | Filename utility inside electron-builder | WTFPL | 2026-09-02, repo LICENSE | None at runtime: build-time only, permissive do-anything license. The license check enforces that it stays out of the production dependency tree. | **Cleared (build-time exception)** |
 
 ## 4. Register — company server (not shipped; runs on our infrastructure)
 

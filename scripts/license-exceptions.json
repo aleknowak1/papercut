@@ -1,0 +1,19 @@
+{
+  "$comment": "Packages whose license is not on the DOC-08 §7 allow-list but which are cleared by a row in docs/08-LICENSING.md. Every entry must cite its register row. buildTimeOnly entries must never appear in the production dependency tree; scripts/check-licenses.mjs enforces this.",
+  "exceptions": [
+    {
+      "name": "caniuse-lite",
+      "license": "CC-BY-4.0",
+      "buildTimeOnly": true,
+      "reason": "Browser-support data used by the build tools; nothing from it ships to users.",
+      "register": "DOC-08 A17"
+    },
+    {
+      "name": "truncate-utf8-bytes",
+      "license": "WTFPL",
+      "buildTimeOnly": true,
+      "reason": "Filename utility inside electron-builder; build-time only.",
+      "register": "DOC-08 A18"
+    }
+  ]
+}

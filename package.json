@@ -1,0 +1,57 @@
+{
+  "name": "papercut",
+  "productName": "PAPERCUT",
+  "version": "0.1.0",
+  "description": "Turns your own photos into cut-out-animated comedy videos. Working codename; see docs/07-OPEN-QUESTIONS.md OQ-005.",
+  "private": true,
+  "license": "UNLICENSED",
+  "author": {
+    "name": "Alek Nowak",
+    "email": "alek_nowak@yahoo.com"
+  },
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run",
+    "check:licenses": "node scripts/check-licenses.mjs",
+    "check": "npm run typecheck && npm run test && npm run check:licenses",
+    "dist": "npm run build && electron-builder --win"
+  },
+  "build": {
+    "appId": "com.papercut.app",
+    "productName": "PAPERCUT",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    }
+  },
+  "dependencies": {
+    "pixi.js": "8.20.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "26.4.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "@vitejs/plugin-react": "5.2.0",
+    "electron": "44.1.1",
+    "electron-builder": "26.15.3",
+    "electron-vite": "5.0.0",
+    "typescript": "7.0.2",
+    "vite": "7.3.6",
+    "vitest": "4.1.11"
+  }
+}
