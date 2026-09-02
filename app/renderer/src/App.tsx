@@ -10,6 +10,7 @@ import {
   undo
 } from '../../shared/document/history';
 import { AssetsPanel } from './assets/AssetsPanel';
+import { CharactersPanel } from './assets/CharactersPanel';
 import { HomeScreen } from './HomeScreen';
 
 // Everything under app/renderer/src/dev/ (and tests/fixtures) is loaded
@@ -243,7 +244,10 @@ function ProjectView({
         </button>
       </div>
       {saveError !== undefined && <p className="error">{saveError}</p>}
-      <AssetsPanel projectDir={opened.projectDir} document={doc} applyEdit={applyEdit} />
+      <div className="project-columns">
+        <AssetsPanel projectDir={opened.projectDir} document={doc} applyEdit={applyEdit} />
+        <CharactersPanel projectDir={opened.projectDir} document={doc} applyEdit={applyEdit} />
+      </div>
       {import.meta.env.DEV && (
         <DevProjectButtons
           opened={{ projectDir: opened.projectDir, document: doc }}

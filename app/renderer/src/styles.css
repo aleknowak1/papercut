@@ -339,10 +339,93 @@ button {
   flex: 1;
 }
 
-.assets-panel {
+.project-columns {
   flex: 1;
   min-height: 0;
+  display: flex;
+  gap: 14px;
+}
+
+.assets-panel {
+  flex: 3;
+  min-width: 0;
+  min-height: 0;
   overflow-y: auto;
+}
+
+.characters-panel {
+  flex: 2;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.character-card {
+  border: 1px solid var(--panel-edge);
+  background: var(--bg);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.character-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.character-head .name-input {
+  font-weight: 700;
+}
+
+.name-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ink);
+  font: inherit;
+  padding: 4px 6px;
+}
+
+.name-input:hover {
+  border-color: var(--panel-edge);
+}
+
+.name-input:focus {
+  background: var(--bg);
+  border-color: var(--accent);
+  outline: none;
+}
+
+.pose-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pose-row {
+  gap: 6px;
+}
+
+.pose-add-row {
+  display: flex;
+  gap: 8px;
+}
+
+.pose-select {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--panel-edge);
+  color: var(--ink);
+  font: inherit;
+  padding: 6px 8px;
+  border-radius: 0;
 }
 
 .assets-actions {

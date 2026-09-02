@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, type JSX } from 'react';
 import type { Asset, ProjectDocument } from '../../../shared/document/types';
 import type { SegmentationJobUpdate } from '../../../shared/segmentation/types';
 import { addAsset } from '../../../shared/document/edits';
+import { Thumbnail } from './Thumbnail';
 import { importOneImage, workingCopyRgba, type ImportRole } from './importImages';
 
 export type ApplyEdit = (edit: (doc: ProjectDocument) => ProjectDocument) => void;
@@ -26,32 +27,6 @@ const STATUS_LABEL: Record<SegmentationJobUpdate['status'], string> = {
   failed: 'cutout failed',
   cancelled: 'cutout cancelled'
 };
-
-function Thumbnail({ projectDir, asset }: { projectDir: string; asset: Asset }): JSX.Element {
-  const [url, setUrl] = useState<string | undefined>(undefined);
-  useEffect(() => {
-    let objectUrl: string | undefined;
-    let cancelled = false;
-    // Thumbnails live in cache/ (disposable); cutouts are small enough to
-    // show directly.
-    const path = asset.type === 'cutout' ? asset.file : `cache/thumbnails/${asset.id}.png`;
-    window.papercut
-      .readProjectFile(projectDir, path)
-      .then((bytes) => {
-        if (cancelled) return;
-        const copy = new Uint8Array(bytes);
-        objectUrl = URL.createObjectURL(new Blob([copy.buffer as ArrayBuffer]));
-        setUrl(objectUrl);
-      })
-      .catch(() => setUrl(undefined));
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [projectDir, asset.id, asset.file, asset.type]);
-  if (!url) return <span className="asset-thumb asset-thumb-empty" aria-hidden="true" />;
-  return <img className="asset-thumb" src={url} alt="" />;
-}
 
 export function AssetsPanel({
   projectDir,

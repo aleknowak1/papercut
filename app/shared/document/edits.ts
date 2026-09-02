@@ -11,6 +11,7 @@ import type {
   Character,
   Keyframe,
   Layer,
+  Pose,
   ProjectDocument,
   Scene,
   TransitionType
@@ -52,6 +53,78 @@ export function addAsset(doc: ProjectDocument, asset: Asset): ProjectDocument {
 
 export function addCharacter(doc: ProjectDocument, character: Character): ProjectDocument {
   return { ...doc, characters: [...doc.characters, character] };
+}
+
+function replaceCharacter(
+  doc: ProjectDocument,
+  characterId: string,
+  update: (character: Character) => Character
+): ProjectDocument {
+  return {
+    ...doc,
+    characters: doc.characters.map((c) => (c.id === characterId ? update(c) : c))
+  };
+}
+
+export function renameCharacter(
+  doc: ProjectDocument,
+  characterId: string,
+  name: string
+): ProjectDocument {
+  return replaceCharacter(doc, characterId, (c) => ({ ...c, name }));
+}
+
+export function removeCharacter(doc: ProjectDocument, characterId: string): ProjectDocument {
+  return { ...doc, characters: doc.characters.filter((c) => c.id !== characterId) };
+}
+
+// ---- poses (a character is a named group of cutouts, DOC-03 §3) ----
+
+export function addPose(doc: ProjectDocument, characterId: string, pose: Pose): ProjectDocument {
+  return replaceCharacter(doc, characterId, (c) => ({ ...c, poses: [...c.poses, pose] }));
+}
+
+export function renamePose(
+  doc: ProjectDocument,
+  characterId: string,
+  poseId: string,
+  name: string
+): ProjectDocument {
+  return replaceCharacter(doc, characterId, (c) => ({
+    ...c,
+    poses: c.poses.map((p) => (p.id === poseId ? { ...p, name } : p))
+  }));
+}
+
+/** Moves a pose to a new position in its character's list (clamped). */
+export function reorderPose(
+  doc: ProjectDocument,
+  characterId: string,
+  poseId: string,
+  newIndex: number
+): ProjectDocument {
+  return replaceCharacter(doc, characterId, (c) => {
+    const from = c.poses.findIndex((p) => p.id === poseId);
+    if (from < 0) return c;
+    const to = Math.max(0, Math.min(c.poses.length - 1, newIndex));
+    if (to === from) return c;
+    const poses = [...c.poses];
+    const [moved] = poses.splice(from, 1);
+    if (moved === undefined) return c;
+    poses.splice(to, 0, moved);
+    return { ...c, poses };
+  });
+}
+
+export function removePose(
+  doc: ProjectDocument,
+  characterId: string,
+  poseId: string
+): ProjectDocument {
+  return replaceCharacter(doc, characterId, (c) => ({
+    ...c,
+    poses: c.poses.filter((p) => p.id !== poseId)
+  }));
 }
 
 // ---- scenes ----

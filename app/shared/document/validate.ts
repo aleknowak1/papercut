@@ -123,6 +123,13 @@ export function validateProjectDocument(value: unknown): ProjectDocument {
     checkString(c['id'], `characters[${i}].id`);
     checkString(c['name'], `characters[${i}].name`);
     checkArray(c['poses'], `characters[${i}].poses`);
+    c['poses'].forEach((p, j) => {
+      if (!isRecord(p)) fail(`characters[${i}].poses[${j}]`, 'a pose');
+      checkString(p['id'], `characters[${i}].poses[${j}].id`);
+      checkString(p['name'], `characters[${i}].poses[${j}].name`);
+      checkString(p['cutoutAssetId'], `characters[${i}].poses[${j}].cutoutAssetId`);
+    });
+    checkOptionalString(c['voice'], `characters[${i}].voice`);
   });
   checkArray(value['scenes'], 'scenes');
   value['scenes'].forEach((s, i) => checkScene(s, `scenes[${i}]`));

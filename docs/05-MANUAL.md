@@ -104,7 +104,28 @@ plain language and the photo itself is unaffected.
 
 ### M-2.4 Fixing a cut-out by hand (mask editor)
 - M-2.4b The HD cutout option
-- M-2.5 Characters with several poses
+### M-2.5 Characters with several poses
+
+A character is one person (or thing) with several cut-outs of it — its
+*poses*. In a scene, a character can switch between poses (that arrives
+with the animation phases); here you build the set.
+
+In the **Characters** panel of an open project:
+
+1. **+ New character** creates one. Click its name to type your own
+   (Enter confirms, Escape cancels).
+2. **Add pose** attaches a cutout to the character: pick one of your
+   imported cut-outs from the list next to the button. Give the pose a
+   name that says what it shows — "Standing", "Pointing", "Shocked" —
+   by clicking its name.
+3. Reorder poses with **↑ / ↓** (the first pose is the one a scene
+   starts with, later). Remove a pose with **✕** — the cutout itself
+   stays in the project, only the character forgets it.
+4. **Delete** removes the whole character, again keeping all cut-outs.
+
+Several poses usually come from several photos: photograph the same
+person standing, pointing, laughing, import each as a character/prop, and
+add each cutout as a pose. Every step here is one undo (Ctrl+Z).
 - M-2.6 Importing sounds and music
 
 ## M-3 Building a scene

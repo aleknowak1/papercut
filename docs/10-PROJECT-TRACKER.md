@@ -1,7 +1,7 @@
 # DOC-10 — Project Tracker
 
 **Status:** Active
-**Last updated:** 2026-09-02 (Alek verified the foundations — CL-0030; Phase 3 continues on Fable: characters, mask editor, audio)
+**Last updated:** 2026-09-02 (characters with poses usable — CL-0031; next: the mask editor)
 **Purpose:** The one page to read when returning to the project. Where we are, what is done, what is next, and what is waiting on Alek. Updated with every change-log entry (DOC-04).
 
 ---
@@ -63,7 +63,7 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 | Automatic cutout (BiRefNet_lite) | 3 | ☑ (CL-0028) | M-2.3 |
 | HD cutout (BiRefNet full) | 3 | ☐ | M-2.4b |
 | Mask editor (brush add/erase, feather) | 3 | ☐ | M-2.4 |
-| Characters with multiple poses | 3 | ☐ | M-2.5 |
+| Characters with multiple poses | 3 | ☑ (CL-0031) | M-2.5 |
 | Layers: order, opacity, lock, hide | 4 | ☐ | M-3.2 |
 | Place and size on canvas | 4 | ☐ | M-3.3 |
 | Keyframes: position, scale, rotation, flip, opacity | 5 | ☐ | M-4.1, M-4.2 |
