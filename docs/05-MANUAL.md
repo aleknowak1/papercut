@@ -156,7 +156,20 @@ In the **Characters** panel of an open project:
 Several poses usually come from several photos: photograph the same
 person standing, pointing, laughing, import each as a character/prop, and
 add each cutout as a pose. Every step here is one undo (Ctrl+Z).
-- M-2.6 Importing sounds and music
+### M-2.6 Importing sounds and music
+
+Sounds work like photos: press **+ Audio…** in the Assets panel and pick
+one or more files (**MP3, WAV, M4A, OGG**), or drop them onto the panel —
+sounds import straight away, no question asked. Each file is copied
+unchanged into the project folder, so your original stays put.
+
+Every imported sound shows in the assets list with a **♪**, its length,
+and a **► Play** button to hear it (press again to stop). A file that is
+damaged or not really a sound is refused with a plain message; importing
+the same file twice is refused too. An import is one undo step.
+
+Placing sounds on the timeline — with volume, fades and trimming — arrives
+with the timeline phase.
 
 ## M-3 Building a scene
 - M-3.1 Backgrounds and the scene canvas

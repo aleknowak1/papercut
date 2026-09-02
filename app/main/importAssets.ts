@@ -79,6 +79,61 @@ export interface ImportImageInfo {
   readonly existingHashes: readonly string[];
 }
 
+// ---- audio (M-2.6): same shape as images — copy unchanged, refuse plainly ----
+
+export const IMPORTABLE_AUDIO_EXTENSIONS = ['.mp3', '.wav', '.m4a', '.ogg'] as const;
+
+export function readImportAudioBytes(sourcePath: string): Buffer {
+  const ext = extname(sourcePath).toLowerCase();
+  if (!(IMPORTABLE_AUDIO_EXTENSIONS as readonly string[]).includes(ext)) {
+    throw new Error(
+      `"${basename(sourcePath)}" is not a supported sound type. ` +
+        'PAPERCUT imports MP3, WAV, M4A and OGG files.'
+    );
+  }
+  try {
+    return readFileSync(sourcePath);
+  } catch {
+    throw new Error(`"${basename(sourcePath)}" could not be read. Is the file still there?`);
+  }
+}
+
+export interface ImportAudioInfo {
+  readonly durationSeconds: number;
+  readonly existingHashes: readonly string[];
+}
+
+/** Copies a sound file unchanged into assets/audio/ and returns its record. */
+export function importAudioAsset(
+  projectDir: string,
+  sourcePath: string,
+  info: ImportAudioInfo
+): Asset {
+  const bytes = readImportAudioBytes(sourcePath);
+  const contentHash = createHash('sha256').update(bytes).digest('hex');
+  if (info.existingHashes.includes(contentHash)) {
+    throw new Error(
+      `"${basename(sourcePath)}" is already in this project (a file with exactly ` +
+        'the same contents was imported before). It was not added again.'
+    );
+  }
+  const id = randomUUID();
+  const relativePath = `assets/audio/${id}${extname(sourcePath).toLowerCase()}`;
+  const fullPath = resolveProjectFile(projectDir, relativePath);
+  mkdirSync(dirname(fullPath), { recursive: true });
+  writeFileSync(fullPath, bytes);
+  return {
+    id,
+    type: 'audio',
+    file: relativePath,
+    metadata: {
+      originalFileName: basename(sourcePath),
+      durationSeconds: info.durationSeconds,
+      contentHash
+    }
+  };
+}
+
 /**
  * Copies the image into the project and returns its asset record. The
  * caller (the UI) has already proved the file decodes; this function proves

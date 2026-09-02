@@ -93,6 +93,11 @@ function finish(payload) {
 
   const runs = payload.kind === 'measure' ? payload.runs : [payload.run];
   for (const run of runs) printRun(run);
+  for (const fixture of payload.audioFixtures ?? []) {
+    const decoded =
+      fixture.decodedSeconds === undefined ? 'did not decode' : `${fixture.decodedSeconds} s`;
+    console.log(`Audio fixture ${fixture.format}: ${decoded}${fixture.problem ? ` PROBLEM: ${fixture.problem}` : ' ✓'}`);
+  }
   if (payload.projectDir !== undefined) {
     console.log(`Files: ${payload.projectDir}`);
   }

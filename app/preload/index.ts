@@ -26,6 +26,11 @@ const api: PapercutApi = {
   readImportFile: (sourcePath) => ipcRenderer.invoke(IPC_CHANNELS.readImportFile, sourcePath),
   importImageAsset: (projectDir, sourcePath, role, info) =>
     ipcRenderer.invoke(IPC_CHANNELS.importImageAsset, projectDir, sourcePath, role, info),
+  chooseImportAudio: () => ipcRenderer.invoke(IPC_CHANNELS.chooseImportAudio),
+  readImportAudioFile: (sourcePath) =>
+    ipcRenderer.invoke(IPC_CHANNELS.readImportAudioFile, sourcePath),
+  importAudioAsset: (projectDir, sourcePath, info) =>
+    ipcRenderer.invoke(IPC_CHANNELS.importAudioAsset, projectDir, sourcePath, info),
   enqueueCutout: (projectDir, sourceAssetId, model, rgba, width, height) =>
     ipcRenderer.invoke(IPC_CHANNELS.enqueueCutout, projectDir, sourceAssetId, model, rgba, width, height),
   cancelCutout: (sourceAssetId) => ipcRenderer.invoke(IPC_CHANNELS.cancelCutout, sourceAssetId),

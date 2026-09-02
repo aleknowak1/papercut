@@ -60,6 +60,16 @@ export interface PapercutApi {
     role: 'background' | 'character-prop',
     info: { width: number; height: number; existingHashes: readonly string[] }
   ): Promise<Asset>;
+  /** File picker for sounds to import. Empty list = cancelled. */
+  chooseImportAudio(): Promise<readonly string[]>;
+  /** Reads a sound file the user picked (audio types only), for decoding. */
+  readImportAudioFile(sourcePath: string): Promise<Uint8Array>;
+  /** Copies the sound unchanged into assets/audio/ and returns the record. */
+  importAudioAsset(
+    projectDir: string,
+    sourcePath: string,
+    info: { durationSeconds: number; existingHashes: readonly string[] }
+  ): Promise<Asset>;
   /**
    * Queues an automatic cutout for an imported image (raw RGBA pixels,
    * already capped per ADR-017). Resolves with the cutout asset record once
@@ -126,6 +136,9 @@ export const IPC_CHANNELS = {
   chooseImportImages: 'dialog:choose-import-images',
   readImportFile: 'import:read-file',
   importImageAsset: 'import:image-asset',
+  chooseImportAudio: 'dialog:choose-import-audio',
+  readImportAudioFile: 'import:read-audio-file',
+  importAudioAsset: 'import:audio-asset',
   enqueueCutout: 'segmentation:enqueue',
   cancelCutout: 'segmentation:cancel',
   cutoutUpdate: 'segmentation:update',

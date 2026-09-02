@@ -11,8 +11,8 @@ import type { Asset, ProjectFormat } from '../shared/document/types';
 import { validateProjectDocument } from '../shared/document/validate';
 import type { SegmentationModel } from '../shared/segmentation/types';
 import { readCutoutPixels, saveCutoutVersion } from './cutoutVersions';
-import { importImageAsset, prepareImportFile } from './importAssets';
-import type { ImportImageInfo } from './importAssets';
+import { importAudioAsset, importImageAsset, prepareImportFile, readImportAudioBytes } from './importAssets';
+import type { ImportAudioInfo, ImportImageInfo } from './importAssets';
 import { segmentationService } from './segmentation/service';
 import {
   PROJECT_FILE,
@@ -145,6 +145,29 @@ export function registerIpcHandlers(): void {
       role: 'background' | 'character-prop',
       info: ImportImageInfo
     ): Promise<Asset> => importImageAsset(projectDir, sourcePath, role, info)
+  );
+
+  ipcMain.handle(IPC_CHANNELS.chooseImportAudio, async (): Promise<string[]> => {
+    const win = BrowserWindow.getFocusedWindow() ?? undefined;
+    const options = {
+      title: 'Choose sounds to import',
+      filters: [{ name: 'Sounds (MP3, WAV, M4A, OGG)', extensions: ['mp3', 'wav', 'm4a', 'ogg'] }],
+      properties: ['openFile' as const, 'multiSelections' as const]
+    };
+    const result = win
+      ? await dialog.showOpenDialog(win, options)
+      : await dialog.showOpenDialog(options);
+    return result.canceled ? [] : result.filePaths;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.readImportAudioFile, (_event, sourcePath: string): Uint8Array =>
+    readImportAudioBytes(sourcePath)
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.importAudioAsset,
+    (_event, projectDir: string, sourcePath: string, info: ImportAudioInfo): Asset =>
+      importAudioAsset(projectDir, sourcePath, info)
   );
 
   ipcMain.handle(

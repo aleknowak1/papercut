@@ -1,7 +1,7 @@
 # DOC-10 — Project Tracker
 
 **Status:** Active
-**Last updated:** 2026-09-02 (mask editor + HD cutout usable — CL-0032; next: audio import)
+**Last updated:** 2026-09-02 (audio import done — CL-0033; Phase 3 Complete, Phase 4 next)
 **Purpose:** The one page to read when returning to the project. Where we are, what is done, what is next, and what is waiting on Alek. Updated with every change-log entry (DOC-04).
 
 ---
@@ -12,10 +12,10 @@
 **Verified by Alek (CL-0017):** all Phase 1 manual tests passed.
 **Phase 2 — Export prototype: USABLE, decision made (CL-0018/CL-0019).** ADR-013 is proven on real hardware: the ten-second test project exports to a correct .mp4 through Windows' own encoders, 60 s of 1080p30 extrapolates to ≈ 43 s even without a GPU (target: under 3 minutes), audio drift ≤ 9.6 ms. OQ-019 closed, ADR-013 now plainly Accepted, mp4-muxer locked (MIT). Full numbers in DOC-12. Windows 10 remains untested (no machine).
 **Phase 3 — Assets and cutouts: IN PROGRESS.** The OQ-020 gate is closed (ADR-017): Smart App Control never objected (onnxruntime-node is Microsoft-signed throughout), and Alek chose fp32-on-CPU with revised targets (< 15 s reference machine, ≤ 45 s minimum-spec, always a background queue). Full evidence trail in DOC-13. Step 2 is built and green (CL-0027): the segmentation worker runs BiRefNet fp32 in an Electron utility process with a one-at-a-time job queue, status updates, cancellation, and the original-pixels+alpha output rule enforced byte-for-byte by a check; memory arena off (measured faster and frees ~everything between jobs); worker process ends when the queue goes idle. Measured on this laptop: lite ≈32–37 s/photo, HD ≈54 s, model load ≈5–8 s.
-Step 3 is usable (CL-0028): image import by button and drag-and-drop, the Assets panel with thumbnails and live cutout status, automatic cutouts for characters/props with Cancel, undo/redo wired into the UI (Ctrl+Z / Ctrl+Y), auto-save after each change. Step 4 is usable (CL-0029): HEIC converts on import through Windows' own decoder in a separate signed PowerShell 5.1 process; friendly message when the HEIF extension is missing. Manual M-2.1–M-2.3 and M-9.2 written. The Fable foundations of Phase 3 are done.
-**Next action:** (1) Alek verifies (§5). (2) Start an **Opus** session with the one-liner: *"Read CLAUDE.md and DOC-10, then continue Phase 3: characters with poses (M-2.5), the mask editor (M-2.4, M-2.4b), and audio import (M-2.6), following the hand-off notes in DOC-10 §1b — each with its checks and manual sections, no sub-agents (DOC-11 §6)."*
+**Phase 3 — Assets and cutouts: COMPLETE (CL-0033).** Everything in the phase is built, checked, live-verified and in the manual: image import (JPG/PNG/WebP + HEIC via Windows' decoder) with the Assets panel; automatic cutouts in a background queue (one at a time, cancellable, ≈half a minute per photo on this laptop); characters with poses; the mask editor (brush add/erase, feather, zoom/pan, local stroke undo, versioned saves that document-undo repoints between, Reset to automatic, HD cutout); audio import (MP3/WAV/M4A/OGG) with durations and Play. Undo/redo and auto-save are wired through everything. Alek verified the foundations by hand (CL-0030); his remaining spot-checks are in §5.
+**Next action:** Alek does the §5 spot-checks, then Phase 4 (Scene and layers) begins — per §2 an **Opus** session: *"Read CLAUDE.md and DOC-10, then start Phase 4: scene canvas with background, character/prop layers, ordering, opacity, lock/hide, placing and sizing (DOC-01 §5.1, DOC-03 §3)."* Plan-first is recommended (DOC-11 §4 step 3) since Phase 4 introduces the PixiJS scene renderer.
 
-### 1b. Hand-off notes for the Opus session (Fable's design decisions, binding)
+### 1b. Hand-off notes (now historical — the work below was completed by Fable in CL-0031..33, built to these decisions)
 
 - **Characters with poses (M-2.5):** document operations only (`characters[]`, DOC-03 §3) plus Assets-panel UI — create character, add pose from an existing cutout asset, rename/reorder/delete poses; every operation one undo step through the existing `applyEdit` path in App.tsx; check: add/rename/reorder/delete round-trip save/reopen and undo (extend edits.ts with the missing pose functions).
 - **Mask editor (M-2.4/M-2.4b):** draw on a plain **2D canvas** (not PixiJS — per-pixel brush work, trivially checkable; PixiJS stays reserved for the scene renderer). Brush add/erase with size control, edge feather, zoom/pan, keyboard-friendly. **Undo model:** brush strokes undo locally inside the editor (its own small stack); **Save writes a NEW cutout file** (`assets/cutouts/<id>-v2.png`, v3, …) composed as original working-copy pixels + edited alpha (use the main-process PNG writer, `app/main/segmentation/png.ts` — never a canvas PNG export, which premultiplies), plus **one document edit** repointing the asset — so document-level undo/redo just repoints files, which still exist. "Reset to automatic" repoints at the original automatic cutout. "HD cutout" enqueues the existing queue with model `'hd'` (`enqueueCutout(..., 'hd', ...)`) and replaces the automatic mask on completion; keep the plain warning that it can take a while on a small laptop (≈54 s measured here). Old versions are kept — tidying is OQ-021, not this phase. Checks: a known brush stroke and known feather on a known mask give expected pixels; reset restores the automatic mask; the repointing undo works.
@@ -34,7 +34,7 @@ Phases run in this order; a phase does not start until the previous one is usabl
 | 0 | **Foundation** | Docs 00–10 written; every pre-build decision recorded as an ADR | **Complete** | Fable |
 | 1 | **Scaffold** | Empty Electron/TypeScript/React app opens to the Home screen on Windows; project document format defined; undo/redo; check suite running (save/reopen, undo, license, network, AI-spend guard) | **Usable** | Fable |
 | 2 | **Export prototype** (OQ-019) | Ten-second test project exports to .mp4 using Windows' built-in encoders with correct duration, resolution, audio sync | **Usable** (checks green, DOC-12 written, OQ-019 closed; Complete once Alek has watched the export) | Fable |
-| 3 | **Assets and cutouts** | Import images/audio; BiRefNet_lite auto-cutout; HD cutout; mask editor; HEIC handling | **In progress** (foundations verified by Alek, CL-0030; characters/mask editor/audio remain) | Fable (Alek's choice, CL-0030: consistency across the phase; the DOC-10 §1b hand-off notes still describe the work) |
+| 3 | **Assets and cutouts** | Import images/audio; BiRefNet_lite auto-cutout; HD cutout; mask editor; HEIC handling | **Complete** (CL-0033: every feature ☑, all M-2 manual sections written; Alek's spot-checks in §5 — mask editor on a real photo, HEIC, real MP3/OGG) | Fable (Alek's choice, CL-0030) |
 | 4 | **Scene and layers** | Background, character/prop layers, ordering, opacity, lock/hide, placing and sizing on canvas | Not started | Opus |
 | 5 | **Animation** | Keyframes (position, scale, rotation, flip, opacity), easing, motion presets, pose swapping, camera pan/zoom, render snapshot checks | Not started | Fable for keyframe engine → Opus |
 | 6 | **Timeline and audio** | Multi-track timeline, scrub/snap/zoom, audio clips (volume, fade, trim), imported sounds | Not started | Opus |
@@ -59,7 +59,7 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 | Format choice (9:16, 16:9, 1:1) and save location | 1 | ☑ | M-1.2 |
 | Undo / redo | 1 | ◐ (engine, checks, UI buttons and Ctrl+Z/Ctrl+Y; M-1.3 tour pending) | M-1.3 |
 | Image import (JPG, PNG, WebP; HEIC via Windows) | 3 | ☑ (CL-0028/29; HEIC works-path verified by Alek with a real iPhone photo, §5) | M-2.2, M-9.2 |
-| Audio import (MP3, WAV, M4A, OGG) | 3 | ☐ | M-2.6 |
+| Audio import (MP3, WAV, M4A, OGG) | 3 | ☑ (CL-0033; MP3/OGG spot-checked by Alek with real files, §5) | M-2.6 |
 | Automatic cutout (BiRefNet_lite) | 3 | ☑ (CL-0028) | M-2.3 |
 | HD cutout (BiRefNet full) | 3 | ☑ (CL-0032) | M-2.4b |
 | Mask editor (brush add/erase, feather) | 3 | ☑ (CL-0032) | M-2.4 |
@@ -101,13 +101,15 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 | License allow-list | ☑ | ✅ |
 | AI-spend guard | ☑ | ✅ |
 
-Run everything with one command: `npm run check` (74 tests + licenses + build scan + segmentation + export; about 80 seconds in total — the segmentation check runs one real cutout). `npm run check:segmentation:hd` exercises the HD model on demand. A green run leaves tests/output/ empty (the CL-0024 housekeeping rule, now enforced by the tests themselves).
+Run everything with one command: `npm run check` (106 tests + licenses + build scan + segmentation + export with the audio fixtures; measured 75 seconds — the segmentation check runs one real cutout). `npm run check:segmentation:hd` exercises the HD model on demand. A green run leaves tests/output/ empty (the CL-0024 housekeeping rule, enforced by the tests themselves).
 
 ## 5. Waiting on Alek
 
 | Item | Needed by | Ref |
 |------|-----------|-----|
 | If you have a real iPhone photo (.heic): import it the same way — it should just appear (this laptop has the HEIF extension). That verifies the HEIC works-path; the missing-extension message is covered by checks. | Now (verifies CL-0029) | M-9.2 |
+| Try the mask editor on your real photo's cutout: press "Edit mask", erase a corner, feather, Ctrl+Z a stroke, Save, then Ctrl+Z back in the project (the previous cutout returns). Try "HD cutout" once and compare the edge. | Now (verifies CL-0032) | M-2.4, M-2.4b |
+| Import a real MP3 and a real OGG (any song or sound you have) and press Play — the two formats the checks cannot generate in code. | Now (verifies CL-0033) | M-2.6 |
 | Watch and listen to the exported test video: open the app (`npm run dev`), open or create a project, click "Load test content (dev)" then "Export prototype (dev)", and play export-dev.mp4 from the project folder. The square should move smoothly, the counter should tick, and each beep should land exactly on its white flash. | Now (closes Phase 2) | DOC-12 §3 |
 | Create an OpenAI account, generate a key, set a small monthly hard cap, keep the key private | Phase 11 (not before) | DOC-09 §5 |
 | Choose merchant of record after Claude's comparison | Phase 10 | OQ-018 |

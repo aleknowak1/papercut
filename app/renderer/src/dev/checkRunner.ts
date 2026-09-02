@@ -101,11 +101,20 @@ export async function run(
         'export-check.mp4',
         update
       );
+      // The audio-import fixtures (M-2.6) ride in this window so the suite
+      // boots the app once: WAV + generated M4A must decode with the right
+      // duration through the same decoders the import path uses.
+      update('audio fixtures…');
+      const { verifyAudioFixtures } = await import('./audioFixtureCheck');
+      const audioFixtures = await verifyAudioFixtures();
       report({
-        ok: summary.verification.problems.length === 0,
+        ok:
+          summary.verification.problems.length === 0 &&
+          audioFixtures.every((f) => f.problem === undefined),
         kind: 'check',
         projectDir: opened.projectDir,
-        run: summary
+        run: summary,
+        audioFixtures
       });
       return;
     }

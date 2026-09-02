@@ -479,6 +479,14 @@ button {
   display: inline-block;
 }
 
+.asset-thumb-audio {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  font-size: 18px;
+}
+
 .asset-name {
   flex: 2;
   min-width: 0;

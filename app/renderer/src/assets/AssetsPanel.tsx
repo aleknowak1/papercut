@@ -10,6 +10,7 @@ import type { Asset, ProjectDocument } from '../../../shared/document/types';
 import type { SegmentationJobUpdate } from '../../../shared/segmentation/types';
 import { addAsset } from '../../../shared/document/edits';
 import { Thumbnail } from './Thumbnail';
+import { formatDuration, importOneAudio, isAudioPath } from './importAudio';
 import { importOneImage, workingCopyRgba, type ImportRole } from './importImages';
 
 export type ApplyEdit = (edit: (doc: ProjectDocument) => ProjectDocument) => void;
@@ -18,6 +19,40 @@ const ROLE_LABEL: Record<string, string> = {
   background: 'background',
   'character-prop': 'character/prop'
 };
+
+/** A per-row play/stop toggle for imported sounds (Chromium plays the file). */
+function PlayButton({ projectDir, asset }: { projectDir: string; asset: Asset }): JSX.Element {
+  const [playing, setPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | undefined>(undefined);
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause();
+      if (audioRef.current?.src) URL.revokeObjectURL(audioRef.current.src);
+    };
+  }, []);
+  const toggle = (): void => {
+    if (playing) {
+      audioRef.current?.pause();
+      setPlaying(false);
+      return;
+    }
+    void window.papercut.readProjectFile(projectDir, asset.file).then((bytes) => {
+      const copy = new Uint8Array(bytes);
+      const url = URL.createObjectURL(new Blob([copy.buffer as ArrayBuffer]));
+      if (audioRef.current?.src) URL.revokeObjectURL(audioRef.current.src);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => setPlaying(false);
+      void audio.play();
+      setPlaying(true);
+    });
+  };
+  return (
+    <button type="button" className="btn asset-cancel" onClick={toggle} title="Play this sound">
+      {playing ? '■ Stop' : '► Play'}
+    </button>
+  );
+}
 
 const STATUS_LABEL: Record<SegmentationJobUpdate['status'], string> = {
   queued: 'cutout queued…',
@@ -99,9 +134,37 @@ export function AssetsPanel({
     }
   };
 
+  const importAudioBatch = async (paths: readonly string[]): Promise<void> => {
+    setBusy(true);
+    try {
+      const hashes: string[] = docRef.current.assets
+        .map((a) => a.metadata.contentHash)
+        .filter((h): h is string => h !== undefined);
+      for (const path of paths) {
+        const outcome = await importOneAudio(projectDir, path, hashes);
+        if (outcome.refused !== undefined || outcome.asset === undefined) {
+          say(outcome.refused ?? `"${outcome.fileName}" could not be imported.`);
+          continue;
+        }
+        const asset = outcome.asset;
+        if (asset.metadata.contentHash !== undefined) hashes.push(asset.metadata.contentHash);
+        applyEdit((current) => addAsset(current, asset));
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const importByButton = (role: ImportRole): void => {
     void window.papercut.chooseImportImages().then((paths) => {
       if (paths.length > 0) return importBatch(paths, role);
+      return undefined;
+    });
+  };
+
+  const importAudioByButton = (): void => {
+    void window.papercut.chooseImportAudio().then((paths) => {
+      if (paths.length > 0) return importAudioBatch(paths);
       return undefined;
     });
   };
@@ -111,7 +174,11 @@ export function AssetsPanel({
     const paths = Array.from(event.dataTransfer.files).map((file) =>
       window.papercut.getPathForFile(file)
     );
-    if (paths.length > 0) setPendingDrop(paths);
+    // Sounds import straight away; pictures first ask what they are.
+    const audioPaths = paths.filter(isAudioPath);
+    const imagePaths = paths.filter((p) => !isAudioPath(p));
+    if (audioPaths.length > 0) void importAudioBatch(audioPaths);
+    if (imagePaths.length > 0) setPendingDrop(imagePaths);
   };
 
   // A cutout exists for an image once an asset points back at it.
@@ -155,7 +222,10 @@ export function AssetsPanel({
         >
           + Character / prop…
         </button>
-        <span className="assets-hint">or drop image files anywhere on this panel</span>
+        <button type="button" className="btn" disabled={busy} onClick={importAudioByButton}>
+          + Audio…
+        </button>
+        <span className="assets-hint">or drop image/sound files anywhere on this panel</span>
       </div>
 
       {pendingDrop !== undefined && (
@@ -198,12 +268,22 @@ export function AssetsPanel({
           {doc.assets.map((asset) => {
             const status = statusFor(asset);
             const size =
-              asset.metadata.width !== undefined && asset.metadata.height !== undefined
-                ? `${asset.metadata.width}×${asset.metadata.height}`
-                : '';
+              asset.type === 'audio'
+                ? asset.metadata.durationSeconds !== undefined
+                  ? formatDuration(asset.metadata.durationSeconds)
+                  : ''
+                : asset.metadata.width !== undefined && asset.metadata.height !== undefined
+                  ? `${asset.metadata.width}×${asset.metadata.height}`
+                  : '';
             return (
               <li key={asset.id} className="asset-row">
-                <Thumbnail projectDir={projectDir} asset={asset} />
+                {asset.type === 'audio' ? (
+                  <span className="asset-thumb asset-thumb-audio" aria-hidden="true">
+                    ♪
+                  </span>
+                ) : (
+                  <Thumbnail projectDir={projectDir} asset={asset} />
+                )}
                 <span className="asset-name" title={asset.file}>
                   {asset.metadata.originalFileName ?? asset.file}
                 </span>
@@ -226,6 +306,7 @@ export function AssetsPanel({
                     Cancel
                   </button>
                 )}
+                {asset.type === 'audio' && <PlayButton projectDir={projectDir} asset={asset} />}
                 {asset.type === 'cutout' && onEditMask && (
                   <button
                     type="button"
