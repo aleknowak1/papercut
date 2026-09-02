@@ -111,6 +111,11 @@ the photo's pixels are never altered.
 
 - **Add (A)** paints areas back in; **Erase (E)** removes areas. Change the
   brush **size** with the slider or the **[** and **]** keys.
+- The mouse shows a **circle exactly the brush's size on the photo** — it
+  grows and shrinks as you zoom, so you always see where a stroke's edge
+  will land before you click. When feather is above zero, a fainter dashed
+  circle shows how far the soft edge will reach. (While panning with Space,
+  the normal cursor comes back.)
 - **Feather edge** softens the whole cut-out's edge by the chosen amount —
   useful when a crisp edge looks "pasted on".
 - **Zoom** with the mouse wheel or **+ / −**, press **0** to fit, and pan

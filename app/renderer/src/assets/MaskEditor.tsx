@@ -12,6 +12,10 @@ import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import type { Asset } from '../../../shared/document/types';
 import { repointCutout } from '../../../shared/document/edits';
 import {
+  brushCursorDiameterPx,
+  featherCursorDiameterPx
+} from '../../../shared/segmentation/brushCursor';
+import {
   applyPatch,
   extractPatch,
   featherMask,
@@ -62,6 +66,10 @@ export function MaskEditor({
     undefined
   );
   const spaceHeld = useRef(false);
+  // The brush cursor: a DOM overlay, positioned by direct style writes so a
+  // mouse move never re-renders React. It never touches the mask (CL-0035).
+  const brushCursorRef = useRef<HTMLDivElement | null>(null);
+  const featherCursorRef = useRef<HTMLDivElement | null>(null);
 
   const [status, setStatus] = useState('Loading…');
   const [ready, setReady] = useState(false);
@@ -73,6 +81,8 @@ export function MaskEditor({
   const [view, setView] = useState({ zoom: 1, panX: 0, panY: 0 });
   const [canUndoLocal, setCanUndoLocal] = useState(false);
   const [canRedoLocal, setCanRedoLocal] = useState(false);
+  const [cursorVisible, setCursorVisible] = useState(false);
+  const [panMode, setPanMode] = useState(false);
 
   const refreshUndoFlags = (): void => {
     setCanUndoLocal(undoStack.current.length > 0);
@@ -214,6 +224,36 @@ export function MaskEditor({
     refreshUndoFlags();
   }, [renderRegion]);
 
+  // ---- the brush cursor overlay ----
+
+  /** The on-screen ring sizes follow brush size, feather and zoom, live. */
+  useEffect(() => {
+    const brush = brushCursorRef.current;
+    const feather = featherCursorRef.current;
+    if (!brush || !feather) return;
+    const brushDiameter = brushCursorDiameterPx(brushSize, view.zoom);
+    brush.style.width = `${brushDiameter}px`;
+    brush.style.height = `${brushDiameter}px`;
+    const featherDiameter = featherCursorDiameterPx(brushSize, featherRadius, view.zoom);
+    feather.style.width = `${featherDiameter}px`;
+    feather.style.height = `${featherDiameter}px`;
+    feather.style.display = featherRadius > 0 ? '' : 'none';
+  }, [brushSize, featherRadius, view.zoom, cursorVisible]);
+
+  const moveCursorTo = (event: React.PointerEvent): void => {
+    const wrap = wrapRef.current;
+    const brush = brushCursorRef.current;
+    const feather = featherCursorRef.current;
+    if (!wrap || !brush || !feather) return;
+    const rect = wrap.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    brush.style.left = `${x}px`;
+    brush.style.top = `${y}px`;
+    feather.style.left = `${x}px`;
+    feather.style.top = `${y}px`;
+  };
+
   // ---- painting ----
 
   const maskPointFromEvent = (event: React.PointerEvent): { x: number; y: number } | undefined => {
@@ -265,6 +305,7 @@ export function MaskEditor({
   };
 
   const onPointerMove = (event: React.PointerEvent): void => {
+    moveCursorTo(event);
     if (panning.current) {
       setView((old) => ({
         ...old,
@@ -386,6 +427,7 @@ export function MaskEditor({
       if (event.target instanceof HTMLInputElement) return;
       if (event.code === 'Space') {
         spaceHeld.current = true;
+        setPanMode(true); // system cursor comes back for panning
         event.preventDefault();
         return;
       }
@@ -411,7 +453,10 @@ export function MaskEditor({
       if (event.key === 'Escape' && !dirty && !busy) onClose();
     };
     const onKeyUp = (event: KeyboardEvent): void => {
-      if (event.code === 'Space') spaceHeld.current = false;
+      if (event.code === 'Space') {
+        spaceHeld.current = false;
+        setPanMode(false);
+      }
     };
     // Capture phase so Ctrl+Z here never reaches the document-level handler.
     window.addEventListener('keydown', onKeyDown, true);
@@ -506,12 +551,29 @@ export function MaskEditor({
           className="mask-canvas"
           style={{
             transform: `translate(${view.panX}px, ${view.panY}px) scale(${view.zoom})`,
-            cursor: busy ? 'wait' : 'crosshair'
+            // The brush ring replaces the system cursor; panning restores it.
+            cursor: busy ? 'wait' : panMode ? 'grab' : 'none'
           }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
+          onPointerEnter={(event) => {
+            setCursorVisible(true);
+            moveCursorTo(event);
+          }}
+          onPointerLeave={() => setCursorVisible(false)}
+        />
+        {/* Overlay only — never touches the mask or the saved file. */}
+        <div
+          ref={featherCursorRef}
+          className="brush-cursor brush-cursor-feather"
+          style={{ visibility: cursorVisible && !panMode && !busy && ready ? 'visible' : 'hidden' }}
+        />
+        <div
+          ref={brushCursorRef}
+          className="brush-cursor"
+          style={{ visibility: cursorVisible && !panMode && !busy && ready ? 'visible' : 'hidden' }}
         />
       </div>
       <p className="assets-hint">

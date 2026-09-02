@@ -1,7 +1,7 @@
 # DOC-10 — Project Tracker
 
 **Status:** Active
-**Last updated:** 2026-09-02 (audio import done — CL-0033; Phase 3 Complete, Phase 4 next)
+**Last updated:** 2026-09-02 (Alek verified Phase 3 — CL-0034; brush cursor added to the mask editor — CL-0035; Phase 4 next)
 **Purpose:** The one page to read when returning to the project. Where we are, what is done, what is next, and what is waiting on Alek. Updated with every change-log entry (DOC-04).
 
 ---
@@ -108,8 +108,6 @@ Run everything with one command: `npm run check` (106 tests + licenses + build s
 | Item | Needed by | Ref |
 |------|-----------|-----|
 | If you have a real iPhone photo (.heic): import it the same way — it should just appear (this laptop has the HEIF extension). That verifies the HEIC works-path; the missing-extension message is covered by checks. | Now (verifies CL-0029) | M-9.2 |
-| Try the mask editor on your real photo's cutout: press "Edit mask", erase a corner, feather, Ctrl+Z a stroke, Save, then Ctrl+Z back in the project (the previous cutout returns). Try "HD cutout" once and compare the edge. | Now (verifies CL-0032) | M-2.4, M-2.4b |
-| Import a real MP3 and a real OGG (any song or sound you have) and press Play — the two formats the checks cannot generate in code. | Now (verifies CL-0033) | M-2.6 |
 | Watch and listen to the exported test video: open the app (`npm run dev`), open or create a project, click "Load test content (dev)" then "Export prototype (dev)", and play export-dev.mp4 from the project folder. The square should move smoothly, the counter should tick, and each beep should land exactly on its white flash. | Now (closes Phase 2) | DOC-12 §3 |
 | Create an OpenAI account, generate a key, set a small monthly hard cap, keep the key private | Phase 11 (not before) | DOC-09 §5 |
 | Choose merchant of record after Claude's comparison | Phase 10 | OQ-018 |
