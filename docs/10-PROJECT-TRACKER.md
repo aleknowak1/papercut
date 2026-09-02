@@ -10,7 +10,8 @@
 
 **Phase 1 — Scaffold: USABLE.** The app opens to the Home screen on Windows; projects can be created, saved, and reopened; the document format, undo/redo engine, provider fakes, and five automated checks exist and pass. Still open within Phase 1 scope: autosave, and wiring undo/redo into the UI (both arrive naturally with the editor phases). ADR-006 is Accepted; DOC-03 is Active.
 **Verified by Alek (CL-0017):** all Phase 1 manual tests passed.
-**Next action:** Phase 2, the week-one export prototype (OQ-019). Kickoff: open Claude Code (Fable) and paste: "Read CLAUDE.md and DOC-10, then continue Phase 2: the export prototype."
+**Phase 2 — Export prototype: built, check green (CL-0018).** The ten-second test project exports to a correct .mp4 through Windows' own encoders (hardware H.264 answered on the dev laptop); the Export check runs in npm run check. Measurement report and the OQ-019 decision are the remaining Phase 2 steps.
+**Next action:** finish Phase 2: run the measurement session, write docs/12, decide OQ-019.
 **Watch out:** OQ-020 — Windows Smart App Control blocks unsigned native Node modules on the dev laptop; check onnxruntime-node before Phase 3 work begins.
 
 ## 2. Build order and phase status
@@ -21,7 +22,7 @@ Phases run in this order; a phase does not start until the previous one is usabl
 |---|-------|-----------------------|--------|-------|
 | 0 | **Foundation** | Docs 00–10 written; every pre-build decision recorded as an ADR | **Complete** | Fable |
 | 1 | **Scaffold** | Empty Electron/TypeScript/React app opens to the Home screen on Windows; project document format defined; undo/redo; check suite running (save/reopen, undo, license, network, AI-spend guard) | **Usable** | Fable |
-| 2 | **Export prototype** (OQ-019) | Ten-second test project exports to .mp4 using Windows' built-in encoders with correct duration, resolution, audio sync | Not started | Fable |
+| 2 | **Export prototype** (OQ-019) | Ten-second test project exports to .mp4 using Windows' built-in encoders with correct duration, resolution, audio sync | In progress (export + check done; measurement and decision pending) | Fable |
 | 3 | **Assets and cutouts** | Import images/audio; BiRefNet_lite auto-cutout; HD cutout; mask editor; HEIC handling | Not started | Fable → Opus |
 | 4 | **Scene and layers** | Background, character/prop layers, ordering, opacity, lock/hide, placing and sizing on canvas | Not started | Opus |
 | 5 | **Animation** | Keyframes (position, scale, rotation, flip, opacity), easing, motion presets, pose swapping, camera pan/zoom, render snapshot checks | Not started | Fable for keyframe engine → Opus |
@@ -82,12 +83,12 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 | Save / reopen | ☑ | ✅ |
 | Undo | ☑ | ✅ |
 | Render snapshots | ☐ (Phase 2+) | — |
-| Export | ☐ (Phase 2+) | — |
+| Export | ☑ | ✅ |
 | No unexpected network | ☑ | ✅ |
 | License allow-list | ☑ | ✅ |
 | AI-spend guard | ☑ | ✅ |
 
-Run everything with one command: `npm run check` (28 tests + licenses today).
+Run everything with one command: `npm run check` (49 tests + licenses + the export check; about 25 seconds in total).
 
 ## 5. Waiting on Alek
 

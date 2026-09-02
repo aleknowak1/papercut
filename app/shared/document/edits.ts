@@ -76,6 +76,14 @@ export function setSceneDuration(
   return replaceScene(doc, sceneId, (s) => ({ ...s, durationSeconds }));
 }
 
+export function setSceneBackground(
+  doc: ProjectDocument,
+  sceneId: string,
+  backgroundAssetId: string | undefined
+): ProjectDocument {
+  return replaceScene(doc, sceneId, (s) => ({ ...s, backgroundAssetId }));
+}
+
 export function setSceneTransition(
   doc: ProjectDocument,
   sceneId: string,

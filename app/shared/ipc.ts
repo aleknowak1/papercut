@@ -30,6 +30,22 @@ export interface PapercutApi {
   ): Promise<OpenedProject>;
   openProject(projectDir: string): Promise<OpenedProject>;
   listRecents(): Promise<readonly RecentProject[]>;
+  /** Reads a file inside the project folder (e.g. "assets/audio/x.wav"). */
+  readProjectFile(projectDir: string, relativePath: string): Promise<Uint8Array>;
+  /** Writes a file inside the project folder. Refuses paths that lead outside it. */
+  writeProjectFile(projectDir: string, relativePath: string, data: Uint8Array): Promise<void>;
+  /** Validates and saves the document as the project's project.json (atomic). */
+  saveProjectDocument(projectDir: string, document: ProjectDocument): Promise<void>;
+
+  // Development only — the main process registers these only outside
+  // packaged builds; they serve the export check and dev tools.
+  devCreateScratchProject(
+    name: string,
+    format: ProjectFormat,
+    where: 'temp' | 'tests-output'
+  ): Promise<OpenedProject>;
+  /** Delivers the export check's result to the main process, which prints it and exits. */
+  devReportExportCheck(payloadJson: string): void;
 }
 
 export const IPC_CHANNELS = {
@@ -38,5 +54,10 @@ export const IPC_CHANNELS = {
   chooseProjectFolder: 'dialog:choose-project-folder',
   createProject: 'project:create',
   openProject: 'project:open',
-  listRecents: 'recents:list'
+  listRecents: 'recents:list',
+  readProjectFile: 'project:read-file',
+  writeProjectFile: 'project:write-file',
+  saveProjectDocument: 'project:save-document',
+  devCreateScratchProject: 'dev:create-scratch-project',
+  devReportExportCheck: 'dev:report-export-check'
 } as const;

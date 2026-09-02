@@ -13,7 +13,17 @@ const api: PapercutApi = {
   createProject: (parentDir, name, format) =>
     ipcRenderer.invoke(IPC_CHANNELS.createProject, parentDir, name, format),
   openProject: (projectDir) => ipcRenderer.invoke(IPC_CHANNELS.openProject, projectDir),
-  listRecents: () => ipcRenderer.invoke(IPC_CHANNELS.listRecents)
+  listRecents: () => ipcRenderer.invoke(IPC_CHANNELS.listRecents),
+  readProjectFile: (projectDir, relativePath) =>
+    ipcRenderer.invoke(IPC_CHANNELS.readProjectFile, projectDir, relativePath),
+  writeProjectFile: (projectDir, relativePath, data) =>
+    ipcRenderer.invoke(IPC_CHANNELS.writeProjectFile, projectDir, relativePath, data),
+  saveProjectDocument: (projectDir, document) =>
+    ipcRenderer.invoke(IPC_CHANNELS.saveProjectDocument, projectDir, document),
+  devCreateScratchProject: (name, format, where) =>
+    ipcRenderer.invoke(IPC_CHANNELS.devCreateScratchProject, name, format, where),
+  devReportExportCheck: (payloadJson) =>
+    ipcRenderer.send(IPC_CHANNELS.devReportExportCheck, payloadJson)
 };
 
 contextBridge.exposeInMainWorld('papercut', api);

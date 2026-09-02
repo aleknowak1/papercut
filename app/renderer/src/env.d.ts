@@ -1,2 +1,4 @@
+/// <reference types="vite/client" />
+
 // Lets TypeScript accept CSS imports; Vite handles them at build time.
 declare module '*.css';

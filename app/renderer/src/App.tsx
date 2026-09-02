@@ -1,9 +1,94 @@
-import { useState, type JSX } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import type { OpenedProject } from '../../shared/ipc';
 import { HomeScreen } from './HomeScreen';
 
+// Everything under app/renderer/src/dev/ (and tests/fixtures) is loaded
+// through dynamic imports inside `import.meta.env.DEV` branches. In a
+// production build DEV is false, the branches are dead code, and none of
+// it is bundled or shipped.
+
+/** Hidden-window screen used by scripts/check-export.mjs (dev only). */
+function DevExportRunScreen({ mode }: { mode: 'export-check' | 'export-measure' }): JSX.Element {
+  const [status, setStatus] = useState('Starting…');
+  useEffect(() => {
+    void import('./dev/checkRunner').then((m) => m.run(mode, setStatus));
+  }, [mode]);
+  return (
+    <div className="opened">
+      <h1 className="wordmark">PAPERCUT</h1>
+      <p>
+        Export {mode === 'export-check' ? 'check' : 'measurement'} running: {status}
+      </p>
+    </div>
+  );
+}
+
+/** Dev-only buttons on the opened-project view (the real export UI is Phase 9). */
+function DevProjectButtons({
+  opened,
+  onDocumentChanged
+}: {
+  opened: OpenedProject;
+  onDocumentChanged: (opened: OpenedProject) => void;
+}): JSX.Element {
+  const [status, setStatus] = useState<string | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
+
+  const runTool = (tool: (dev: typeof import('./dev/devTools')) => Promise<string>): void => {
+    setBusy(true);
+    setStatus('Working…');
+    void import('./dev/devTools')
+      .then(tool)
+      .then(setStatus)
+      .catch((error: unknown) => setStatus(String(error)))
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <div className="dev-tools">
+      <p className="opened-note">Development tools (never in the real app):</p>
+      <button
+        type="button"
+        className="btn"
+        disabled={busy}
+        onClick={() =>
+          runTool(async (dev) => {
+            const updated = await dev.loadTestContent(opened);
+            onDocumentChanged(updated);
+            return 'Ten-second test content loaded into this project and saved.';
+          })
+        }
+      >
+        Load test content (dev)
+      </button>{' '}
+      <button
+        type="button"
+        className="btn"
+        disabled={busy}
+        onClick={() =>
+          runTool((dev) =>
+            dev.exportOpenProject(opened, (done, total) =>
+              setStatus(`Exporting frame ${done} of ${total}…`)
+            )
+          )
+        }
+      >
+        Export prototype (dev)
+      </button>
+      {status !== undefined && <p className="opened-note">{status}</p>}
+    </div>
+  );
+}
+
 export function App(): JSX.Element {
   const [opened, setOpened] = useState<OpenedProject | undefined>(undefined);
+
+  if (import.meta.env.DEV) {
+    const mode = new URLSearchParams(window.location.search).get('papercutMode');
+    if (mode === 'export-check' || mode === 'export-measure') {
+      return <DevExportRunScreen mode={mode} />;
+    }
+  }
 
   if (opened === undefined) {
     return <HomeScreen onProjectOpened={setOpened} />;
@@ -31,6 +116,7 @@ export function App(): JSX.Element {
         The editor is built in the next phases. This page confirms the project
         opened correctly from its folder.
       </p>
+      {import.meta.env.DEV && <DevProjectButtons opened={opened} onDocumentChanged={setOpened} />}
       <button type="button" className="btn" onClick={() => setOpened(undefined)}>
         ← Back to Home
       </button>

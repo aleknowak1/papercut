@@ -3,7 +3,18 @@ import { BrowserWindow, app, session } from 'electron';
 import { registerIpcHandlers } from './ipc';
 import { isRequestAllowed } from './networkPolicy';
 
+// The export check and measurement runs (scripts/check-export.mjs) start the
+// app with one of these set: the window stays hidden, the UI runs the export
+// on the test project, reports the result, and the app exits (ADR-015).
+function exportMode(): 'export-check' | 'export-measure' | undefined {
+  if (app.isPackaged) return undefined;
+  if (process.env['PAPERCUT_EXPORT_CHECK'] === '1') return 'export-check';
+  if (process.env['PAPERCUT_EXPORT_MEASURE'] === '1') return 'export-measure';
+  return undefined;
+}
+
 function createWindow(): void {
+  const mode = exportMode();
   const win = new BrowserWindow({
     width: 1100,
     height: 720,
@@ -19,14 +30,19 @@ function createWindow(): void {
     }
   });
 
-  win.once('ready-to-show', () => win.show());
+  if (mode === undefined) {
+    win.once('ready-to-show', () => win.show());
+  }
 
   // In development the page is served by Vite; in the packaged app it is a file.
   const devUrl = process.env['ELECTRON_RENDERER_URL'];
+  const query = mode === undefined ? undefined : { papercutMode: mode };
   if (devUrl) {
-    void win.loadURL(devUrl);
+    const url = new URL(devUrl);
+    if (mode !== undefined) url.searchParams.set('papercutMode', mode);
+    void win.loadURL(url.toString());
   } else {
-    void win.loadFile(join(__dirname, '../renderer/index.html'));
+    void win.loadFile(join(__dirname, '../renderer/index.html'), query ? { query } : undefined);
   }
 }
 

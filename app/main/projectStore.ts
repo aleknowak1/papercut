@@ -7,8 +7,8 @@
 //
 // Runs in the Electron main process (and in tests under plain Node).
 
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { isAbsolute, join, resolve, sep } from 'node:path';
 import { newProject } from '../shared/document/create';
 import type { ProjectDocument, ProjectFormat } from '../shared/document/types';
 import { validateProjectDocument } from '../shared/document/validate';
@@ -60,6 +60,27 @@ export function saveProject(projectDir: string, doc: ProjectDocument): void {
   const tempPath = finalPath + '.tmp';
   writeFileSync(tempPath, JSON.stringify(doc, null, 2), 'utf8');
   renameSync(tempPath, finalPath); // atomic replace, also on Windows
+}
+
+/**
+ * Turns a relative path from the UI into a full path that is guaranteed to
+ * stay inside the project folder. Anything else — an absolute path, "..",
+ * a folder that is not a project — is refused. This is the only gate
+ * through which the UI reads or writes project files.
+ */
+export function resolveProjectFile(projectDir: string, relativePath: string): string {
+  if (isAbsolute(relativePath)) {
+    throw new Error('Project file paths must be relative to the project folder.');
+  }
+  const base = resolve(projectDir);
+  if (!existsSync(join(base, PROJECT_FILE))) {
+    throw new Error('That folder is not a PAPERCUT project.');
+  }
+  const full = resolve(base, relativePath);
+  if (!full.startsWith(base + sep)) {
+    throw new Error('Project file paths may not lead outside the project folder.');
+  }
+  return full;
 }
 
 /** Loads and validates project.json from a project folder. */

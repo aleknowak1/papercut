@@ -16,7 +16,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "check:licenses": "node scripts/check-licenses.mjs",
-    "check": "npm run typecheck && npm run test && npm run check:licenses",
+    "check:export": "node scripts/check-export.mjs",
+    "measure:export": "node scripts/check-export.mjs --measure",
+    "check": "npm run typecheck && npm run test && npm run check:licenses && npm run check:export",
     "dist": "npm run build && electron-builder --win"
   },
   "build": {
@@ -38,6 +40,7 @@
     }
   },
   "dependencies": {
+    "mp4-muxer": "^5.2.2",
     "pixi.js": "8.20.1",
     "react": "19.2.8",
     "react-dom": "19.2.8"
@@ -50,6 +53,7 @@
     "electron": "44.1.1",
     "electron-builder": "26.15.3",
     "electron-vite": "5.0.0",
+    "mp4box": "^2.4.1",
     "playwright-core": "1.62.1",
     "typescript": "7.0.2",
     "vite": "7.3.6",
