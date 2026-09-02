@@ -28,6 +28,14 @@ export interface AssetMetadata {
   readonly width?: number;
   readonly height?: number;
   readonly durationSeconds?: number;
+  /** SHA-256 of the imported file's bytes; duplicate imports are refused by it. */
+  readonly contentHash?: string;
+  /** What the user said the picture is on import (backgrounds get no cutout). */
+  readonly role?: 'background' | 'character-prop';
+  /** For cutouts: the image asset this cutout was made from. */
+  readonly sourceAssetId?: string;
+  /** For cutouts: which model produced it ('lite' or 'hd'). */
+  readonly model?: string;
 }
 
 export interface Asset {

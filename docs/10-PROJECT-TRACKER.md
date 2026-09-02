@@ -1,7 +1,7 @@
 # DOC-10 — Project Tracker
 
 **Status:** Active
-**Last updated:** 2026-09-02 (ADR-017 recorded; segmentation worker + queue + checks built and green — CL-0027)
+**Last updated:** 2026-09-02 (image import + Assets panel usable, live-verified — CL-0028)
 **Purpose:** The one page to read when returning to the project. Where we are, what is done, what is next, and what is waiting on Alek. Updated with every change-log entry (DOC-04).
 
 ---
@@ -12,7 +12,8 @@
 **Verified by Alek (CL-0017):** all Phase 1 manual tests passed.
 **Phase 2 — Export prototype: USABLE, decision made (CL-0018/CL-0019).** ADR-013 is proven on real hardware: the ten-second test project exports to a correct .mp4 through Windows' own encoders, 60 s of 1080p30 extrapolates to ≈ 43 s even without a GPU (target: under 3 minutes), audio drift ≤ 9.6 ms. OQ-019 closed, ADR-013 now plainly Accepted, mp4-muxer locked (MIT). Full numbers in DOC-12. Windows 10 remains untested (no machine).
 **Phase 3 — Assets and cutouts: IN PROGRESS.** The OQ-020 gate is closed (ADR-017): Smart App Control never objected (onnxruntime-node is Microsoft-signed throughout), and Alek chose fp32-on-CPU with revised targets (< 15 s reference machine, ≤ 45 s minimum-spec, always a background queue). Full evidence trail in DOC-13. Step 2 is built and green (CL-0027): the segmentation worker runs BiRefNet fp32 in an Electron utility process with a one-at-a-time job queue, status updates, cancellation, and the original-pixels+alpha output rule enforced byte-for-byte by a check; memory arena off (measured faster and frees ~everything between jobs); worker process ends when the queue goes idle. Measured on this laptop: lite ≈32–37 s/photo, HD ≈54 s, model load ≈5–8 s.
-**Next action:** Phase 3 step 3 — image import (JPG/PNG/WebP), the Assets panel in the opened-project view, thumbnails, duplicate/unreadable refusals; then step 4 HEIC; then the Fable → Opus hand-off.
+Step 3 is usable (CL-0028): image import by button and drag-and-drop, the Assets panel with thumbnails and live cutout status, automatic cutouts for characters/props with Cancel, undo/redo wired into the UI (Ctrl+Z / Ctrl+Y), auto-save after each change. Manual M-2.1–M-2.3 and M-9.2 written.
+**Next action:** Phase 3 step 4 — HEIC via Windows' own decoder; then the Fable → Opus hand-off (characters/poses, mask editor implementation, audio import, remaining manual sections).
 **Start-up reliability (CL-0021/CL-0022):** the blank-window cause is found and fixed (the dev server answered only on IPv6 while the window sometimes asked on IPv4; it now binds one concrete address). The app also waits for its screen server, retries failed loads, shows plain-text errors instead of ever staying blank, and writes every start-up step to logs/startup.log in the user-data folder — if a start ever misbehaves again, send that file.
 **Rule of thumb after any code update (CL-0020):** close the running app and start it again with `npm run dev` — an app window left running from before an update cannot load the new code and shows a plain-language message saying so.
 **Watch out:** the dev laptop's CPU (Intel Core i3-N305, 8 efficiency cores) is below the "2020-era laptop CPU" reference in DOC-03 §5; performance numbers measured here are pessimistic but real for budget customer machines.
@@ -49,10 +50,10 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 | Sign up / sign in / subscription / acceptable-use agreement | 10 | ☐ | M-1.1b |
 | Create/open/save project, autosave, project folder | 1 | ◐ (autosave pending) | M-1.2, M-9.3 |
 | Format choice (9:16, 16:9, 1:1) and save location | 1 | ☑ | M-1.2 |
-| Undo / redo | 1 | ◐ (engine + checks; UI wiring comes with the editor) | M-1.3 |
-| Image import (JPG, PNG, WebP; HEIC via Windows) | 3 | ☐ | M-2.2, M-9.2 |
+| Undo / redo | 1 | ◐ (engine, checks, UI buttons and Ctrl+Z/Ctrl+Y; M-1.3 tour pending) | M-1.3 |
+| Image import (JPG, PNG, WebP; HEIC via Windows) | 3 | ◐ (JPG/PNG/WebP usable, CL-0028; HEIC is step 4) | M-2.2, M-9.2 |
 | Audio import (MP3, WAV, M4A, OGG) | 3 | ☐ | M-2.6 |
-| Automatic cutout (BiRefNet_lite) | 3 | ☐ | M-2.3 |
+| Automatic cutout (BiRefNet_lite) | 3 | ☑ (CL-0028) | M-2.3 |
 | HD cutout (BiRefNet full) | 3 | ☐ | M-2.4b |
 | Mask editor (brush add/erase, feather) | 3 | ☐ | M-2.4 |
 | Characters with multiple poses | 3 | ☐ | M-2.5 |

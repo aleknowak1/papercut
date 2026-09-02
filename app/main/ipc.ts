@@ -1,13 +1,18 @@
 // Answers the UI's requests (the PapercutApi contract in app/shared/ipc.ts).
 
+import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { BrowserWindow, app, dialog, ipcMain } from 'electron';
 import type { OpenedProject, RecentProject } from '../shared/ipc';
 import { IPC_CHANNELS } from '../shared/ipc';
-import type { ProjectFormat } from '../shared/document/types';
+import type { Asset, ProjectFormat } from '../shared/document/types';
 import { validateProjectDocument } from '../shared/document/validate';
+import type { SegmentationModel } from '../shared/segmentation/types';
+import { importImageAsset, readImportFileBytes } from './importAssets';
+import type { ImportImageInfo } from './importAssets';
+import { segmentationService } from './segmentation/service';
 import {
   PROJECT_FILE,
   createProject,
@@ -105,6 +110,74 @@ export function registerIpcHandlers(): void {
       saveProject(projectDir, validateProjectDocument(document));
     }
   );
+
+  // ---- Asset import and cutouts (Phase 3) ----
+
+  ipcMain.handle(IPC_CHANNELS.chooseImportImages, async (): Promise<string[]> => {
+    const win = BrowserWindow.getFocusedWindow() ?? undefined;
+    const options = {
+      title: 'Choose images to import',
+      filters: [{ name: 'Images (JPG, PNG, WebP)', extensions: ['jpg', 'jpeg', 'png', 'webp'] }],
+      properties: ['openFile' as const, 'multiSelections' as const]
+    };
+    const result = win
+      ? await dialog.showOpenDialog(win, options)
+      : await dialog.showOpenDialog(options);
+    return result.canceled ? [] : result.filePaths;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.readImportFile, (_event, sourcePath: string): Uint8Array =>
+    readImportFileBytes(sourcePath)
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.importImageAsset,
+    (
+      _event,
+      projectDir: string,
+      sourcePath: string,
+      role: 'background' | 'character-prop',
+      info: ImportImageInfo
+    ): Asset => importImageAsset(projectDir, sourcePath, role, info)
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.enqueueCutout,
+    async (
+      _event,
+      projectDir: string,
+      sourceAssetId: string,
+      model: SegmentationModel,
+      rgba: Uint8Array,
+      width: number,
+      height: number
+    ): Promise<Asset> => {
+      resolveProjectFile(projectDir, 'assets'); // asserts it is a project folder
+      const result = await segmentationService.enqueue(sourceAssetId, model, rgba, width, height);
+      const id = randomUUID();
+      const relativePath = `assets/cutouts/${id}.png`;
+      const fullPath = resolveProjectFile(projectDir, relativePath);
+      mkdirSync(dirname(fullPath), { recursive: true });
+      writeFileSync(fullPath, result.cutoutPng);
+      return {
+        id,
+        type: 'cutout',
+        file: relativePath,
+        metadata: { width, height, sourceAssetId, model }
+      };
+    }
+  );
+
+  ipcMain.handle(IPC_CHANNELS.cancelCutout, (_event, sourceAssetId: string): boolean =>
+    segmentationService.cancel(sourceAssetId)
+  );
+
+  // Push every cutout status change to all windows (the Assets panel listens).
+  segmentationService.onUpdate((update) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) win.webContents.send(IPC_CHANNELS.cutoutUpdate, update);
+    }
+  });
 
   // Development-only channels: the export check and dev tools use them.
   // A packaged build never registers them.

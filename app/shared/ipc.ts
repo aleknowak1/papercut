@@ -3,7 +3,8 @@
 // the main process answers each call. Keeping the type here means both
 // sides are checked against the same definition.
 
-import type { ProjectDocument, ProjectFormat } from './document/types';
+import type { Asset, ProjectDocument, ProjectFormat } from './document/types';
+import type { SegmentationJobUpdate, SegmentationModel } from './segmentation/types';
 
 export interface RecentProject {
   readonly dir: string;
@@ -37,6 +38,47 @@ export interface PapercutApi {
   /** Validates and saves the document as the project's project.json (atomic). */
   saveProjectDocument(projectDir: string, document: ProjectDocument): Promise<void>;
 
+  // ---- Asset import and cutouts (Phase 3) ----
+
+  /** File picker for images to import. Empty list = cancelled. */
+  chooseImportImages(): Promise<readonly string[]>;
+  /** The absolute path of a file dragged into the window. */
+  getPathForFile(file: File): string;
+  /**
+   * Reads a file the user picked for import (image types only), so the UI
+   * can prove it decodes before anything is copied into the project.
+   */
+  readImportFile(sourcePath: string): Promise<Uint8Array>;
+  /**
+   * Copies the file unchanged into assets/images/ and returns the asset
+   * record (with content hash). Throws in plain language for duplicates
+   * (same bytes as an existingHashes entry) and unsupported types.
+   */
+  importImageAsset(
+    projectDir: string,
+    sourcePath: string,
+    role: 'background' | 'character-prop',
+    info: { width: number; height: number; existingHashes: readonly string[] }
+  ): Promise<Asset>;
+  /**
+   * Queues an automatic cutout for an imported image (raw RGBA pixels,
+   * already capped per ADR-017). Resolves with the cutout asset record once
+   * the file is written; rejects on failure or cancellation. Progress
+   * arrives through onCutoutUpdate.
+   */
+  enqueueCutout(
+    projectDir: string,
+    sourceAssetId: string,
+    model: SegmentationModel,
+    rgba: Uint8Array,
+    width: number,
+    height: number
+  ): Promise<Asset>;
+  /** Cancels the queued or running cutout for that image. */
+  cancelCutout(sourceAssetId: string): Promise<boolean>;
+  /** Subscribes to cutout status pushes; returns an unsubscribe function. */
+  onCutoutUpdate(listener: (update: SegmentationJobUpdate) => void): () => void;
+
   // Development only — the main process registers these only outside
   // packaged builds; they serve the export check and dev tools.
   devCreateScratchProject(
@@ -61,6 +103,12 @@ export const IPC_CHANNELS = {
   readProjectFile: 'project:read-file',
   writeProjectFile: 'project:write-file',
   saveProjectDocument: 'project:save-document',
+  chooseImportImages: 'dialog:choose-import-images',
+  readImportFile: 'import:read-file',
+  importImageAsset: 'import:image-asset',
+  enqueueCutout: 'segmentation:enqueue',
+  cancelCutout: 'segmentation:cancel',
+  cutoutUpdate: 'segmentation:update',
   devCreateScratchProject: 'dev:create-scratch-project',
   devReportExportCheck: 'dev:report-export-check',
   startupLog: 'startup:log'

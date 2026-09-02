@@ -1,5 +1,15 @@
-import { useEffect, useState, type JSX } from 'react';
+import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import type { OpenedProject } from '../../shared/ipc';
+import type { ProjectDocument } from '../../shared/document/types';
+import {
+  applyEdit as recordEdit,
+  canRedo,
+  canUndo,
+  createHistory,
+  redo,
+  undo
+} from '../../shared/document/history';
+import { AssetsPanel } from './assets/AssetsPanel';
 import { HomeScreen } from './HomeScreen';
 
 // Everything under app/renderer/src/dev/ (and tests/fixtures) is loaded
@@ -133,33 +143,115 @@ export function App(): JSX.Element {
   if (opened === undefined) {
     return <HomeScreen onProjectOpened={setOpened} />;
   }
+  return <ProjectView key={opened.projectDir} opened={opened} onBack={() => setOpened(undefined)} />;
+}
 
-  // The editor arrives in later phases; for now, opening a project shows
-  // what was loaded so creating and reopening can be tried end to end.
-  const doc = opened.document;
+/**
+ * The opened-project view. Phase 3 gives it the Assets panel and wires the
+ * document through the undo/redo history (every edit is one history step;
+ * the document is saved after each change). The full editor layout is
+ * Phase 4.
+ */
+function ProjectView({
+  opened,
+  onBack
+}: {
+  opened: OpenedProject;
+  onBack: () => void;
+}): JSX.Element {
+  const [history, setHistory] = useState(() => createHistory(opened.document));
+  const [saveError, setSaveError] = useState<string | undefined>(undefined);
+  const doc = history.present;
+
+  // Save whatever is current, a moment after it changes (one save per burst).
+  const saveTimer = useRef<number | undefined>(undefined);
+  const scheduleSave = useCallback(
+    (document: ProjectDocument): void => {
+      if (saveTimer.current !== undefined) window.clearTimeout(saveTimer.current);
+      saveTimer.current = window.setTimeout(() => {
+        window.papercut
+          .saveProjectDocument(opened.projectDir, document)
+          .then(() => setSaveError(undefined))
+          .catch((error: unknown) =>
+            setSaveError(`The project could not be saved: ${String(error)}`)
+          );
+      }, 250);
+    },
+    [opened.projectDir]
+  );
+
+  const applyEdit = useCallback(
+    (edit: (current: ProjectDocument) => ProjectDocument): void => {
+      setHistory((current) => {
+        const next = recordEdit(current, edit(current.present));
+        if (next !== current) scheduleSave(next.present);
+        return next;
+      });
+    },
+    [scheduleSave]
+  );
+
+  const doUndo = useCallback((): void => {
+    setHistory((current) => {
+      const next = undo(current);
+      if (next !== current) scheduleSave(next.present);
+      return next;
+    });
+  }, [scheduleSave]);
+
+  const doRedo = useCallback((): void => {
+    setHistory((current) => {
+      const next = redo(current);
+      if (next !== current) scheduleSave(next.present);
+      return next;
+    });
+  }, [scheduleSave]);
+
+  // Keyboard: Ctrl+Z undo, Ctrl+Y or Ctrl+Shift+Z redo.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (!event.ctrlKey) return;
+      const key = event.key.toLowerCase();
+      if (key === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        doUndo();
+      } else if (key === 'y' || (key === 'z' && event.shiftKey)) {
+        event.preventDefault();
+        doRedo();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [doUndo, doRedo]);
+
   return (
-    <div className="opened">
-      <h1 className="wordmark">PAPERCUT</h1>
-      <dl>
-        <dt>Project</dt>
-        <dd>{doc.name}</dd>
-        <dt>Format</dt>
-        <dd>{doc.format}</dd>
-        <dt>Frame rate</dt>
-        <dd>{doc.fps} fps</dd>
-        <dt>Scenes</dt>
-        <dd>{doc.scenes.length}</dd>
-        <dt>Folder</dt>
-        <dd>{opened.projectDir}</dd>
-      </dl>
-      <p className="opened-note">
-        The editor is built in the next phases. This page confirms the project
-        opened correctly from its folder.
-      </p>
-      {import.meta.env.DEV && <DevProjectButtons opened={opened} onDocumentChanged={setOpened} />}
-      <button type="button" className="btn" onClick={() => setOpened(undefined)}>
-        ← Back to Home
-      </button>
+    <div className="opened project-view">
+      <div className="project-masthead">
+        <h1 className="wordmark">PAPERCUT</h1>
+        <span className="project-title">
+          {doc.name} · {doc.format} · {doc.fps} fps
+        </span>
+        <span className="project-spacer" />
+        <button type="button" className="btn" disabled={!canUndo(history)} onClick={doUndo}>
+          Undo
+        </button>
+        <button type="button" className="btn" disabled={!canRedo(history)} onClick={doRedo}>
+          Redo
+        </button>
+        <button type="button" className="btn" onClick={onBack}>
+          ← Home
+        </button>
+      </div>
+      {saveError !== undefined && <p className="error">{saveError}</p>}
+      <AssetsPanel projectDir={opened.projectDir} document={doc} applyEdit={applyEdit} />
+      {import.meta.env.DEV && (
+        <DevProjectButtons
+          opened={{ projectDir: opened.projectDir, document: doc }}
+          onDocumentChanged={(updated) =>
+            applyEdit(() => updated.document)
+          }
+        />
+      )}
     </div>
   );
 }

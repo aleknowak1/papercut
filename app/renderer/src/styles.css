@@ -310,3 +310,139 @@ button {
   color: var(--ink-dim);
   max-width: 60ch;
 }
+
+/* ---- Opened project + Assets panel (Phase 3; full editor layout is Phase 4) ---- */
+
+.project-view {
+  align-items: stretch;
+  gap: 14px;
+  padding: 18px 22px;
+}
+
+.project-masthead {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  border-bottom: 1px solid var(--panel-edge);
+  padding-bottom: 10px;
+}
+
+.project-masthead .wordmark {
+  font-size: 16px;
+}
+
+.project-title {
+  color: var(--ink-dim);
+}
+
+.project-spacer {
+  flex: 1;
+}
+
+.assets-panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.assets-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.assets-hint {
+  color: var(--ink-dim);
+  font-size: 11px;
+}
+
+.assets-drop-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px dashed var(--accent);
+  padding: 8px 10px;
+}
+
+.asset-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.asset-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg);
+  border: 1px solid var(--panel-edge);
+  padding: 4px 8px;
+}
+
+.asset-thumb {
+  width: 48px;
+  height: 36px;
+  object-fit: contain;
+  background:
+    repeating-conic-gradient(var(--panel-edge) 0% 25%, var(--panel) 0% 50%)
+    0 0 / 12px 12px;
+  flex: none;
+}
+
+.asset-thumb-empty {
+  display: inline-block;
+}
+
+.asset-name {
+  flex: 2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asset-kind {
+  flex: none;
+  width: 16ch;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+
+.asset-size {
+  flex: none;
+  width: 10ch;
+  color: var(--ink-dim);
+  font-size: 11px;
+}
+
+.asset-status {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink-dim);
+  font-size: 11px;
+}
+
+.asset-status-error {
+  color: var(--danger);
+}
+
+.asset-cancel {
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
+.assets-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dev-tools {
+  border-top: 1px dashed var(--panel-edge);
+  padding-top: 10px;
+}
