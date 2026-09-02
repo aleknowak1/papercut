@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { BrowserWindow, app, net, session } from 'electron';
 import { registerIpcHandlers } from './ipc';
 import { isRequestAllowed } from './networkPolicy';
+import { installStartupDiagnostics, logStartup } from './startupLog';
 
 // Development only: lets Claude Code drive the real app for live testing
 // (the DevTools protocol on a local port). Off unless the env var is set;
@@ -36,13 +37,16 @@ async function waitForDevServer(url: string): Promise<void> {
   for (let attempt = 0; attempt < 60; attempt++) {
     try {
       const response = await net.fetch(url, { method: 'HEAD', cache: 'no-store' });
-      if (response.status > 0) return;
+      if (response.status > 0) {
+        logStartup('main', `dev server reachable at ${url} (attempt ${attempt + 1}, status ${response.status})`);
+        return;
+      }
     } catch {
       // Not answering yet; keep waiting.
     }
     await sleep(250);
   }
-  console.warn(`Dev server at ${url} did not answer within 15 s; loading anyway (retries will follow).`);
+  logStartup('main', `dev server at ${url} did not answer within 15 s; loading anyway (retries will follow)`);
 }
 
 /** Replaces a window that could not load with a readable explanation. */
@@ -73,13 +77,27 @@ function createWindow(): void {
     }
   });
 
+  logStartup('main', `window created (mode: ${mode ?? 'normal'})`);
+
   if (mode === undefined) {
-    win.once('ready-to-show', () => win.show());
+    win.once('ready-to-show', () => {
+      logStartup('main', 'ready-to-show; showing window');
+      win.show();
+    });
     // Belt and braces: whatever happens, never leave an invisible window.
     setTimeout(() => {
-      if (!win.isDestroyed() && !win.isVisible()) win.show();
+      if (!win.isDestroyed() && !win.isVisible()) {
+        logStartup('main', 'window still hidden after 15 s; showing it anyway');
+        win.show();
+      }
     }, 15_000);
   }
+
+  win.webContents.on('did-start-loading', () => logStartup('main', 'page load started'));
+  win.webContents.on('dom-ready', () => logStartup('main', 'dom-ready'));
+  win.webContents.on('did-finish-load', () => logStartup('main', 'did-finish-load'));
+  win.webContents.on('unresponsive', () => logStartup('main', 'PAGE UNRESPONSIVE'));
+  win.webContents.on('responsive', () => logStartup('main', 'page responsive again'));
 
   // In development the page is served by Vite; in the packaged app it is a file.
   const devUrl = process.env['ELECTRON_RENDERER_URL'];
@@ -103,14 +121,15 @@ function createWindow(): void {
     if (errorCode === -3) return;
     if (retries < MAX_RETRIES) {
       retries++;
-      console.warn(
-        `Screen load failed (${errorDescription}, code ${errorCode}); retrying (${retries}/${MAX_RETRIES})…`
+      logStartup(
+        'main',
+        `did-fail-load (${errorDescription}, code ${errorCode}); retrying (${retries}/${MAX_RETRIES})`
       );
       setTimeout(() => {
         if (!win.isDestroyed()) loadApp().catch(() => {});
       }, 500);
     } else {
-      console.error(`Screen load failed ${MAX_RETRIES} times; last error: ${errorDescription}`);
+      logStartup('main', `did-fail-load ${MAX_RETRIES} times; last error ${errorDescription}; showing failure page`);
       showLoadFailure(win, validatedURL || devUrl || 'the app files', errorDescription);
     }
   });
@@ -121,7 +140,10 @@ function createWindow(): void {
   })();
 }
 
+installStartupDiagnostics();
+
 app.whenReady().then(() => {
+  logStartup('main', 'app ready');
   // Block all network traffic except the approved list (empty today) and,
   // in development, the Vite server that serves the UI (ADR-015).
   const devServerOrigin = process.env['ELECTRON_RENDERER_URL'];

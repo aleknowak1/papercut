@@ -11,7 +11,29 @@ import { HomeScreen } from './HomeScreen';
 function DevExportRunScreen({ mode }: { mode: 'export-check' | 'export-measure' }): JSX.Element {
   const [status, setStatus] = useState('Starting…');
   useEffect(() => {
-    void import('./dev/checkRunner').then((m) => m.run(mode, setStatus));
+    // Retry the module load a few times, then report the failure so the
+    // check fails fast with the reason — it must never hang silently.
+    let cancelled = false;
+    void (async () => {
+      let lastError: unknown;
+      for (let attempt = 1; attempt <= 5 && !cancelled; attempt++) {
+        try {
+          const runner = await import('./dev/checkRunner');
+          await runner.run(mode, setStatus);
+          return;
+        } catch (error) {
+          lastError = error;
+          window.papercut.logStartup(`check runner load/run attempt ${attempt} failed: ${String(error)}`);
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+      }
+      window.papercut.devReportExportCheck(
+        JSON.stringify({ ok: false, kind: mode, error: `could not load/run the check runner: ${String(lastError)}` })
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [mode]);
   return (
     <div className="opened">
@@ -92,6 +114,14 @@ function DevProjectButtons({
 
 export function App(): JSX.Element {
   const [opened, setOpened] = useState<OpenedProject | undefined>(undefined);
+
+  useEffect(() => {
+    try {
+      window.papercut.logStartup('React mounted; App component on screen');
+    } catch {
+      // Diagnostics only; never let logging break the app.
+    }
+  }, []);
 
   if (import.meta.env.DEV) {
     const mode = new URLSearchParams(window.location.search).get('papercutMode');

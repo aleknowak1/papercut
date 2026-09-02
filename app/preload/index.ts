@@ -23,7 +23,9 @@ const api: PapercutApi = {
   devCreateScratchProject: (name, format, where) =>
     ipcRenderer.invoke(IPC_CHANNELS.devCreateScratchProject, name, format, where),
   devReportExportCheck: (payloadJson) =>
-    ipcRenderer.send(IPC_CHANNELS.devReportExportCheck, payloadJson)
+    ipcRenderer.send(IPC_CHANNELS.devReportExportCheck, payloadJson),
+  logStartup: (message) => ipcRenderer.send(IPC_CHANNELS.startupLog, 'renderer', message)
 };
 
 contextBridge.exposeInMainWorld('papercut', api);
+ipcRenderer.send(IPC_CHANNELS.startupLog, 'preload', 'preload ran; window.papercut exposed');

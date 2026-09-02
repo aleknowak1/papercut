@@ -46,6 +46,9 @@ export interface PapercutApi {
   ): Promise<OpenedProject>;
   /** Delivers the export check's result to the main process, which prints it and exits. */
   devReportExportCheck(payloadJson: string): void;
+
+  /** Appends one line to logs/startup.log in the user-data folder (CL-0022 diagnostics). */
+  logStartup(message: string): void;
 }
 
 export const IPC_CHANNELS = {
@@ -59,5 +62,6 @@ export const IPC_CHANNELS = {
   writeProjectFile: 'project:write-file',
   saveProjectDocument: 'project:save-document',
   devCreateScratchProject: 'dev:create-scratch-project',
-  devReportExportCheck: 'dev:report-export-check'
+  devReportExportCheck: 'dev:report-export-check',
+  startupLog: 'startup:log'
 } as const;

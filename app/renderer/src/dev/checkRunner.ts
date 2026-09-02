@@ -80,10 +80,15 @@ function report(payload: unknown): void {
   window.papercut.devReportExportCheck(JSON.stringify(payload));
 }
 
+// React StrictMode mounts effects twice in development; only one check may run.
+let started = false;
+
 export async function run(
   mode: 'export-check' | 'export-measure',
   update: (text: string) => void
 ): Promise<void> {
+  if (started) return;
+  started = true;
   try {
     if (mode === 'export-check') {
       const opened = await buildFixtureProject('temp');

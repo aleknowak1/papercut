@@ -15,6 +15,13 @@ export default defineConfig({
   },
   renderer: {
     root: resolve(__dirname, 'app/renderer'),
+    server: {
+      // Bind to a concrete address (CL-0022). Left as "localhost", Node may
+      // listen only on IPv6 ::1 while Chromium sometimes dials IPv4
+      // 127.0.0.1 — a refused connection and a blank window, at random.
+      // A numeric address leaves nothing to resolve, on either side.
+      host: '127.0.0.1'
+    },
     build: {
       rollupOptions: {
         input: resolve(__dirname, 'app/renderer/index.html')
