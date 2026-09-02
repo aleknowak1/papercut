@@ -1,7 +1,7 @@
 # DOC-10 — Project Tracker
 
 **Status:** Active
-**Last updated:** 2026-09-02 (Phase 2 usable — export proven)
+**Last updated:** 2026-09-02 (Phase 3 kickoff: housekeeping done — CL-0024; plan awaiting Alek's approval)
 **Purpose:** The one page to read when returning to the project. Where we are, what is done, what is next, and what is waiting on Alek. Updated with every change-log entry (DOC-04).
 
 ---

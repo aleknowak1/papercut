@@ -34,6 +34,9 @@ Everything you do must be explainable to him in plain language.
 ## Every change
 - Update docs/04-CHANGELOG.md (new CL-NNNN row, newest first) and
   docs/10-PROJECT-TRACKER.md in the SAME change as the code.
+- Every check cleans up its own output (tests/output/) when it succeeds; a
+  green `npm run check` leaves tests/output/ empty. A failed check may keep
+  its output for diagnosis and must say where it left it.
 - When a feature becomes usable, write its section in docs/05-MANUAL.md.
 - Commit with a clear message. Push to origin.
 
