@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { BrowserWindow, app, session } from 'electron';
+import { registerIpcHandlers } from './ipc';
 import { isRequestAllowed } from './networkPolicy';
 
 function createWindow(): void {
@@ -38,6 +39,7 @@ app.whenReady().then(() => {
     if (!allowed) console.warn(`Blocked unexpected network request: ${details.url}`);
     callback({ cancel: !allowed });
   });
+  registerIpcHandlers();
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

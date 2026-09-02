@@ -1,9 +1,19 @@
-import { contextBridge } from 'electron';
+// The bridge between the sandboxed UI and the main process. The renderer
+// has no Node access; everything it may ask for is this named list of
+// functions, exposed as window.papercut.
 
-// The renderer runs sandboxed with no Node access. Everything it may ask the
-// main process to do is exposed here, one named function at a time.
-const api = {};
+import { contextBridge, ipcRenderer } from 'electron';
+import type { PapercutApi } from '../shared/ipc';
+import { IPC_CHANNELS } from '../shared/ipc';
+
+const api: PapercutApi = {
+  getVersion: () => ipcRenderer.invoke(IPC_CHANNELS.getVersion),
+  chooseParentFolder: () => ipcRenderer.invoke(IPC_CHANNELS.chooseParentFolder),
+  chooseProjectFolder: () => ipcRenderer.invoke(IPC_CHANNELS.chooseProjectFolder),
+  createProject: (parentDir, name, format) =>
+    ipcRenderer.invoke(IPC_CHANNELS.createProject, parentDir, name, format),
+  openProject: (projectDir) => ipcRenderer.invoke(IPC_CHANNELS.openProject, projectDir),
+  listRecents: () => ipcRenderer.invoke(IPC_CHANNELS.listRecents)
+};
 
 contextBridge.exposeInMainWorld('papercut', api);
-
-export type PapercutApi = typeof api;
