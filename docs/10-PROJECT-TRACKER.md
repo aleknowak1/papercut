@@ -1,7 +1,7 @@
 # DOC-10 — Project Tracker
 
 **Status:** Active
-**Last updated:** 2026-09-02 (HEIC done — CL-0029; Fable foundations complete, hand-off to Opus below)
+**Last updated:** 2026-09-02 (Alek verified the foundations — CL-0030; Phase 3 continues on Fable: characters, mask editor, audio)
 **Purpose:** The one page to read when returning to the project. Where we are, what is done, what is next, and what is waiting on Alek. Updated with every change-log entry (DOC-04).
 
 ---
@@ -34,7 +34,7 @@ Phases run in this order; a phase does not start until the previous one is usabl
 | 0 | **Foundation** | Docs 00–10 written; every pre-build decision recorded as an ADR | **Complete** | Fable |
 | 1 | **Scaffold** | Empty Electron/TypeScript/React app opens to the Home screen on Windows; project document format defined; undo/redo; check suite running (save/reopen, undo, license, network, AI-spend guard) | **Usable** | Fable |
 | 2 | **Export prototype** (OQ-019) | Ten-second test project exports to .mp4 using Windows' built-in encoders with correct duration, resolution, audio sync | **Usable** (checks green, DOC-12 written, OQ-019 closed; Complete once Alek has watched the export) | Fable |
-| 3 | **Assets and cutouts** | Import images/audio; BiRefNet_lite auto-cutout; HD cutout; mask editor; HEIC handling | **In progress** (OQ-020 gate: security passed, STOPPED on performance — DOC-13; path decision with Alek) | Fable → Opus |
+| 3 | **Assets and cutouts** | Import images/audio; BiRefNet_lite auto-cutout; HD cutout; mask editor; HEIC handling | **In progress** (foundations verified by Alek, CL-0030; characters/mask editor/audio remain) | Fable (Alek's choice, CL-0030: consistency across the phase; the DOC-10 §1b hand-off notes still describe the work) |
 | 4 | **Scene and layers** | Background, character/prop layers, ordering, opacity, lock/hide, placing and sizing on canvas | Not started | Opus |
 | 5 | **Animation** | Keyframes (position, scale, rotation, flip, opacity), easing, motion presets, pose swapping, camera pan/zoom, render snapshot checks | Not started | Fable for keyframe engine → Opus |
 | 6 | **Timeline and audio** | Multi-track timeline, scrub/snap/zoom, audio clips (volume, fade, trim), imported sounds | Not started | Opus |
@@ -107,7 +107,6 @@ Run everything with one command: `npm run check` (74 tests + licenses + build sc
 
 | Item | Needed by | Ref |
 |------|-----------|-----|
-| Try the Assets panel: `npm run dev`, open or create a project, press "+ Character / prop…" and pick a clear photo of a person (good light, contrasting background — see M-2.1). Watch the status go queued → cutting out → cutout ready (≈half a minute on this laptop), then look at the cutout row: your person with the background gone. A good cutout keeps the whole figure with a clean edge; stray background patches or missing limbs are what the mask editor (next session) is for. Also try: importing the same photo twice (refused politely), a .txt renamed to .png (refused politely), Ctrl+Z after an import (it disappears from the list), drag-and-drop with the "what are they?" question. | Now (verifies CL-0028) | M-2.2, M-2.3 |
 | If you have a real iPhone photo (.heic): import it the same way — it should just appear (this laptop has the HEIF extension). That verifies the HEIC works-path; the missing-extension message is covered by checks. | Now (verifies CL-0029) | M-9.2 |
 | Watch and listen to the exported test video: open the app (`npm run dev`), open or create a project, click "Load test content (dev)" then "Export prototype (dev)", and play export-dev.mp4 from the project folder. The square should move smoothly, the counter should tick, and each beep should land exactly on its white flash. | Now (closes Phase 2) | DOC-12 §3 |
 | Create an OpenAI account, generate a key, set a small monthly hard cap, keep the key private | Phase 11 (not before) | DOC-09 §5 |
