@@ -103,6 +103,36 @@ re-made later from the mask editor. If a cut-out fails, the row says why in
 plain language and the photo itself is unaffected.
 
 ### M-2.4 Fixing a cut-out by hand (mask editor)
+
+Press **Edit mask** on any cutout row to open it. You see your photo with
+the cut-out drawn over it: normal colours will be kept, the red-tinted
+areas will be transparent. Painting changes only which parts are kept —
+the photo's pixels are never altered.
+
+- **Add (A)** paints areas back in; **Erase (E)** removes areas. Change the
+  brush **size** with the slider or the **[** and **]** keys.
+- **Feather edge** softens the whole cut-out's edge by the chosen amount —
+  useful when a crisp edge looks "pasted on".
+- **Zoom** with the mouse wheel or **+ / −**, press **0** to fit, and pan
+  by holding **Space** while dragging (or drag with the middle button).
+- **Ctrl+Z / Ctrl+Y** undo and redo your strokes *inside the editor*.
+- **Reset to automatic** throws away all hand edits and returns to the
+  cut-out the automatic model made.
+- **Save** stores your version; **Cancel** leaves without changes.
+
+Saving never overwrites: each save writes a new cut-out file next to the
+old one, and the project simply points at the newest. That is why, back in
+the project, one **Ctrl+Z** returns to the previous cut-out — the file is
+still there. (Old versions are tidied up in a later release.)
+
+### M-2.4b The HD cutout option
+
+The **HD cutout** button in the mask editor re-cuts the photo with the
+big, slower model. Use it for hard cases: flyaway hair, fur, thin straps,
+busy backgrounds. **It can take about a minute on a small laptop** — the
+editor tells you while it works, and the app stays usable. The HD result
+replaces the current mask (you can keep painting on it afterwards);
+**Reset to automatic** still returns to the quick model's version.
 - M-2.4b The HD cutout option
 ### M-2.5 Characters with several poses
 

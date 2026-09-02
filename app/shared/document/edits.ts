@@ -51,6 +51,29 @@ export function addAsset(doc: ProjectDocument, asset: Asset): ProjectDocument {
   return { ...doc, assets: [...doc.assets, asset] };
 }
 
+/**
+ * Points a cutout asset at a different file — the ONE document edit a mask
+ * save (or HD run, or reset-to-automatic) makes, so document undo/redo just
+ * repoints between version files that all still exist (DOC-13 hand-off
+ * design; tidying old versions is OQ-021). `automaticFile` remembers the
+ * original automatic cutout the first time the asset moves away from it.
+ */
+export function repointCutout(
+  doc: ProjectDocument,
+  assetId: string,
+  newFile: string,
+  automaticFile: string
+): ProjectDocument {
+  return {
+    ...doc,
+    assets: doc.assets.map((a) =>
+      a.id === assetId
+        ? { ...a, file: newFile, metadata: { ...a.metadata, automaticFile } }
+        : a
+    )
+  };
+}
+
 export function addCharacter(doc: ProjectDocument, character: Character): ProjectDocument {
   return { ...doc, characters: [...doc.characters, character] };
 }

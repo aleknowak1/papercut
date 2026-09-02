@@ -76,6 +76,26 @@ export interface PapercutApi {
   ): Promise<Asset>;
   /** Cancels the queued or running cutout for that image. */
   cancelCutout(sourceAssetId: string): Promise<boolean>;
+  /**
+   * The exact pixels of a cutout file (RGB = working copy, alpha = mask),
+   * decoded losslessly in the main process — the mask editor's input.
+   */
+  readCutoutPixels(
+    projectDir: string,
+    relativePath: string
+  ): Promise<{ width: number; height: number; rgba: Uint8Array }>;
+  /**
+   * Writes the next cutout version: the current file's RGB plus the edited
+   * alpha (never through a canvas). Returns the new relative path for the
+   * one document repoint edit.
+   */
+  saveCutoutVersion(
+    projectDir: string,
+    currentRelativePath: string,
+    alpha: Uint8Array,
+    width: number,
+    height: number
+  ): Promise<string>;
   /** Subscribes to cutout status pushes; returns an unsubscribe function. */
   onCutoutUpdate(listener: (update: SegmentationJobUpdate) => void): () => void;
 
@@ -109,6 +129,8 @@ export const IPC_CHANNELS = {
   enqueueCutout: 'segmentation:enqueue',
   cancelCutout: 'segmentation:cancel',
   cutoutUpdate: 'segmentation:update',
+  readCutoutPixels: 'cutout:read-pixels',
+  saveCutoutVersion: 'cutout:save-version',
   devCreateScratchProject: 'dev:create-scratch-project',
   devReportExportCheck: 'dev:report-export-check',
   startupLog: 'startup:log'

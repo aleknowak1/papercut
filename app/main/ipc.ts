@@ -10,6 +10,7 @@ import { IPC_CHANNELS } from '../shared/ipc';
 import type { Asset, ProjectFormat } from '../shared/document/types';
 import { validateProjectDocument } from '../shared/document/validate';
 import type { SegmentationModel } from '../shared/segmentation/types';
+import { readCutoutPixels, saveCutoutVersion } from './cutoutVersions';
 import { importImageAsset, prepareImportFile } from './importAssets';
 import type { ImportImageInfo } from './importAssets';
 import { segmentationService } from './segmentation/service';
@@ -175,6 +176,24 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC_CHANNELS.cancelCutout, (_event, sourceAssetId: string): boolean =>
     segmentationService.cancel(sourceAssetId)
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.readCutoutPixels,
+    (_event, projectDir: string, relativePath: string) =>
+      readCutoutPixels(projectDir, relativePath)
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.saveCutoutVersion,
+    (
+      _event,
+      projectDir: string,
+      currentRelativePath: string,
+      alpha: Uint8Array,
+      width: number,
+      height: number
+    ): string => saveCutoutVersion(projectDir, currentRelativePath, alpha, width, height)
   );
 
   // Push every cutout status change to all windows (the Assets panel listens).

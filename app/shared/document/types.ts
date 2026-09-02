@@ -36,6 +36,8 @@ export interface AssetMetadata {
   readonly sourceAssetId?: string;
   /** For cutouts: which model produced it ('lite' or 'hd'). */
   readonly model?: string;
+  /** For cutouts: the original automatic cutout file, for "Reset to automatic". */
+  readonly automaticFile?: string;
 }
 
 export interface Asset {

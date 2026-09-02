@@ -31,11 +31,13 @@ const STATUS_LABEL: Record<SegmentationJobUpdate['status'], string> = {
 export function AssetsPanel({
   projectDir,
   document: doc,
-  applyEdit
+  applyEdit,
+  onEditMask
 }: {
   projectDir: string;
   document: ProjectDocument;
   applyEdit: ApplyEdit;
+  onEditMask?: (assetId: string) => void;
 }): JSX.Element {
   const [messages, setMessages] = useState<readonly string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -222,6 +224,16 @@ export function AssetsPanel({
                     onClick={() => void window.papercut.cancelCutout(asset.id)}
                   >
                     Cancel
+                  </button>
+                )}
+                {asset.type === 'cutout' && onEditMask && (
+                  <button
+                    type="button"
+                    className="btn asset-cancel"
+                    title="Open the mask editor for this cutout"
+                    onClick={() => onEditMask(asset.id)}
+                  >
+                    Edit mask
                   </button>
                 )}
               </li>

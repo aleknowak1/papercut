@@ -29,6 +29,10 @@ const api: PapercutApi = {
   enqueueCutout: (projectDir, sourceAssetId, model, rgba, width, height) =>
     ipcRenderer.invoke(IPC_CHANNELS.enqueueCutout, projectDir, sourceAssetId, model, rgba, width, height),
   cancelCutout: (sourceAssetId) => ipcRenderer.invoke(IPC_CHANNELS.cancelCutout, sourceAssetId),
+  readCutoutPixels: (projectDir, relativePath) =>
+    ipcRenderer.invoke(IPC_CHANNELS.readCutoutPixels, projectDir, relativePath),
+  saveCutoutVersion: (projectDir, currentRelativePath, alpha, width, height) =>
+    ipcRenderer.invoke(IPC_CHANNELS.saveCutoutVersion, projectDir, currentRelativePath, alpha, width, height),
   onCutoutUpdate: (listener) => {
     const handler = (_event: unknown, update: SegmentationJobUpdate): void => listener(update);
     ipcRenderer.on(IPC_CHANNELS.cutoutUpdate, handler);

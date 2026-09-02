@@ -11,6 +11,7 @@ import {
 } from '../../shared/document/history';
 import { AssetsPanel } from './assets/AssetsPanel';
 import { CharactersPanel } from './assets/CharactersPanel';
+import { MaskEditor } from './assets/MaskEditor';
 import { HomeScreen } from './HomeScreen';
 
 // Everything under app/renderer/src/dev/ (and tests/fixtures) is loaded
@@ -162,7 +163,11 @@ function ProjectView({
 }): JSX.Element {
   const [history, setHistory] = useState(() => createHistory(opened.document));
   const [saveError, setSaveError] = useState<string | undefined>(undefined);
+  const [editingMaskOf, setEditingMaskOf] = useState<string | undefined>(undefined);
   const doc = history.present;
+  const editingAsset = editingMaskOf !== undefined
+    ? doc.assets.find((a) => a.id === editingMaskOf)
+    : undefined;
 
   // Save whatever is current, a moment after it changes (one save per burst).
   const saveTimer = useRef<number | undefined>(undefined);
@@ -244,10 +249,24 @@ function ProjectView({
         </button>
       </div>
       {saveError !== undefined && <p className="error">{saveError}</p>}
-      <div className="project-columns">
-        <AssetsPanel projectDir={opened.projectDir} document={doc} applyEdit={applyEdit} />
-        <CharactersPanel projectDir={opened.projectDir} document={doc} applyEdit={applyEdit} />
-      </div>
+      {editingAsset !== undefined ? (
+        <MaskEditor
+          projectDir={opened.projectDir}
+          asset={editingAsset}
+          applyEdit={applyEdit}
+          onClose={() => setEditingMaskOf(undefined)}
+        />
+      ) : (
+        <div className="project-columns">
+          <AssetsPanel
+            projectDir={opened.projectDir}
+            document={doc}
+            applyEdit={applyEdit}
+            onEditMask={setEditingMaskOf}
+          />
+          <CharactersPanel projectDir={opened.projectDir} document={doc} applyEdit={applyEdit} />
+        </div>
+      )}
       {import.meta.env.DEV && (
         <DevProjectButtons
           opened={{ projectDir: opened.projectDir, document: doc }}
