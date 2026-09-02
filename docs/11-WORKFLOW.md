@@ -1,7 +1,7 @@
 # DOC-11 — Development Workflow
 
 **Status:** Active
-**Last updated:** 2026-09-02 (Appendix D: Phase 3 kickoff prompt; check-output cleanup rule in Appendix A)
+**Last updated:** 2026-09-02 (Appendix E: Phase 4 kickoff prompt)
 **Purpose:** How Alek and Claude build PAPERCUT day to day. Tools, session rhythm, roles, and the standing files that keep every session on track.
 
 ---
@@ -456,4 +456,69 @@ what is next), and update docs/04-CHANGELOG.md, docs/10-PROJECT-TRACKER.md,
 docs/07-OPEN-QUESTIONS.md and docs/08-LICENSING.md in the same change. Add
 this kickoff prompt to docs/11-WORKFLOW.md as Appendix D, as was done for
 Phase 2.
+```
+
+## Appendix E — Phase 4 kickoff prompt (paste into Claude Code)
+
+Model: Alek selects via /model (DOC-10 §2 lists Opus for Phase 4; Phase 3 ran on Fable by Alek's choice). Plan first — Phase 4 introduces the PixiJS scene renderer, which the real export will reuse (ADR-006: what you see is what you get).
+
+```
+You are working in the PAPERCUT repository at:
+C:\Users\Alek\Documents\Claude Code Projects\papercut
+GitHub remote (origin): https://github.com/aleknowak1/papercut.git
+
+Read CLAUDE.md in the repository root first. Then read, in this order:
+docs/10-PROJECT-TRACKER.md (where we are), docs/02-DECISIONS.md (ADR-001,
+ADR-006 and ADR-017 in particular), docs/03-ARCHITECTURE.md (sections 1, 2,
+3 and 5), docs/01-PRODUCT-SPEC.md (section 5.1, the Layers row),
+docs/04-CHANGELOG.md CL-0024 to CL-0035 (what Phase 3 actually built and
+how its sessions were run), and docs/11-WORKFLOW.md.
+
+Phases 0-3 are Complete and verified by me (CL-0034). The app today: Home
+screen; project document with undo/redo wired into the UI and auto-save;
+Assets panel (image and audio import, automatic cutouts in a one-at-a-time
+background queue); Characters panel (poses); the mask editor. Nothing is
+placed on any canvas yet. The export prototype (Phase 2) already renders
+PixiJS off-screen and encodes through WebCodecs.
+
+We are starting Phase 4: Scene and layers (DOC-10 §2, DOC-01 §5.1):
+
+1. The scene canvas: a PixiJS view of the current scene inside the
+   opened-project view, showing the project's format (9:16, 16:9, 1:1).
+   It must be the SAME rendering approach the export uses, so that what
+   the user sees is what exports (ADR-006/013) — say in the plan how the
+   Phase 2 off-screen renderer and this live canvas share code.
+2. Background: assign an imported background image to the scene.
+3. Layers: add character layers (showing the character's current pose) and
+   prop layers (a cutout directly); ordering (front/back); opacity; lock;
+   hide. All through document edits and the existing undo path.
+4. Placing and sizing on the canvas: select, drag to move, resize; say in
+   the plan how a static placement maps to the DOC-03 §3 document (for
+   example the layer's keyframe at time 0 — full keyframing is Phase 5)
+   and how canvas dragging produces clean single undo steps, not one per
+   mouse move.
+5. Checks (ADR-015): layer edits round-trip save/reopen and undo; placement
+   maps to the document exactly; existing checks stay green. The
+   render-snapshot check stays Phase 5. Tell me what `npm run check` will
+   cost afterwards (it is 71 s now; keep it around two minutes or less).
+6. Manual sections M-3.1, M-3.2, M-3.3 as each becomes usable, and DOC-10
+   rows updated in the same commits.
+
+Do not write code yet. First produce a plan for my approval: the editor
+layout (canvas + panels), the decisions you are making within the ADRs,
+how the renderer is shared with export, what exactly is out of scope, and
+any questions for me. DOC-11 §6 allows parallel builders from Phase 4 for
+independent features — if the plan proposes any, name the boundaries
+(never two agents on one file); otherwise build alone, one feature at a
+time, committed and pushed when usable.
+
+Out of scope for Phase 4: keyframes, easing, motion presets, pose swapping
+on the timeline, camera pan/zoom, the timeline itself, transitions, text,
+the export screen, waveforms, and the render-snapshot check (Phase 5+).
+No paid AI calls (DOC-09). No new npm dependencies without a DOC-08 row
+first. Every check cleans up tests/output/ on success. Update
+docs/04-CHANGELOG.md, docs/10-PROJECT-TRACKER.md and docs/05-MANUAL.md in
+the same commit as the code, and end each session with the report
+described in CLAUDE.md. Add this kickoff prompt to docs/11-WORKFLOW.md as
+Appendix E if it is not already there.
 ```
