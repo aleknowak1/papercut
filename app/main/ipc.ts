@@ -10,7 +10,7 @@ import { IPC_CHANNELS } from '../shared/ipc';
 import type { Asset, ProjectFormat } from '../shared/document/types';
 import { validateProjectDocument } from '../shared/document/validate';
 import type { SegmentationModel } from '../shared/segmentation/types';
-import { importImageAsset, readImportFileBytes } from './importAssets';
+import { importImageAsset, prepareImportFile } from './importAssets';
 import type { ImportImageInfo } from './importAssets';
 import { segmentationService } from './segmentation/service';
 import {
@@ -117,7 +117,12 @@ export function registerIpcHandlers(): void {
     const win = BrowserWindow.getFocusedWindow() ?? undefined;
     const options = {
       title: 'Choose images to import',
-      filters: [{ name: 'Images (JPG, PNG, WebP)', extensions: ['jpg', 'jpeg', 'png', 'webp'] }],
+      filters: [
+        {
+          name: 'Images (JPG, PNG, WebP, HEIC)',
+          extensions: ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif']
+        }
+      ],
       properties: ['openFile' as const, 'multiSelections' as const]
     };
     const result = win
@@ -126,8 +131,8 @@ export function registerIpcHandlers(): void {
     return result.canceled ? [] : result.filePaths;
   });
 
-  ipcMain.handle(IPC_CHANNELS.readImportFile, (_event, sourcePath: string): Uint8Array =>
-    readImportFileBytes(sourcePath)
+  ipcMain.handle(IPC_CHANNELS.readImportFile, (_event, sourcePath: string): Promise<Uint8Array> =>
+    prepareImportFile(sourcePath)
   );
 
   ipcMain.handle(
@@ -138,7 +143,7 @@ export function registerIpcHandlers(): void {
       sourcePath: string,
       role: 'background' | 'character-prop',
       info: ImportImageInfo
-    ): Asset => importImageAsset(projectDir, sourcePath, role, info)
+    ): Promise<Asset> => importImageAsset(projectDir, sourcePath, role, info)
   );
 
   ipcMain.handle(

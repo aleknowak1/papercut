@@ -1,4 +1,4 @@
-// Image import (Phase 3): each file round-trips unchanged into the project
+﻿// Image import (Phase 3): each file round-trips unchanged into the project
 // folder and the document; duplicates and unsupported files are refused in
 // plain English; documents with assets still save/reopen and undo.
 
@@ -25,12 +25,12 @@ function makeSourceImage(
 }
 
 describe('importImageAsset', () => {
-  it('copies the file byte-for-byte and fills the asset record', () => {
+  it('copies the file byte-for-byte and fills the asset record', async () => {
     const dir = tempDir();
     const projectDir = createProject(dir, 'Import', '9:16');
     const source = makeSourceImage(dir, 'holiday photo.png', [10, 20, 30]);
 
-    const asset = importImageAsset(projectDir, source, 'character-prop', {
+    const asset = await importImageAsset(projectDir, source, 'character-prop', {
       width: 8,
       height: 6,
       existingHashes: []
@@ -46,22 +46,22 @@ describe('importImageAsset', () => {
     expect(copied.equals(readFileSync(source))).toBe(true); // unchanged, byte for byte
   });
 
-  it('refuses a duplicate (same bytes) in plain English', () => {
+  it('refuses a duplicate (same bytes) in plain English', async () => {
     const dir = tempDir();
     const projectDir = createProject(dir, 'Dupes', '9:16');
     const source = makeSourceImage(dir, 'twice.png', [1, 2, 3]);
-    const first = importImageAsset(projectDir, source, 'background', {
+    const first = await importImageAsset(projectDir, source, 'background', {
       width: 8,
       height: 6,
       existingHashes: []
     });
-    expect(() =>
+    await expect(
       importImageAsset(projectDir, source, 'background', {
         width: 8,
         height: 6,
         existingHashes: [first.metadata.contentHash ?? '']
       })
-    ).toThrow(/already in this project/);
+    ).rejects.toThrow(/already in this project/);
   });
 
   it('refuses unsupported and unreadable files in plain English', () => {
@@ -71,13 +71,13 @@ describe('importImageAsset', () => {
     expect(() => readImportFileBytes(join(dir, 'gone.png'))).toThrow(/could not be read/);
   });
 
-  it('normalises .jpeg to .jpg in the stored name', () => {
+  it('normalises .jpeg to .jpg in the stored name', async () => {
     const dir = tempDir();
     const projectDir = createProject(dir, 'Ext', '9:16');
     // Content type does not matter for the copy; extension drives the name.
     const source = join(dir, 'photo.jpeg');
     writeFileSync(source, solidPng(4, 4, [9, 9, 9, 255]));
-    const asset = importImageAsset(projectDir, source, 'background', {
+    const asset = await importImageAsset(projectDir, source, 'background', {
       width: 4,
       height: 4,
       existingHashes: []
@@ -87,11 +87,11 @@ describe('importImageAsset', () => {
 });
 
 describe('the document with assets', () => {
-  it('saves, reopens field-for-field, and undoes an import', () => {
+  it('saves, reopens field-for-field, and undoes an import', async () => {
     const dir = tempDir();
     const projectDir = createProject(dir, 'Assets Doc', '16:9');
     const source = makeSourceImage(dir, 'bg.png', [40, 50, 60]);
-    const asset = importImageAsset(projectDir, source, 'background', {
+    const asset = await importImageAsset(projectDir, source, 'background', {
       width: 8,
       height: 6,
       existingHashes: []
