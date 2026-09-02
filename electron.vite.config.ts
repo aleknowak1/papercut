@@ -5,7 +5,19 @@ import { defineConfig } from 'electron-vite';
 export default defineConfig({
   main: {
     build: {
-      lib: { entry: resolve(__dirname, 'app/main/index.ts') }
+      lib: {
+        entry: {
+          index: resolve(__dirname, 'app/main/index.ts'),
+          // The segmentation worker runs in its own utility process and needs
+          // its own entry file (forked by app/main/segmentation/service.ts).
+          'segmentation-worker': resolve(__dirname, 'app/main/segmentation/worker.ts')
+        }
+      },
+      rollupOptions: {
+        // Native module: must be resolved from node_modules at runtime,
+        // never bundled (ADR-017; packaged builds ship it unpacked).
+        external: ['onnxruntime-node']
+      }
     }
   },
   preload: {

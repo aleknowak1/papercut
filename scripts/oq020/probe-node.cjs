@@ -17,6 +17,10 @@ runProbe({
   model: opt('model'),
   ep: opt('ep'),
   saveDir: opt('save'),
+  opt: opt('opt'),
+  arena: opt('arena') === '0' ? false : undefined,
+  memPattern: opt('mempattern') === '0' ? false : undefined,
+  threads: opt('threads'),
 })
   .then((report) => {
     console.log(JSON.stringify(report, null, 2));

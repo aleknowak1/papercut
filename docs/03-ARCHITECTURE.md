@@ -97,7 +97,7 @@ User picks a platform preset (and optionally the "AI-generated" label) → rende
 
 ## 5. Performance targets (from DOC-01 §7)
 - Preview scrubbing stays responsive with 20 layers on screen.
-- Background removal < 3 s per photo on a 2020-era laptop CPU.
+- Background removal (revised by ADR-017 on the DOC-13 measurements): under 15 s per photo on a 2020-era laptop CPU; up to 45 s acceptable on minimum-spec machines (8 GB, no GPU) — always a background queue with visible status and cancellation, never blocking the app.
 - TTS generation faster than real time.
 - 60 s of 1080p30 exports in < 3 minutes without a GPU.
 

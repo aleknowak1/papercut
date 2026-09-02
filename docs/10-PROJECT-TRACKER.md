@@ -1,7 +1,7 @@
 # DOC-10 — Project Tracker
 
 **Status:** Active
-**Last updated:** 2026-09-02 (Gate round 2 measured — CL-0026; fp32 CPU ≈33 s/photo, DirectML out-of-memory on 8 GB; final path choice with Alek)
+**Last updated:** 2026-09-02 (ADR-017 recorded; segmentation worker + queue + checks built and green — CL-0027)
 **Purpose:** The one page to read when returning to the project. Where we are, what is done, what is next, and what is waiting on Alek. Updated with every change-log entry (DOC-04).
 
 ---
@@ -11,9 +11,8 @@
 **Phase 1 — Scaffold: USABLE.** The app opens to the Home screen on Windows; projects can be created, saved, and reopened; the document format, undo/redo engine, provider fakes, and five automated checks exist and pass. Still open within Phase 1 scope: autosave, and wiring undo/redo into the UI (both arrive naturally with the editor phases). ADR-006 is Accepted; DOC-03 is Active.
 **Verified by Alek (CL-0017):** all Phase 1 manual tests passed.
 **Phase 2 — Export prototype: USABLE, decision made (CL-0018/CL-0019).** ADR-013 is proven on real hardware: the ten-second test project exports to a correct .mp4 through Windows' own encoders, 60 s of 1080p30 extrapolates to ≈ 43 s even without a GPU (target: under 3 minutes), audio drift ≤ 9.6 ms. OQ-019 closed, ADR-013 now plainly Accepted, mp4-muxer locked (MIT). Full numbers in DOC-12. Windows 10 remains untested (no machine).
-**Phase 3 — Assets and cutouts: IN PROGRESS, gate STOPPED (CL-0025).** The OQ-020 gate ran per the approved plan. Good news: Smart App Control does **not** block onnxruntime-node — everything it ships is Microsoft-signed; it loads and runs in plain Node and in an Electron utility process with a clean event log. Bad news: the fp16 model runs at ≈27.7 minutes per photo on CPU (target: under 3 seconds) because ONNX Runtime's CPU engine has no native fp16 support. Per the plan, work STOPPED before any cutout feature was built.
-**Gate round 2 (CL-0026):** measured at Alek's direction. fp32 on CPU works — 33–38 s per photo, mask quality identical to fp16 — but no CPU path reaches the 3 s reference target (reference-machine estimate ≈12–25 s). DirectML compiles but runs out of memory on this 8 GB machine (our minimum spec): accelerator at best, never the baseline. Two binding pipeline rules recorded in DOC-13 §9.5 (native-1024 inference; 4096-long-edge working-copy cap, originals untouched). Paths 4 (WASM) and 5 (lighter model) ruled out by Alek.
-**Next action:** Alek reads DOC-13 §9 and decides: which model format ships (fp32 simplest at ≈33 s here; int8 faster but adds an offline Python conversion step; DirectML as an optional accelerator on capable machines), and what per-photo time is acceptable on minimum-spec machines (recorded in DOC-07). Then Phase 3 resumes at plan step 2.
+**Phase 3 — Assets and cutouts: IN PROGRESS.** The OQ-020 gate is closed (ADR-017): Smart App Control never objected (onnxruntime-node is Microsoft-signed throughout), and Alek chose fp32-on-CPU with revised targets (< 15 s reference machine, ≤ 45 s minimum-spec, always a background queue). Full evidence trail in DOC-13. Step 2 is built and green (CL-0027): the segmentation worker runs BiRefNet fp32 in an Electron utility process with a one-at-a-time job queue, status updates, cancellation, and the original-pixels+alpha output rule enforced byte-for-byte by a check; memory arena off (measured faster and frees ~everything between jobs); worker process ends when the queue goes idle. Measured on this laptop: lite ≈32–37 s/photo, HD ≈54 s, model load ≈5–8 s.
+**Next action:** Phase 3 step 3 — image import (JPG/PNG/WebP), the Assets panel in the opened-project view, thumbnails, duplicate/unreadable refusals; then step 4 HEIC; then the Fable → Opus hand-off.
 **Start-up reliability (CL-0021/CL-0022):** the blank-window cause is found and fixed (the dev server answered only on IPv6 while the window sometimes asked on IPv4; it now binds one concrete address). The app also waits for its screen server, retries failed loads, shows plain-text errors instead of ever staying blank, and writes every start-up step to logs/startup.log in the user-data folder — if a start ever misbehaves again, send that file.
 **Rule of thumb after any code update (CL-0020):** close the running app and start it again with `npm run dev` — an app window left running from before an update cannot load the new code and shows a plain-language message saying so.
 **Watch out:** the dev laptop's CPU (Intel Core i3-N305, 8 efficiency cores) is below the "2020-era laptop CPU" reference in DOC-03 §5; performance numbers measured here are pessimistic but real for budget customer machines.
@@ -88,11 +87,13 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 | Undo | ☑ | ✅ |
 | Render snapshots | ☐ (Phase 2+) | — |
 | Export | ☑ | ✅ |
+| Segmentation (real worker + model + coverage + pixels-untouched + memory) | ☑ | ✅ |
+| Production-build scan (no dev/fixture code ships; worker + models in place) | ☑ | ✅ |
 | No unexpected network | ☑ | ✅ |
 | License allow-list | ☑ | ✅ |
 | AI-spend guard | ☑ | ✅ |
 
-Run everything with one command: `npm run check` (49 tests + licenses + the export check; about 25 seconds in total).
+Run everything with one command: `npm run check` (74 tests + licenses + build scan + segmentation + export; about 80 seconds in total — the segmentation check runs one real cutout). `npm run check:segmentation:hd` exercises the HD model on demand. A green run leaves tests/output/ empty (the CL-0024 housekeeping rule, now enforced by the tests themselves).
 
 ## 5. Waiting on Alek
 

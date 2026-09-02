@@ -256,13 +256,21 @@ async function runProbe(options = {}) {
   //    back to CPU if it cannot start — and the report says so honestly.
   let session;
   let providerUsed = 'cpu';
+  // Session tuning knobs (ADR-017 memory work): defaults match ONNX Runtime's.
+  const tuning = {
+    graphOptimizationLevel: options.opt || 'all',
+    enableCpuMemArena: options.arena !== false,
+    enableMemPattern: options.memPattern !== false,
+  };
+  if (options.threads) tuning.intraOpNumThreads = Number(options.threads);
+  report.sessionTuning = tuning;
   const tSession = process.hrtime.bigint();
   try {
     if ((options.ep || 'cpu') === 'dml') {
       try {
         session = await ort.InferenceSession.create(modelPath, {
+          ...tuning,
           executionProviders: ['dml'],
-          graphOptimizationLevel: 'all',
           enableMemPattern: false, // DirectML requirement
         });
         providerUsed = 'dml';
@@ -273,8 +281,8 @@ async function runProbe(options = {}) {
     }
     if (!session) {
       session = await ort.InferenceSession.create(modelPath, {
+        ...tuning,
         executionProviders: ['cpu'],
-        graphOptimizationLevel: 'all',
       });
     }
     report.providerUsed = providerUsed;

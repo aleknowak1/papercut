@@ -90,7 +90,7 @@ Bug fixes, more motion presets, more transitions, sound library growth, usage an
 ## 7. Success criteria for 1.0
 
 - A first-time user with ten photos and a script can produce a 30-second exported video in under one hour, using only the in-app manual.
-- Background removal is acceptable without touch-up on at least 8 of 10 typical phone photos of people.
+- Background removal is acceptable without touch-up on at least 8 of 10 typical phone photos of people. Speed targets are set by ADR-017: under 15 s per photo on a 2020-era laptop CPU, up to 45 s on minimum-spec machines, always as a background queue that never blocks editing.
 - Export of a 60-second 1080p project completes in under 3 minutes on a mid-range Windows laptop with no dedicated GPU.
 - Editing, cutouts, and export work with the internet disconnected; only voices and the agent require a connection.
 - A typical 60-second video costs the company under $0.05 in cloud AI usage.

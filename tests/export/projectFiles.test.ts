@@ -1,14 +1,14 @@
 // The gate the UI's file reads/writes pass through: every path must stay
 // inside the project folder (new IPC surface added for Phase 2 export).
-import { mkdirSync, mkdtempSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { createProject, resolveProjectFile } from '../../app/main/projectStore';
 
-const outputRoot = join(__dirname, '..', 'output');
-mkdirSync(outputRoot, { recursive: true });
+import { suiteOutputDirs } from '../helpers/testOutput';
 
-const projectDir = createProject(mkdtempSync(join(outputRoot, 'files-')), 'Guard', '16:9');
+const tempDir = suiteOutputDirs('files');
+const parentDir = tempDir();
+const projectDir = createProject(parentDir, 'Guard', '16:9');
 
 describe('resolveProjectFile', () => {
   it('resolves a normal relative path inside the project', () => {
@@ -27,6 +27,6 @@ describe('resolveProjectFile', () => {
   });
 
   it('refuses folders that are not projects', () => {
-    expect(() => resolveProjectFile(outputRoot, 'anything.txt')).toThrow(/not a PAPERCUT project/);
+    expect(() => resolveProjectFile(parentDir, 'anything.txt')).toThrow(/not a PAPERCUT project/);
   });
 });

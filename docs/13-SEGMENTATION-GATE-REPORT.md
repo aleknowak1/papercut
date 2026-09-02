@@ -234,7 +234,7 @@ ever arrives (not in v1), 2× zoom there would want ~7680 px; because the
 untouched original is still in assets/images/, cutouts could be re-made
 under a bigger cap without re-importing anything.
 
-### 9.7 Status after round 2
+### 9.7 Status after round 2 (superseded by §10 — Alek decided)
 
 Measured, recorded, **no ADR changed, nothing built past the gate.** The
 remaining choice for Alek: adopt fp32-on-CPU (simplest; ~33 s here,
@@ -242,3 +242,67 @@ remaining choice for Alek: adopt fp32-on-CPU (simplest; ~33 s here,
 (fastest CPU option, adds an offline Python conversion step), and/or layer
 DirectML on top for capable machines — plus the acceptable per-photo time
 for minimum-spec machines, to record in DOC-07.
+
+---
+
+## 10. The decision and the engineering round (ADR-017)
+
+**Alek decided: fp32 is the baseline.** Recorded as ADR-017 (revised
+targets: reference machine < 15 s, minimum-spec ≤ 45 s, background queue
+always; native-1024 inference; 4096 working-copy cap; one cutout at a
+time). OQ-020 closed. DirectML deferred to OQ-022; HD-model delivery
+question opened as OQ-023.
+
+### 10.1 No pre-built quantized variant exists
+
+Checked both pinned repositories file-by-file (recursive listing):
+`onnx-community/BiRefNet_lite` and `onnx-community/BiRefNet-ONNX` each
+contain exactly two ONNX files, `model.onnx` (fp32) and `model_fp16.onnx`.
+No quantized / q8 / int8 / uint8 / q4 variant exists in either. Per Alek's
+rule: **fp32 alone ships in v1; no Python conversion toolchain is added.**
+
+### 10.2 Session-setting measurements (fp32 lite, CPU, same fixture, one run each)
+
+| Setting | Load | Inference | Peak during job | Held after job |
+|---|---|---|---|---|
+| Defaults (memory arena ON — rounds 1–2) | 5–7.5 s | 33–38 s | 3.8–4.8 GB | **2.2–2.8 GB kept** |
+| **Memory arena OFF** (chosen) | 5.0 s | **21–26 s** | 4.1 GB (transient) | **~105 MB** |
+| Arena off + memory-pattern off | 5.2 s | 24 s | 4.4 GB | ~104 MB |
+| Arena off + 4 threads | 5.4 s | 21.5 s | 4.6 GB | ~104 MB |
+| Arena off + basic graph optimisation | 4.3 s | 21.3 s | 4.7 GB | ~102 MB |
+
+Two findings. First, **turning the memory arena off is a double win**: the
+job runs ~35–45% *faster* (21–26 s instead of 33–38 s — the arena's
+book-keeping was costing time, not saving it) and the worker gives its
+memory back the moment the job ends instead of squatting on 2–3 GB.
+Second, **the ~4–4.7 GB peak while the model is actually computing cannot
+be tuned away** — it is the genuine working memory of BiRefNet at
+1024×1024; thread count and optimisation level change nothing. What makes
+it acceptable on 8 GB machines: it is transient (seconds to tens of
+seconds), only ever one job runs at a time (ADR-017), and the moment the
+job ends the worker is back to ~105 MB. The segmentation check will fail
+if a green run leaves the worker holding more than a few hundred MB.
+
+**Chosen settings: memory arena off, everything else at ONNX Runtime
+defaults.**
+
+### 10.3 Model residency: resident while working, released when idle
+
+Model load costs ~5 s — about 20% of a job. The worker therefore **keeps
+the loaded model between jobs while the queue is non-empty** (a ten-photo
+import pays the 5 s once, not ten times) **and releases the session as
+soon as the queue goes idle**, returning everything to the OS. Worst case
+of this policy is one 5 s reload when a new job arrives later; the
+alternative (always resident) would pin memory on 8 GB machines for no
+benefit, and (always reload) would add 5 s to every photo of a batch.
+
+### 10.4 HD model (BiRefNet full fp32) on this machine
+
+Downloaded (973 MB, hash-verified, pinned) and probed once with the chosen
+settings (arena off): **load 7.7 s, inference 36 s, peak 4.0 GB, ~112 MB
+held after** — same fixture mask quality as lite (0.9976 / 0.0005).
+Pleasant surprise: at the same 1024×1024 input the HD model is only
+modestly slower than lite here (36 s vs 21–26 s), not minutes. The mask
+editor's warning stays ("HD cutout can take a while on a small laptop"),
+but on this minimum-spec machine an HD job is ≈45 s all-in, within the
+ADR-017 ceiling.

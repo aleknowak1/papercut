@@ -23,8 +23,19 @@
       "license": "MIT",
       "convertedFrom": "ZhengPeng7/BiRefNet_lite (MIT weights)"
     },
-    "full": {
-      "description": "BiRefNet full fp16 - the 'HD cutout' option in the mask editor",
+    "full_fp32": {
+      "description": "BiRefNet full fp32 - the 'HD cutout' option in the mask editor (ADR-017: fp32 on CPU; fp16 is unusable on CPU, see DOC-13)",
+      "repo": "onnx-community/BiRefNet-ONNX",
+      "revision": "534d3c82d3bb8b2f0867db6dfbc3a525b8e42f67",
+      "remotePath": "onnx/model.onnx",
+      "localName": "birefnet_full_fp32.onnx",
+      "sizeBytes": 972666916,
+      "sha256": "58f621f00f5d756097615970a88a791584600dcf7c45b18a0a6267535a1ebd3c",
+      "license": "MIT",
+      "convertedFrom": "ZhengPeng7/BiRefNet (MIT weights)"
+    },
+    "full_fp16_unused": {
+      "description": "BiRefNet full fp16 - NOT used (fp16 is unusable on CPU, DOC-13); pin kept for the record",
       "repo": "onnx-community/BiRefNet-ONNX",
       "revision": "534d3c82d3bb8b2f0867db6dfbc3a525b8e42f67",
       "remotePath": "onnx/model_fp16.onnx",

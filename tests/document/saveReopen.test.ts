@@ -11,12 +11,9 @@ import {
 } from '../../app/main/projectStore';
 import { sampleProject } from '../helpers/sampleProject';
 
-const outputRoot = join(__dirname, '..', 'output');
-mkdirSync(outputRoot, { recursive: true });
+import { suiteOutputDirs } from '../helpers/testOutput';
 
-function tempDir(): string {
-  return mkdtempSync(join(outputRoot, 'save-'));
-}
+const tempDir = suiteOutputDirs('save');
 
 describe('save / reopen', () => {
   it('a created project reopens identical to a fresh document', () => {

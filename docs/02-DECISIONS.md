@@ -236,3 +236,22 @@ Each entry records one decision: what was decided, why, what was rejected, and w
 **Reasoning:** Alek's direction: be very careful with AI spending, and do not waste tokens on testing. Making this structural (fake provider by default, live calls opt-in, caching everywhere) removes the possibility of accidental spend rather than relying on care.
 
 **Consequences:** Development of the editor and server costs $0 in AI usage. Voice and agent development cost a few dollars to tens of dollars in total. Launch costs are per user, capped, and priced into the subscription (OQ-008).
+
+---
+
+## ADR-017 — Background removal runs fp32 on CPU, with revised targets and pipeline rules
+
+**Date:** 2026-09-02 · **Status:** Accepted (decided by Alek on the DOC-13 gate evidence) · **Refines:** ADR-009 · **Closes:** OQ-020
+
+**Decision:**
+
+1. **Model format: fp32.** Both BiRefNet sizes ship as fp32 ONNX (lite 224 MB as the automatic default, full 973 MB as "HD cutout"), run by onnxruntime-node 1.29.0 on the CPU engine. The fp16 files are not used: ONNX Runtime's CPU engine has no native fp16 support and runs them ~44× slower (measured: 27.7 min vs 38 s per photo, DOC-13). No pre-built quantized variant exists in the pinned repositories, so v1 ships fp32 alone — no Python conversion toolchain is added.
+2. **Process:** inference runs in an Electron utility process (a separate OS process; a native crash can never take down the app window), exactly **one cutout at a time**.
+3. **Pipeline rules (from DOC-13 §9.5):** the model always works at its native 1024×1024 — photos are shrunk to it and the mask is scaled back up, never shown to the user. Originals stay untouched in assets/images/; the cutout and the mask editor's working copy come from a version capped at **4096 pixels on the long edge**.
+4. **Revised speed targets** (amending the "< 3 s" line in DOC-03 §5): reference machine (2020-era laptop CPU) **under 15 seconds** per automatic cutout; minimum-spec machines (8 GB, no GPU, i3-N305 class) **up to 45 seconds** is acceptable for v1 — always as a background queue with visible status and cancellation, never blocking the app (measured on the dev laptop: ≈33–38 s).
+5. **Memory:** worker session settings per DOC-13 §10; the worker's peak memory and model-residency policy are recorded there and enforced by the segmentation check.
+6. **DirectML is out of scope for Phase 3** (OQ-022): a possible later accelerator for machines with ≥16 GB, detected at runtime, never the baseline — it fails with out-of-memory on 8 GB minimum-spec machines (DOC-13 §9.3).
+
+**Rejected:** fp16 on CPU (measured unusable). Building an int8 quantization pipeline for v1 (no pre-built file exists; would add a Python toolchain). DirectML as baseline (fails on minimum spec). WASM build and lighter models (ruled out by Alek — the security problem WASM solves does not exist, and cutout quality is the product).
+
+**Consequences:** Bundled models grow to ≈1.2 GB (installer near-term; OQ-023 asks whether the HD model should instead download on first use — Alek decides later). The HD option in the mask editor carries a plain warning that it can take a few minutes on a small laptop. The segmentation check budget grows `npm run check` by roughly one model load plus one lite inference.
