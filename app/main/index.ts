@@ -1,5 +1,6 @@
 import { join } from 'node:path';
-import { BrowserWindow, app } from 'electron';
+import { BrowserWindow, app, session } from 'electron';
+import { isRequestAllowed } from './networkPolicy';
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -29,6 +30,14 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  // Block all network traffic except the approved list (empty today) and,
+  // in development, the Vite server that serves the UI (ADR-015).
+  const devServerOrigin = process.env['ELECTRON_RENDERER_URL'];
+  session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
+    const allowed = isRequestAllowed(details.url, devServerOrigin);
+    if (!allowed) console.warn(`Blocked unexpected network request: ${details.url}`);
+    callback({ cancel: !allowed });
+  });
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
