@@ -9,7 +9,8 @@
 ## 1. Where we are right now
 
 **Phase 1 — Scaffold: USABLE.** The app opens to the Home screen on Windows; projects can be created, saved, and reopened; the document format, undo/redo engine, provider fakes, and five automated checks exist and pass. Still open within Phase 1 scope: autosave, and wiring undo/redo into the UI (both arrive naturally with the editor phases). ADR-006 is Accepted; DOC-03 is Active.
-**Next action:** Alek tries the app (see the session report / DOC-05 M-1.2). Then Phase 2: the week-one export prototype (OQ-019).
+**Verified by Alek (CL-0017):** all Phase 1 manual tests passed.
+**Next action:** Phase 2, the week-one export prototype (OQ-019). Kickoff: open Claude Code (Fable) and paste: "Read CLAUDE.md and DOC-10, then continue Phase 2: the export prototype."
 **Watch out:** OQ-020 — Windows Smart App Control blocks unsigned native Node modules on the dev laptop; check onnxruntime-node before Phase 3 work begins.
 
 ## 2. Build order and phase status
