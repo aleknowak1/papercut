@@ -1,16 +1,16 @@
 # DOC-10 — Project Tracker
 
 **Status:** Active
-**Last updated:** 2026-09-02
+**Last updated:** 2026-09-02 (Phase 1 usable)
 **Purpose:** The one page to read when returning to the project. Where we are, what is done, what is next, and what is waiting on Alek. Updated with every change-log entry (DOC-04).
 
 ---
 
 ## 1. Where we are right now
 
-**Phase 0 — Foundation: COMPLETE.** All pre-build decisions are made and documented.
-**Next action:** Alek opens Claude Code in the repo folder, selects Fable, and pastes the Phase 1 prompt from the Cowork session (also in DOC-11 Appendix B). Repo and GitHub are set up.
-**Waiting on Alek:** run the Phase 1 prompt. See §5 for items due later.
+**Phase 1 — Scaffold: USABLE.** The app opens to the Home screen on Windows; projects can be created, saved, and reopened; the document format, undo/redo engine, provider fakes, and five automated checks exist and pass. Still open within Phase 1 scope: autosave, and wiring undo/redo into the UI (both arrive naturally with the editor phases). ADR-006 is Accepted; DOC-03 is Active.
+**Next action:** Alek tries the app (see the session report / DOC-05 M-1.2). Then Phase 2: the week-one export prototype (OQ-019).
+**Watch out:** OQ-020 — Windows Smart App Control blocks unsigned native Node modules on the dev laptop; check onnxruntime-node before Phase 3 work begins.
 
 ## 2. Build order and phase status
 
@@ -19,7 +19,7 @@ Phases run in this order; a phase does not start until the previous one is usabl
 | # | Phase | What "complete" means | Status | Model |
 |---|-------|-----------------------|--------|-------|
 | 0 | **Foundation** | Docs 00–10 written; every pre-build decision recorded as an ADR | **Complete** | Fable |
-| 1 | **Scaffold** | Empty Electron/TypeScript/React app opens to the Home screen on Windows; project document format defined; undo/redo; check suite running (save/reopen, undo, license, network, AI-spend guard) | Not started | Fable |
+| 1 | **Scaffold** | Empty Electron/TypeScript/React app opens to the Home screen on Windows; project document format defined; undo/redo; check suite running (save/reopen, undo, license, network, AI-spend guard) | **Usable** | Fable |
 | 2 | **Export prototype** (OQ-019) | Ten-second test project exports to .mp4 using Windows' built-in encoders with correct duration, resolution, audio sync | Not started | Fable |
 | 3 | **Assets and cutouts** | Import images/audio; BiRefNet_lite auto-cutout; HD cutout; mask editor; HEIC handling | Not started | Fable → Opus |
 | 4 | **Scene and layers** | Background, character/prop layers, ordering, opacity, lock/hide, placing and sizing on canvas | Not started | Opus |
@@ -42,9 +42,9 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 | Feature | Phase | State | Manual |
 |---------|-------|-------|--------|
 | Sign up / sign in / subscription / acceptable-use agreement | 10 | ☐ | M-1.1b |
-| Create/open/save project, autosave, project folder | 1 | ☐ | M-1.2, M-9.3 |
-| Format choice (9:16, 16:9, 1:1) and save location | 1 | ☐ | M-1.2 |
-| Undo / redo | 1 | ☐ | M-1.3 |
+| Create/open/save project, autosave, project folder | 1 | ◐ (autosave pending) | M-1.2, M-9.3 |
+| Format choice (9:16, 16:9, 1:1) and save location | 1 | ☑ | M-1.2 |
+| Undo / redo | 1 | ◐ (engine + checks; UI wiring comes with the editor) | M-1.3 |
 | Image import (JPG, PNG, WebP; HEIC via Windows) | 3 | ☐ | M-2.2, M-9.2 |
 | Audio import (MP3, WAV, M4A, OGG) | 3 | ☐ | M-2.6 |
 | Automatic cutout (BiRefNet_lite) | 3 | ☐ | M-2.3 |
@@ -78,19 +78,21 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 
 | Check | Exists | Passing |
 |-------|--------|---------|
-| Save / reopen | ☐ | — |
-| Undo | ☐ | — |
-| Render snapshots | ☐ | — |
-| Export | ☐ | — |
-| No unexpected network | ☐ | — |
-| License allow-list | ☐ | — |
-| AI-spend guard | ☐ | — |
+| Save / reopen | ☑ | ✅ |
+| Undo | ☑ | ✅ |
+| Render snapshots | ☐ (Phase 2+) | — |
+| Export | ☐ (Phase 2+) | — |
+| No unexpected network | ☑ | ✅ |
+| License allow-list | ☑ | ✅ |
+| AI-spend guard | ☑ | ✅ |
+
+Run everything with one command: `npm run check` (28 tests + licenses today).
 
 ## 5. Waiting on Alek
 
 | Item | Needed by | Ref |
 |------|-----------|-----|
-| Run the Phase 1 prompt in Claude Code (Fable) | Now | DOC-11 Appendix B |
+| Open the app (`npm run dev`) and try creating/reopening a project | Now | DOC-05 M-1.2 |
 | Create an OpenAI account, generate a key, set a small monthly hard cap, keep the key private | Phase 11 (not before) | DOC-09 §5 |
 | Choose merchant of record after Claude's comparison | Phase 10 | OQ-018 |
 | Choose server host after Claude's proposal | Phase 10 | OQ-011 |

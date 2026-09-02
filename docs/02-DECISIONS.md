@@ -78,7 +78,7 @@ Each entry records one decision: what was decided, why, what was rejected, and w
 
 ## ADR-006 — Technical stack
 
-**Date:** 2026-09-02 · **Status:** Proposed (awaiting Alek's approval)
+**Date:** 2026-09-02 · **Status:** Accepted (approved by Alek at Phase 1 start, 2026-09-02; closes OQ-006)
 
 **Decision:**
 

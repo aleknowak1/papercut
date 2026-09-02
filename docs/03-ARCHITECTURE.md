@@ -1,6 +1,6 @@
 # DOC-03 — Architecture
 
-**Status:** Draft (becomes Active when ADR-006 is approved)
+**Status:** Active (ADR-006 accepted 2026-09-02)
 **Revised:** 2026-09-02 for ADR-008 to ADR-011 (company server, cloud TTS, agent in v1)
 **Last updated:** 2026-09-02
 **Related:** ADR-001, ADR-002, ADR-005, ADR-006, ADR-008 to ADR-014

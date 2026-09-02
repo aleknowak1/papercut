@@ -12,7 +12,7 @@ https://github.com/aleknowak1/papercut.git
 
 ## Status
 
-Phase 0 (foundation) complete. Phase 1 (scaffold) starting. See `docs/10-PROJECT-TRACKER.md`.
+Phase 1 (scaffold) usable: the app opens to the Home screen, projects can be created and reopened, and the check suite (`npm run check`) is live. Phase 2 (export prototype) is next. See `docs/10-PROJECT-TRACKER.md`.
 
 ## Stack
 

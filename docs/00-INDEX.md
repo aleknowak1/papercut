@@ -18,7 +18,7 @@ This is the master index for all PAPERCUT project documentation. Every document 
 | DOC-00 | Index and Conventions (this file) | Map of all docs; rules for writing them | Active |
 | DOC-01 | Product Specification | What we are building, for whom, and what is in/out of each version | Active |
 | DOC-02 | Decision Log (ADRs) | Every significant decision, with reasoning, numbered ADR-001, ADR-002… | Active |
-| DOC-03 | Architecture | Technical design: app components, company server, data flow, file formats | Draft |
+| DOC-03 | Architecture | Technical design: app components, company server, data flow, file formats | Active |
 | DOC-04 | Change Log | Dated record of every change to software or docs | Active |
 | DOC-05 | User Manual | End-user instructions, grows alongside the software | Skeleton |
 | DOC-06 | Glossary | Definitions of every project-specific term | Active |

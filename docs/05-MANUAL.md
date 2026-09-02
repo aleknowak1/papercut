@@ -1,7 +1,7 @@
 # DOC-05 — User Manual
 
-**Status:** Skeleton (sections are filled in as each feature ships; a section is not written until its feature exists)
-**Last updated:** 2026-09-02
+**Status:** In progress (sections are filled in as each feature ships; a section is not written until its feature exists)
+**Last updated:** 2026-09-02 (M-1.2, M-9.3 written)
 
 Sections are numbered M-N.N and referenced from DOC-01 and DOC-04. Every feature listed in DOC-01 §5.1 must have a section here before v1.0 ships.
 
@@ -10,7 +10,34 @@ Sections are numbered M-N.N and referenced from DOC-01 and DOC-04. Every feature
 ## M-1 Getting started
 - M-1.1 Installing (Windows, macOS)
 - M-1.1b Creating your account and subscribing
-- M-1.2 The home screen: format, save location, naming your project
+
+### M-1.2 The home screen: format, save location, naming your project
+
+The home screen is the first thing you see. It does two jobs: start a new
+project, or open one you already have.
+
+**Starting a new project (left panel):**
+
+1. **Name** — type a name for your video. This becomes the project folder's
+   name (characters Windows does not allow in folder names are dropped).
+2. **Format** — pick the shape of your video:
+   - **9:16 vertical** for TikTok, Reels, and Shorts
+   - **16:9 widescreen** for YouTube
+   - **1:1 square** for feed posts
+   The format is fixed when the project is created.
+3. **Save location** — press **Choose…** and pick the folder where the
+   project should live (for example, Documents).
+4. Press **Create project**. The button stays grey until a name is typed and
+   a location chosen.
+
+**Opening an existing project (right panel):** press **Open a project
+folder…** and pick the folder whose name ends in `.papercut`, or click any
+project under **Recent** — the last ten you worked on are listed, newest
+first. Projects that were deleted or moved disappear from the list on their
+own.
+
+The app's version number is shown in the bottom-right corner.
+
 - M-1.3 A tour of the interface
 - M-1.4 Your first 10-second video (walkthrough)
 
@@ -67,7 +94,23 @@ Sections are numbered M-N.N and referenced from DOC-01 and DOC-04. Every feature
 ## M-9 Reference
 - M-9.1 Keyboard shortcuts
 - M-9.2 Supported file types
-- M-9.3 Project folder contents
+
+### M-9.3 Project folder contents
+
+Each project is one ordinary folder whose name ends in `.papercut`. Inside:
+
+| Item | What it is |
+|------|------------|
+| `project.json` | The whole project: scenes, layers, timing, dialogue. |
+| `assets/images/` | Your photos, exactly as imported. |
+| `assets/cutouts/` | Cut-out versions with transparent backgrounds. |
+| `assets/audio/` | Imported sounds and generated voice lines. |
+| `cache/` | Thumbnails and similar. Safe to delete; rebuilt as needed. |
+
+To back a project up or move it to another computer, copy the whole folder.
+Nothing outside the folder is needed. Saving is done atomically (written to
+a temporary file first, then swapped in), so a crash mid-save cannot damage
+the project.
 - M-9.4 Troubleshooting
 - M-9.5 Licenses and credits (bundled models, FFmpeg source, fonts, sound library sources)
 - M-9.6 AI-generated voices: what you need to know (disclosure, likeness, platform labels)
