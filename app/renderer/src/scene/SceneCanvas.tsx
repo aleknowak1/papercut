@@ -17,8 +17,10 @@
 import 'pixi.js/unsafe-eval';
 import { Container, Graphics, Texture, WebGLRenderer } from 'pixi.js';
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
-import { setKeyframe } from '../../../shared/document/edits';
+import { setKeyframe, setSceneBackground } from '../../../shared/document/edits';
 import type { Keyframe, ProjectDocument, Scene } from '../../../shared/document/types';
+import { addCharacterToScene, addPropToScene } from '../../../shared/scene/addToScene';
+import { readSceneDragData, SCENE_DRAG_TYPE } from './sceneDrag';
 import { sampleLayer } from '../../../shared/export/interpolate';
 import {
   canvasToReference,
@@ -511,6 +513,38 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
 
   const onPointerUp = (): void => endDrag(true);
 
+  // Dropping a panel row onto the canvas: a background photo becomes the
+  // scene's background; a cutout or character becomes a layer centred at
+  // the drop point — the same shared edits the buttons make, one undo
+  // step each.
+  const onDrop = (event: React.DragEvent): void => {
+    const data = readSceneDragData(event.dataTransfer);
+    if (data === undefined) return;
+    event.preventDefault();
+    if (data.kind === 'background') {
+      applyEdit((current) => setSceneBackground(current, scene.id, data.assetId));
+      return;
+    }
+    const fitNow = fitRef.current;
+    const canvas = canvasElRef.current;
+    if (fitNow === undefined || canvas === null) return;
+    const rect = canvas.getBoundingClientRect();
+    const at = canvasToReference(
+      { x: event.clientX - rect.left, y: event.clientY - rect.top },
+      fitNow
+    );
+    let layerId: string | undefined;
+    applyEdit((current) => {
+      const added =
+        data.kind === 'cutout'
+          ? addPropToScene(current, scene.id, data.assetId, at)
+          : addCharacterToScene(current, scene.id, data.characterId, at);
+      layerId = added?.layerId;
+      return added?.doc ?? current;
+    });
+    if (layerId !== undefined) onSelect(layerId);
+  };
+
   const empty = scene.backgroundAssetId === undefined && scene.layers.length === 0;
   return (
     <div
@@ -520,10 +554,18 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={() => endDrag(false)}
+      onDragOver={(event) => {
+        if (event.dataTransfer.types.includes(SCENE_DRAG_TYPE)) {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = 'copy';
+        }
+      }}
+      onDrop={onDrop}
     >
       {empty && (
         <p className="scene-canvas-hint">
-          The scene is empty — assign a background above, or add a layer on the right.
+          Import a background photo, then add characters and props — use the buttons on each row
+          in the Assets and Characters tabs, or drag a row here.
         </p>
       )}
       {loadError !== undefined && <p className="error scene-canvas-error">{loadError}</p>}

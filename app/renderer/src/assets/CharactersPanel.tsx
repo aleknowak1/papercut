@@ -5,7 +5,7 @@
 // step through the same applyEdit path as everything else.
 
 import { useEffect, useState, type JSX } from 'react';
-import type { Asset, Character, ProjectDocument } from '../../../shared/document/types';
+import type { Asset, Character, ProjectDocument, Scene } from '../../../shared/document/types';
 import {
   addCharacter,
   addPose,
@@ -15,6 +15,8 @@ import {
   renamePose,
   reorderPose
 } from '../../../shared/document/edits';
+import { addCharacterToScene } from '../../../shared/scene/addToScene';
+import { SCENE_DRAG_TYPE, type SceneDragData } from '../scene/sceneDrag';
 import type { ApplyEdit } from './AssetsPanel';
 import { Thumbnail } from './Thumbnail';
 
@@ -64,13 +66,17 @@ function cutoutLabel(cutout: Asset, doc: ProjectDocument): string {
 function CharacterCard({
   projectDir,
   doc,
+  scene,
   character,
-  applyEdit
+  applyEdit,
+  onLayerAdded
 }: {
   projectDir: string;
   doc: ProjectDocument;
+  scene?: Scene;
   character: Character;
   applyEdit: ApplyEdit;
+  onLayerAdded?: (layerId: string) => void;
 }): JSX.Element {
   const cutouts = doc.assets.filter((a) => a.type === 'cutout');
   const [chosenCutout, setChosenCutout] = useState('');
@@ -86,14 +92,42 @@ function CharacterCard({
     applyEdit((current) => addPose(current, character.id, pose));
   };
 
+  const dragData: SceneDragData = { kind: 'character', characterId: character.id };
   return (
-    <div className="character-card">
+    <div
+      className="character-card"
+      draggable={character.poses.length > 0}
+      title={character.poses.length > 0 ? 'Drag onto the scene canvas' : undefined}
+      onDragStart={(event) => {
+        if (character.poses.length === 0) return;
+        event.dataTransfer.setData(SCENE_DRAG_TYPE, JSON.stringify(dragData));
+        event.dataTransfer.effectAllowed = 'copy';
+      }}
+    >
       <div className="character-head">
         <NameInput
           value={character.name}
           ariaLabel={`Character name`}
           onCommit={(name) => applyEdit((current) => renameCharacter(current, character.id, name))}
         />
+        {character.poses.length > 0 && scene !== undefined && (
+          <button
+            type="button"
+            className="btn asset-cancel"
+            title="Add this character to the scene, showing its first pose (or drag the card onto the canvas)"
+            onClick={() => {
+              let layerId: string | undefined;
+              applyEdit((current) => {
+                const added = addCharacterToScene(current, scene.id, character.id);
+                layerId = added?.layerId;
+                return added?.doc ?? current;
+              });
+              if (layerId !== undefined) onLayerAdded?.(layerId);
+            }}
+          >
+            Add to scene
+          </button>
+        )}
         <button
           type="button"
           className="btn asset-cancel"
@@ -187,11 +221,16 @@ function CharacterCard({
 export function CharactersPanel({
   projectDir,
   document: doc,
-  applyEdit
+  scene,
+  applyEdit,
+  onLayerAdded
 }: {
   projectDir: string;
   document: ProjectDocument;
+  /** The scene the per-card "Add to scene" acts on (the current scene). */
+  scene?: Scene;
   applyEdit: ApplyEdit;
+  onLayerAdded?: (layerId: string) => void;
 }): JSX.Element {
   const hasCutouts = doc.assets.some((a) => a.type === 'cutout');
 
@@ -228,8 +267,10 @@ export function CharactersPanel({
             key={character.id}
             projectDir={projectDir}
             doc={doc}
+            scene={scene}
             character={character}
             applyEdit={applyEdit}
+            onLayerAdded={onLayerAdded}
           />
         ))
       )}

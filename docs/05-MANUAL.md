@@ -185,8 +185,14 @@ video, exactly as it will export, in your project's shape (9:16, 16:9 or
 1:1). The same drawing code renders the canvas and the final video, so
 what you see here is what you get.
 
-Above the canvas, choose a **Background** from any photo you imported as a
-background. **Fit** decides how it fills the frame:
+To give the scene a background, do any one of these:
+
+- press **Set as background** on the photo's row in the Assets tab,
+- **drag the photo's row onto the canvas**, or
+- pick it in the **Background** dropdown above the canvas.
+
+All three do exactly the same thing. **Fit**, next to the dropdown once a
+background is set, decides how the photo fills the frame:
 
 - **Cover** (the default) — the photo is enlarged until it fills the frame
   and the overflow is cropped evenly. Nothing is distorted; the edges of
@@ -204,9 +210,15 @@ panels as before, now behind two tabs to give the canvas room.
 The **Layers** panel on the right lists everything placed in the scene,
 **front-most at the top** — like sheets of paper seen from above.
 
-- **+ Character** adds a character (it shows its first pose). **+ Prop**
-  adds any cutout directly. A new layer lands in the middle of the frame,
-  sized to at most half its height, in front of everything.
+- To put something in the scene, press **Add to scene** on a cutout's row
+  (Assets tab) or on a character's card (Characters tab) — or **drag the
+  row onto the canvas** to place it right where you drop it. The Layers
+  panel's own **+ Character** / **+ Prop** buttons do the same. A new
+  layer lands in the middle of the frame (or at your drop point), sized
+  to at most half the frame height, in front of everything.
+- A character/prop photo's cutout takes a little while after import — its
+  row says "cutting out…" until it is ready, and only then does the
+  cutout appear with its Add to scene button.
 - **↑ / ↓** bring a layer forward or send it backward.
 - **◉ / ○ (hide)** — a hidden layer is not drawn at all, in the editor
   AND in the export. Use it to try a scene without something.
@@ -238,7 +250,8 @@ grabbing something behind them. Clicking empty space deselects.
 
 A locked layer ignores all of this until you unlock it. Where a layer
 stands now is where it stands at the start of the scene; making it move
-over time is the animation phase (M-4).
+over time is the animation phase (M-4). Dropping a row from the Assets or
+Characters tab onto the canvas places it exactly where you let go.
 
 ## M-4 Making things move
 - M-4.1 Keyframes explained in one page

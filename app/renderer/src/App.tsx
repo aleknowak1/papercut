@@ -346,14 +346,18 @@ function ProjectView({
               <AssetsPanel
                 projectDir={opened.projectDir}
                 document={doc}
+                scene={scene}
                 applyEdit={applyEdit}
                 onEditMask={setEditingMaskOf}
+                onLayerAdded={setSelectedLayerId}
               />
             ) : (
               <CharactersPanel
                 projectDir={opened.projectDir}
                 document={doc}
+                scene={scene}
                 applyEdit={applyEdit}
+                onLayerAdded={setSelectedLayerId}
               />
             )}
           </div>

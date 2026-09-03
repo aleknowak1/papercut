@@ -5,22 +5,16 @@
 // undo path; selection is UI state only — never saved, never undoable.
 
 import { useState, type JSX } from 'react';
-import { newId } from '../../../shared/document/create';
 import {
-  addLayer,
   removeLayer,
   reorderLayer,
   setKeyframe,
   setLayerHidden,
   setLayerLocked
 } from '../../../shared/document/edits';
-import type {
-  Asset,
-  Layer,
-  ProjectDocument,
-  Scene
-} from '../../../shared/document/types';
-import { defaultPlacementKeyframe, timeZeroKeyframe } from '../../../shared/scene/geometry';
+import type { ProjectDocument, Scene } from '../../../shared/document/types';
+import { addCharacterToScene, addPropToScene, cutoutLabel } from '../../../shared/scene/addToScene';
+import { timeZeroKeyframe } from '../../../shared/scene/geometry';
 
 type ApplyEdit = (edit: (current: ProjectDocument) => ProjectDocument) => void;
 
@@ -32,17 +26,6 @@ export interface LayersPanelProps {
   readonly onSelect: (layerId: string | undefined) => void;
   /** Live opacity slider preview (0..1), cleared when it commits. */
   readonly onOpacityPreview: (opacity: number | undefined) => void;
-}
-
-/** A readable label for a cutout: the photo it was cut from, if known. */
-function cutoutLabel(cutout: Asset, doc: ProjectDocument): string {
-  const source = doc.assets.find((a) => a.id === cutout.metadata.sourceAssetId);
-  const name = source?.metadata.originalFileName ?? cutout.file.split('/').pop() ?? cutout.id;
-  return cutout.metadata.model === 'hd' ? `${name} (HD)` : name;
-}
-
-function assetSize(asset: Asset | undefined): { width: number; height: number } {
-  return { width: asset?.metadata.width ?? 0, height: asset?.metadata.height ?? 0 };
 }
 
 export function LayersPanel(props: LayersPanelProps): JSX.Element {
@@ -59,30 +42,28 @@ export function LayersPanel(props: LayersPanelProps): JSX.Element {
 
   const addCharacterLayer = (): void => {
     const character = characters.find((c) => c.id === chosenCharacter) ?? characters[0];
-    const pose = character?.poses[0];
-    if (character === undefined || pose === undefined) return;
-    const cutout = doc.assets.find((a) => a.id === pose.cutoutAssetId);
-    const layer: Layer = {
-      id: newId(),
-      name: character.name,
-      source: { kind: 'character', characterId: character.id },
-      keyframes: [defaultPlacementKeyframe(assetSize(cutout), doc.format, pose.id)]
-    };
-    applyEdit((current) => addLayer(current, scene.id, layer));
-    onSelect(layer.id);
+    if (character === undefined) return;
+    // The panel button and the per-row/canvas-drop paths share this code,
+    // so every road into the scene produces the same document.
+    let layerId: string | undefined;
+    applyEdit((current) => {
+      const added = addCharacterToScene(current, scene.id, character.id);
+      layerId = added?.layerId;
+      return added?.doc ?? current;
+    });
+    if (layerId !== undefined) onSelect(layerId);
   };
 
   const addPropLayer = (): void => {
     const cutout = cutouts.find((c) => c.id === chosenCutout) ?? cutouts[0];
     if (cutout === undefined) return;
-    const layer: Layer = {
-      id: newId(),
-      name: cutoutLabel(cutout, doc),
-      source: { kind: 'prop', assetId: cutout.id },
-      keyframes: [defaultPlacementKeyframe(assetSize(cutout), doc.format)]
-    };
-    applyEdit((current) => addLayer(current, scene.id, layer));
-    onSelect(layer.id);
+    let layerId: string | undefined;
+    applyEdit((current) => {
+      const added = addPropToScene(current, scene.id, cutout.id);
+      layerId = added?.layerId;
+      return added?.doc ?? current;
+    });
+    if (layerId !== undefined) onSelect(layerId);
   };
 
   const commitOpacity = (opacity: number): void => {
@@ -111,57 +92,58 @@ export function LayersPanel(props: LayersPanelProps): JSX.Element {
     <section className="panel layers-panel" aria-label="Layers">
       <h2>Layers</h2>
 
-      <div className="pose-add-row">
-        <select
-          className="pose-select"
-          aria-label="Character to add as a layer"
-          value={chosenCharacter === '' && characters.length > 0 ? (characters[0]?.id ?? '') : chosenCharacter}
-          onChange={(event) => setChosenCharacter(event.target.value)}
-          disabled={characters.length === 0}
-        >
-          {characters.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          className="btn"
-          disabled={characters.length === 0}
-          title="Add this character to the scene (showing its first pose)"
-          onClick={addCharacterLayer}
-        >
-          + Character
-        </button>
-      </div>
-      <div className="pose-add-row">
-        <select
-          className="pose-select"
-          aria-label="Cutout to add as a prop layer"
-          value={chosenCutout === '' && cutouts.length > 0 ? (cutouts[0]?.id ?? '') : chosenCutout}
-          onChange={(event) => setChosenCutout(event.target.value)}
-          disabled={cutouts.length === 0}
-        >
-          {cutouts.map((cutout) => (
-            <option key={cutout.id} value={cutout.id}>
-              {cutoutLabel(cutout, doc)}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          className="btn"
-          disabled={cutouts.length === 0}
-          title="Add this cutout to the scene as a prop"
-          onClick={addPropLayer}
-        >
-          + Prop
-        </button>
-      </div>
-      {characters.length === 0 && cutouts.length === 0 && (
+      {characters.length > 0 && (
+        <div className="pose-add-row">
+          <select
+            className="pose-select"
+            aria-label="Character to add as a layer"
+            value={chosenCharacter === '' ? (characters[0]?.id ?? '') : chosenCharacter}
+            onChange={(event) => setChosenCharacter(event.target.value)}
+          >
+            {characters.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn"
+            title="Add this character to the scene (showing its first pose)"
+            onClick={addCharacterLayer}
+          >
+            + Character
+          </button>
+        </div>
+      )}
+      {cutouts.length > 0 && (
+        <div className="pose-add-row">
+          <select
+            className="pose-select"
+            aria-label="Cutout to add as a prop layer"
+            value={chosenCutout === '' ? (cutouts[0]?.id ?? '') : chosenCutout}
+            onChange={(event) => setChosenCutout(event.target.value)}
+          >
+            {cutouts.map((cutout) => (
+              <option key={cutout.id} value={cutout.id}>
+                {cutoutLabel(cutout, doc)}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn"
+            title="Add this cutout to the scene as a prop"
+            onClick={addPropLayer}
+          >
+            + Prop
+          </button>
+        </div>
+      )}
+      {cutouts.length === 0 && (
         <p className="assets-hint">
-          Layers come from cutouts — import a character or prop photo in the Assets tab first.
+          Layers come from cutouts — import a character or prop photo in the Assets tab, and its
+          cutout appears here when ready.
         </p>
       )}
 

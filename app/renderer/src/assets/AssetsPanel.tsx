@@ -6,9 +6,11 @@
 // can be cancelled).
 
 import { useEffect, useRef, useState, type JSX } from 'react';
-import type { Asset, ProjectDocument } from '../../../shared/document/types';
+import type { Asset, ProjectDocument, Scene } from '../../../shared/document/types';
 import type { SegmentationJobUpdate } from '../../../shared/segmentation/types';
-import { addAsset } from '../../../shared/document/edits';
+import { addAsset, setSceneBackground } from '../../../shared/document/edits';
+import { addPropToScene } from '../../../shared/scene/addToScene';
+import { SCENE_DRAG_TYPE, type SceneDragData } from '../scene/sceneDrag';
 import { Thumbnail } from './Thumbnail';
 import { formatDuration, importOneAudio, isAudioPath } from './importAudio';
 import { importOneImage, workingCopyRgba, type ImportRole } from './importImages';
@@ -66,13 +68,18 @@ const STATUS_LABEL: Record<SegmentationJobUpdate['status'], string> = {
 export function AssetsPanel({
   projectDir,
   document: doc,
+  scene,
   applyEdit,
-  onEditMask
+  onEditMask,
+  onLayerAdded
 }: {
   projectDir: string;
   document: ProjectDocument;
+  /** The scene the per-row actions act on (the current scene). */
+  scene?: Scene;
   applyEdit: ApplyEdit;
   onEditMask?: (assetId: string) => void;
+  onLayerAdded?: (layerId: string) => void;
 }): JSX.Element {
   const [messages, setMessages] = useState<readonly string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -156,7 +163,13 @@ export function AssetsPanel({
   };
 
   const importByButton = (role: ImportRole): void => {
-    void window.papercut.chooseImportImages().then((paths) => {
+    // In development a test driver may stand in for the native file
+    // dialog, which automation cannot click; never in packaged builds.
+    const choose =
+      import.meta.env.DEV && window.__papercutDevChooseImages !== undefined
+        ? window.__papercutDevChooseImages
+        : window.papercut.chooseImportImages;
+    void choose().then((paths) => {
       if (paths.length > 0) return importBatch(paths, role);
       return undefined;
     });
@@ -275,8 +288,24 @@ export function AssetsPanel({
                 : asset.metadata.width !== undefined && asset.metadata.height !== undefined
                   ? `${asset.metadata.width}×${asset.metadata.height}`
                   : '';
+            const dragData: SceneDragData | undefined =
+              asset.type === 'cutout'
+                ? { kind: 'cutout', assetId: asset.id }
+                : asset.type === 'image' && asset.metadata.role === 'background'
+                  ? { kind: 'background', assetId: asset.id }
+                  : undefined;
             return (
-              <li key={asset.id} className="asset-row">
+              <li
+                key={asset.id}
+                className="asset-row"
+                draggable={dragData !== undefined}
+                title={dragData !== undefined ? 'Drag onto the scene canvas' : undefined}
+                onDragStart={(event) => {
+                  if (dragData === undefined) return;
+                  event.dataTransfer.setData(SCENE_DRAG_TYPE, JSON.stringify(dragData));
+                  event.dataTransfer.effectAllowed = 'copy';
+                }}
+              >
                 {asset.type === 'audio' ? (
                   <span className="asset-thumb asset-thumb-audio" aria-hidden="true">
                     ♪
@@ -307,6 +336,37 @@ export function AssetsPanel({
                   </button>
                 )}
                 {asset.type === 'audio' && <PlayButton projectDir={projectDir} asset={asset} />}
+                {asset.type === 'image' && asset.metadata.role === 'background' && scene !== undefined && (
+                  <button
+                    type="button"
+                    className="btn asset-cancel"
+                    aria-pressed={scene.backgroundAssetId === asset.id}
+                    title="Make this photo the scene's background (or drag it onto the canvas)"
+                    onClick={() =>
+                      applyEdit((current) => setSceneBackground(current, scene.id, asset.id))
+                    }
+                  >
+                    {scene.backgroundAssetId === asset.id ? '✓ Background' : 'Set as background'}
+                  </button>
+                )}
+                {asset.type === 'cutout' && scene !== undefined && (
+                  <button
+                    type="button"
+                    className="btn asset-cancel"
+                    title="Add this cutout to the scene as a prop layer (or drag it onto the canvas)"
+                    onClick={() => {
+                      let layerId: string | undefined;
+                      applyEdit((current) => {
+                        const added = addPropToScene(current, scene.id, asset.id);
+                        layerId = added?.layerId;
+                        return added?.doc ?? current;
+                      });
+                      if (layerId !== undefined) onLayerAdded?.(layerId);
+                    }}
+                  >
+                    Add to scene
+                  </button>
+                )}
                 {asset.type === 'cutout' && onEditMask && (
                   <button
                     type="button"
