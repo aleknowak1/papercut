@@ -1,7 +1,7 @@
 # DOC-11 — Development Workflow
 
 **Status:** Active
-**Last updated:** 2026-09-02 (Appendix E: Phase 4 kickoff prompt)
+**Last updated:** 2026-09-03 (Appendix F: Phase 5 kickoff prompt and Alek's decisions a–k)
 **Purpose:** How Alek and Claude build PAPERCUT day to day. Tools, session rhythm, roles, and the standing files that keep every session on track.
 
 ---
@@ -550,3 +550,236 @@ h. A canvas drag moves only the sprite while the mouse is down and makes
 i. Two optional fields on Layer (hidden, locked) and one on Scene
    (backgroundFit); update DOC-03 §3 in the same commit. Existing
    project.json files must load unchanged.
+
+## Appendix F — Phase 5 kickoff prompt (paste into Claude Code)
+
+Model: Fable for the foundations (verification record, animation engine, time strip and keyframe-at-playhead model, camera inside the renderer, render-snapshot check), then Opus for the contained feature work (DOC-10 §2); Alek may keep Fable throughout as in Phases 3–4. Plan first — Phase 5 introduces the animation engine every later phase (timeline, agent, export) renders through, and the render-snapshot check from ADR-015. Alek approved decisions a–k (addendum below) in the planning session; the prompt hands them over so they are not re-asked.
+
+```
+You are working in the PAPERCUT repository at:
+C:\Users\Alek\Documents\Claude Code Projects\papercut
+GitHub remote (origin): https://github.com/aleknowak1/papercut.git
+
+Read CLAUDE.md in the repository root first. Then read, in this order:
+docs/10-PROJECT-TRACKER.md (where we are), docs/02-DECISIONS.md (ADR-001,
+ADR-006, ADR-011 and ADR-015 in particular), docs/03-ARCHITECTURE.md
+(sections 1, 3 and 5), docs/01-PRODUCT-SPEC.md (section 5.1, the
+Animation and Camera rows), docs/04-CHANGELOG.md CL-0037 to CL-0042 (what
+Phase 4 actually built and how its sessions were run), docs/11-WORKFLOW.md
+(Appendix E and its addendum show how Phase 4 was run; Appendix F is this
+prompt and its addendum holds the decisions already made), docs/05-MANUAL.md
+(M-3 as written, and the M-4.1 to M-4.6 headings you will fill in), and the
+code Phase 5 builds on: app/shared/document/types.ts (Keyframe and
+CameraKeyframe already exist), app/shared/document/edits.ts (setKeyframe,
+removeKeyframe), app/shared/export/interpolate.ts (sampleLayer — easing is
+stored but rendered linear today), app/shared/scene/geometry.ts
+(timeZeroKeyframe and the reference space), app/renderer/src/scene/
+sceneStage.ts (the ONE drawing path shared by canvas and export),
+app/renderer/src/scene/SceneCanvas.tsx (selection, drag, one-undo-step
+commits), app/renderer/src/export/frameSource.ts, and
+app/renderer/src/dev/checkRunner.ts with scripts/check-export.mjs (how a
+check runs inside the hidden Electron window).
+
+Phases 0-4 are Complete. Alek verified Phase 4 and 4b by hand on
+2026-09-03: background cover and stretch; adding cutouts and characters by
+row button and by drag-and-drop onto the canvas; moving and resizing on
+the canvas; drags as one undo step; Escape cancelling a drag; order, hide,
+lock, opacity and flip; save and reopen. All worked. THIS IS NOT YET IN THE
+CHANGE LOG. Your first commit, before any Phase 5 work: record it as the
+next CL entry in docs/04-CHANGELOG.md (area "Verification", as CL-0034 did
+for Phase 3), set Phase 4 to Complete in DOC-10 §2 and §1, remove the
+Phase 4 try-out row from DOC-10 §5, and push.
+
+The app today: Home screen; project document with undo/redo and auto-save;
+Assets and Characters tabs; automatic cutouts in a background queue; the
+mask editor; the three-column editor with the PixiJS scene canvas drawn by
+sceneStage (the same code the export renders through); a Layers panel with
+order/hide/lock/opacity/flip; placing and sizing on the canvas, where every
+placement edit rewrites the layer's time-0 keyframe in place. Scenes are a
+fixed 5 seconds with no way to change it. Nothing moves yet.
+
+We are starting Phase 5: Animation (DOC-10 §2 row 5, DOC-01 §5.1 Animation
+and Camera rows):
+
+1. The animation engine, pure and shared. A new app/shared/animation/
+   folder: easing.ts (the four curves — linear, ease-in, ease-out,
+   ease-in-out — as plain functions of 0..1), interpolate.ts (moved from
+   app/shared/export/, now applying the easing recorded on the keyframe a
+   segment starts from; flip and pose stay step values), presets.ts (bob,
+   walk, shake, pop as functions returning ordinary keyframes), camera.ts
+   (the camera at time t as a transform, from Scene.cameraKeyframes; no
+   camera keyframes means centred at zoom 1), and time.ts (the one
+   function that turns a frame number into seconds and back, so "a
+   keyframe at exactly the playhead" is exact equality, never a rounding
+   error). Everything here is arithmetic covered by vitest tests. The
+   canvas and export both consume it only through sceneStage, so what the
+   user sees is what exports, structurally, as in Phase 4 (ADR-006/013).
+   The camera is applied INSIDE sceneStage (the whole picture scaled and
+   shifted so the camera's x/y sits at the frame centre), so export gets it
+   with no extra code.
+
+2. The time strip: a single thin row under the canvas — play/pause
+   (Space), a scrubber from 0 to the scene duration, a time and frame
+   readout, frame step (, and .), Prev/Next keyframe of the selected layer,
+   a scene Duration field (1-120 s, through the existing setSceneDuration
+   edit), and tick marks on the scrubber where the selected layer's
+   keyframes sit. Play is a preview only: it calls sceneStage.update(t)
+   every animation frame, writes nothing to the document, and stops at the
+   scene end. The playhead is UI state — not saved, not undoable — like
+   selection. No tracks, no dragging keyframes on the strip, no snap or
+   zoom: that is Phase 6.
+
+3. Keyframe authoring: the time-0 placement becomes "the keyframe at the
+   playhead". Replace timeZeroKeyframe(layer) with keyframeAtPlayhead(
+   layer, t): if the layer has a keyframe at exactly t, every canvas and
+   inspector edit rewrites it in place, exactly as today; if not, the edit
+   creates one at t seeded from how the layer looks at t (sampleLayer), so
+   properties the edit did not touch keep their motion. With the playhead
+   at 0 the app behaves exactly as it does now. The Layers panel's
+   inspector for the selected layer grows X, Y, Scale, Rotation, Opacity
+   fields, an Easing dropdown (the motion leaving this keyframe), a Pose
+   dropdown for character layers, and Delete keyframe (removeKeyframe;
+   the last keyframe cannot be deleted). Rotation also gets an on-canvas
+   rotate handle above the selection box, committing once on release like
+   a corner handle, Escape cancelling. Every edit stays one undo step
+   through applyEdit.
+
+4. Motion presets (M-4.4). For the selected layer, from the playhead:
+   choose Bob, Walk, Shake or Pop, set two or three plain fields (duration
+   — default to the scene end —, amount; Walk also a destination clicked
+   on the canvas), press Apply. The preset BAKES ordinary keyframes into
+   the layer in ONE undo step (one new edit function applying many
+   keyframes); afterwards they are just keyframes. Preset keyframes are
+   added on top of the layer's existing ones, replacing only same-time
+   ones; values a preset does not drive are taken from the layer's motion
+   at that time. Walk moves to the destination with a bob and a facing
+   flip; Pop is scale 0 -> 1.15 -> 1 with a fade-in, ease-out. Presets are
+   ordinary keyframes on purpose: the agent (Phase 12) only ever emits
+   ordinary edits (ADR-011).
+
+5. Pose swapping over time (M-4.5): the Pose dropdown at the playhead sets
+   poseId on the keyframe there (rule 3); a pose holds until the next
+   keyframe that names one. sceneStage already swaps textures.
+
+6. Camera pan and zoom (M-4.6): a Camera button on the toolbar switches
+   the canvas to camera mode — dragging pans, the wheel or a slider zooms,
+   X/Y/Zoom fields in the inspector; each edit sets the camera keyframe at
+   the playhead (same rule as layers, via new setCameraKeyframe /
+   removeCameraKeyframe edits). Zoom is >= 1 and the view is clamped
+   inside the frame (a pure function, checked), so a camera move never
+   shows black edges. Picking, selection outlines and handles map through
+   the camera transform (extend geometry.ts; checked as arithmetic).
+
+7. The render-snapshot check (ADR-015), with nothing downloaded. A fixture
+   project generated in code under tests/fixtures (the existing PNG writer:
+   shapes with transparency, a gradient background, a two-pose "character")
+   and a fixed list of about twelve named moments: static, mid-easing for
+   each curve, rotation + flip, opacity, a pose swap, camera zoom + pan, one
+   per motion preset. Each renders through the REAL sceneStage inside the
+   hidden Electron window the export check already boots (as the audio
+   fixture check rides in it — no second app start) at 480x270, is saved as
+   PNG with our own encoder, and is compared to the approved references
+   committed under tests/snapshots/. Tolerance: exact match with a small
+   documented allowance for anti-aliased edges — at most 0.5 % of pixels
+   differing by more than 8/255 per channel — so a GPU driver update does
+   not fail the check while any real change does. On a mismatch the check
+   FAILS and leaves tests/output/snapshots/ with expected, actual and diff
+   images plus one contact sheet, and says exactly what to open; approving
+   is one command, `npm run snapshots:approve`, which copies actual over
+   reference for Alek to commit. First-time references are written
+   automatically and listed in the session report for Alek to look at;
+   every later change fails until approved. A green run leaves
+   tests/output/ empty.
+
+8. Other checks (ADR-015), all part of `npm run check`: easing curves hit
+   known values; interpolation with easing at known times; presets produce
+   the expected keyframes and one undo removes them all; keyframeAtPlayhead
+   edits in place at an existing time and creates seeded keyframes
+   otherwise; frame/second conversion is exact both ways; camera clamping
+   and the camera-aware picking geometry as arithmetic; camera and
+   keyframe edits round-trip save/reopen and undo; existing project.json
+   files still load unchanged; the production-build scan finds no fixture
+   or snapshot code shipping. Existing checks stay green. Tell me in the
+   plan what `npm run check` will cost afterwards (86 s now; keep it
+   around two minutes — the snapshot frames should add only a few seconds
+   since they share the hidden window).
+
+9. Manual sections M-4.1 to M-4.6 as each feature becomes usable, in the
+   voice of M-3; DOC-10 §2/§3/§4 rows updated in the same commits.
+
+10. Hand-off from Fable to Opus (DOC-10 §2 "Fable for keyframe engine ->
+    Opus"). You (Fable) do the verification commit, steps 1, 2, 3, the
+    camera inside sceneStage and its geometry (the renderer half of 6),
+    and step 7 with its first references — the foundations. Steps 4, 5,
+    the camera authoring UI (the editor half of 6), the rotate handle, and
+    step 9 are contained feature work for Opus. When the foundations are
+    usable and green, commit, push, and end the session with a written
+    hand-off in DOC-10 §1 "Next action" plus a one-line prompt for the Opus
+    session in the DOC-11 §4 step 2 form ("Read CLAUDE.md and DOC-10, then
+    continue Phase 5: <task>"). Make the boundary clear in the plan; I may
+    move it, or keep Fable throughout as in Phases 3 and 4. DOC-11 §6 allows
+    parallel builders from Phase 4 for independent features — if the plan
+    proposes any, name the boundaries (never two agents on one file);
+    otherwise build alone, one feature at a time. At the END of Phase 5,
+    DOC-11 §6 calls for a reviewer agent: a fresh agent that has not seen
+    the code audits app/shared/animation and sceneStage against DOC-02 and
+    DOC-03 and lists deviations; fix what it finds before closing the
+    phase.
+
+Do not write code yet (after the verification commit). First produce a
+plan for my approval: the module layout, the time strip's exact controls,
+how keyframeAtPlayhead replaces timeZeroKeyframe everywhere it is used,
+how the camera transform goes through sceneStage and the picking geometry,
+how the snapshot check rides in the hidden window and how its approve
+command works, the decisions you are making within the ADRs, what exactly
+is out of scope, and any questions for me. Decisions a-k below are already
+made; do not re-ask them.
+
+Out of scope for Phase 5: the multi-track timeline (tracks, dragging
+keyframes, snap, timeline zoom — Phase 6), audio playback during preview
+and audio clips (Phase 6), transitions (7), text (8), the talking
+indicator (11), the export screen (9), per-property keyframe tracks
+(keyframes stay whole-vector as DOC-03 §3 defines them), any bezier or
+curve editor, and extra easing curves (bounce and overshoot wait for 1.x,
+DOC-01 §5.2). No paid AI calls (DOC-09). No new npm dependencies without
+a DOC-08 row first. No saved-format change: Keyframe and CameraKeyframe
+already hold everything Phase 5 needs, and existing project.json files
+must load unchanged (the existing check proves it). Every check cleans up
+tests/output/ on success. Update docs/04-CHANGELOG.md,
+docs/10-PROJECT-TRACKER.md and docs/05-MANUAL.md in the same commit as
+the code, commit and push after each usable step, and end each session
+with the report described in CLAUDE.md (what changed, which checks pass,
+exactly what I should open and try — for the first session: scrub, play,
+make one layer move between two keyframes, and look at the first snapshot
+references — and what is next). This kickoff prompt is already archived
+as docs/11-WORKFLOW.md Appendix F (CL-0042); do not add it again.
+```
+
+### Appendix F addendum — Alek's Phase 5 decisions (given with the kickoff; apply, do not re-ask)
+
+a. Keyframe creation is automatic: any canvas or inspector edit at a time
+   where the layer has no keyframe creates one at the playhead, seeded
+   from the layer's motion at that time. An edit at an existing keyframe's
+   time rewrites it in place. There is no separate "Add keyframe" button.
+b. The playhead and every keyframe time snap to whole frames (1/fps),
+   computed by one shared function, so equality of times is exact.
+c. Easing stays the four existing presets (linear, ease-in, ease-out,
+   ease-in-out). Bounce and overshoot wait for 1.x.
+d. Motion presets bake into ordinary keyframes in one undo step. No
+   separate "modifier" concept in the document.
+e. Preset keyframes are added on top of the layer's existing keyframes
+   from the playhead to the chosen end, replacing only same-time ones;
+   values the preset does not drive come from the layer's motion at that
+   time. The range is not cleared first.
+f. Rotation: a number field in the inspector and an on-canvas rotate
+   handle above the selection box; one undo step per drag, Escape cancels.
+g. Camera zoom is >= 1 and the view is clamped inside the frame; a camera
+   move never shows black edges.
+h. Snapshot tolerance: exact match with a small documented allowance —
+   at most 0.5 % of pixels differing by more than 8/255 per channel.
+i. First-time snapshot references are written automatically and listed
+   in the session report for Alek to look at; every later change fails the
+   check until Alek approves it with `npm run snapshots:approve`.
+j. Model: Fable for the foundations, Opus for the contained feature work,
+   at the boundary in step 10; Alek may keep Fable throughout.
+k. A scene Duration field (1-120 s) lives on the time strip.
