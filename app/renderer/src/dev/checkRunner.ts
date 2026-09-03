@@ -107,14 +107,21 @@ export async function run(
       update('audio fixtures…');
       const { verifyAudioFixtures } = await import('./audioFixtureCheck');
       const audioFixtures = await verifyAudioFixtures();
+      // The render snapshots (Phase 5, ADR-015) ride here too: every named
+      // moment through the real sceneStage, compared to the approved
+      // references in tests/snapshots/.
+      const { runSnapshots } = await import('./snapshotRunner');
+      const snapshots = await runSnapshots(update);
       report({
         ok:
           summary.verification.problems.length === 0 &&
-          audioFixtures.every((f) => f.problem === undefined),
+          audioFixtures.every((f) => f.problem === undefined) &&
+          snapshots.ok,
         kind: 'check',
         projectDir: opened.projectDir,
         run: summary,
-        audioFixtures
+        audioFixtures,
+        snapshots: snapshots.summary
       });
       return;
     }

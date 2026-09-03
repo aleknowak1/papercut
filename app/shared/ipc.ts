@@ -18,6 +18,22 @@ export interface OpenedProject {
   readonly document: ProjectDocument;
 }
 
+/** One rendered snapshot frame against its approved reference (dev only). */
+export interface SnapshotCompareResult {
+  readonly name: string;
+  /** 'new' = no reference existed; this frame was written as the first one. */
+  readonly status: 'match' | 'new' | 'mismatch';
+  /** Pixels off by more than the per-channel tolerance, and the total. */
+  readonly badPixels: number;
+  readonly totalPixels: number;
+}
+
+export interface SnapshotRunSummary {
+  readonly results: readonly SnapshotCompareResult[];
+  /** Where expected/actual/diff images were left — only on a mismatch. */
+  readonly outputDir?: string;
+}
+
 export interface PapercutApi {
   getVersion(): Promise<string>;
   /** Folder picker for where a new project will be created. Undefined = cancelled. */
@@ -118,6 +134,18 @@ export interface PapercutApi {
   ): Promise<OpenedProject>;
   /** Delivers the export check's result to the main process, which prints it and exits. */
   devReportExportCheck(payloadJson: string): void;
+  /**
+   * Compares one rendered snapshot frame against its approved reference in
+   * tests/snapshots/ (writing it as the new reference when none exists yet).
+   */
+  devCompareSnapshot(
+    name: string,
+    width: number,
+    height: number,
+    rgba: Uint8Array
+  ): Promise<SnapshotCompareResult>;
+  /** Ends a snapshot run: writes the contact sheet for any mismatches and returns the summary. */
+  devFinishSnapshots(): Promise<SnapshotRunSummary>;
 
   /** Appends one line to logs/startup.log in the user-data folder (CL-0022 diagnostics). */
   logStartup(message: string): void;
@@ -146,5 +174,7 @@ export const IPC_CHANNELS = {
   saveCutoutVersion: 'cutout:save-version',
   devCreateScratchProject: 'dev:create-scratch-project',
   devReportExportCheck: 'dev:report-export-check',
+  devCompareSnapshot: 'dev:compare-snapshot',
+  devFinishSnapshots: 'dev:finish-snapshots',
   startupLog: 'startup:log'
 } as const;

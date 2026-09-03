@@ -20,6 +20,7 @@
     "check:segmentation": "node scripts/check-segmentation.mjs",
     "check:segmentation:hd": "node scripts/check-segmentation.mjs --hd",
     "check:export": "node scripts/check-export.mjs",
+    "snapshots:approve": "node scripts/approve-snapshots.mjs",
     "measure:export": "node scripts/check-export.mjs --measure",
     "check": "npm run typecheck && npm run test && npm run check:licenses && npm run check:build-scan && npm run check:segmentation && npm run check:export",
     "fetch-models": "node scripts/fetch-models.mjs",

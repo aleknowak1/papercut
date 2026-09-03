@@ -22,6 +22,7 @@ import {
   saveProject
 } from './projectStore';
 import { addRecent, loadUsableRecents } from './recents';
+import { checkSnapshotFrame, finishSnapshotRun } from './snapshotCheck';
 
 function recentsFile(): string {
   return join(app.getPath('userData'), 'recents.json');
@@ -244,6 +245,13 @@ export function registerIpcHandlers(): void {
         return { projectDir, document: loadProject(projectDir) };
       }
     );
+
+    ipcMain.handle(
+      IPC_CHANNELS.devCompareSnapshot,
+      (_event, name: string, width: number, height: number, rgba: Uint8Array) =>
+        checkSnapshotFrame(name, width, height, rgba)
+    );
+    ipcMain.handle(IPC_CHANNELS.devFinishSnapshots, () => finishSnapshotRun());
 
     ipcMain.on(IPC_CHANNELS.devReportExportCheck, (_event, payloadJson: string): void => {
       // The check runner (scripts/check-export.mjs) watches stdout for this marker.

@@ -71,11 +71,13 @@ function zlibStored(raw: Uint8Array): Uint8Array {
   return out;
 }
 
-/** A width×height PNG filled with one colour (red, green, blue, alpha: 0-255). */
-export function solidPng(
+export type PixelRgba = readonly [number, number, number, number];
+
+/** A width×height PNG whose pixels come from a function of (x, y). */
+export function pixelPng(
   width: number,
   height: number,
-  rgba: readonly [number, number, number, number]
+  pixelAt: (x: number, y: number) => PixelRgba
 ): Uint8Array {
   const ihdr = new Uint8Array(13);
   const ihdrView = new DataView(ihdr.buffer);
@@ -90,7 +92,7 @@ export function solidPng(
   for (let y = 0; y < height; y++) {
     const row = y * (1 + width * 4);
     for (let x = 0; x < width; x++) {
-      raw.set(rgba, row + 1 + x * 4);
+      raw.set(pixelAt(x, y), row + 1 + x * 4);
     }
   }
 
@@ -108,4 +110,9 @@ export function solidPng(
     at += p.length;
   }
   return out;
+}
+
+/** A width×height PNG filled with one colour (red, green, blue, alpha: 0-255). */
+export function solidPng(width: number, height: number, rgba: PixelRgba): Uint8Array {
+  return pixelPng(width, height, () => rgba);
 }

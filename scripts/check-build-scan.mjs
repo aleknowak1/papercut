@@ -45,7 +45,9 @@ const FORBIDDEN = [
   'EXPORT-CHECK-RESULT', // the export check runner (allowed in out/main, guarded)
   'SEG-CHECK-RESULT', // the segmentation check driver
   'tests/fixtures', // fixture paths
-  'generateTestImage' // the segmentation fixture generator
+  'generateTestImage', // the segmentation fixture generator
+  'snapshotMoments', // the render-snapshot fixture and runner (Phase 5)
+  'runSnapshots'
 ];
 for (const file of filesUnder(join(root, 'out'))) {
   if (!/\.(js|html|css)$/.test(file)) continue;

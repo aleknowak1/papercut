@@ -98,6 +98,33 @@ function finish(payload) {
       fixture.decodedSeconds === undefined ? 'did not decode' : `${fixture.decodedSeconds} s`;
     console.log(`Audio fixture ${fixture.format}: ${decoded}${fixture.problem ? ` PROBLEM: ${fixture.problem}` : ' ✓'}`);
   }
+  const snapshots = payload.snapshots;
+  if (snapshots !== undefined) {
+    const newOnes = snapshots.results.filter((r) => r.status === 'new');
+    const bad = snapshots.results.filter((r) => r.status === 'mismatch');
+    console.log(
+      `Render snapshots: ${snapshots.results.length} moments — ` +
+        `${snapshots.results.filter((r) => r.status === 'match').length} match, ` +
+        `${newOnes.length} new, ${bad.length} differ`
+    );
+    for (const r of bad) {
+      console.log(
+        `  PROBLEM: "${r.name}" differs from its approved reference ` +
+          `(${r.badPixels} of ${r.totalPixels} pixels beyond the 8/255-per-channel tolerance; ` +
+          `the allowance is 0.5%).`
+      );
+    }
+    if (newOnes.length > 0) {
+      console.log('  New references written (no approval needed the first time) — LOOK at them:');
+      for (const r of newOnes) console.log(`    tests\\snapshots\\${r.name}.png`);
+    }
+    if (snapshots.outputDir !== undefined) {
+      console.log(`  Open ${snapshots.outputDir}\\contact-sheet.png — each failing moment shows`);
+      console.log('  expected | actual | diff (differences in red). Per-moment images sit beside it.');
+      console.log('  If the new look is RIGHT, approve it with: npm run snapshots:approve');
+      console.log('  If it is wrong, the code change caused a real visual regression.');
+    }
+  }
   if (payload.projectDir !== undefined) {
     console.log(`Files: ${payload.projectDir}`);
   }

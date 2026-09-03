@@ -47,6 +47,9 @@ const api: PapercutApi = {
     ipcRenderer.invoke(IPC_CHANNELS.devCreateScratchProject, name, format, where),
   devReportExportCheck: (payloadJson) =>
     ipcRenderer.send(IPC_CHANNELS.devReportExportCheck, payloadJson),
+  devCompareSnapshot: (name, width, height, rgba) =>
+    ipcRenderer.invoke(IPC_CHANNELS.devCompareSnapshot, name, width, height, rgba),
+  devFinishSnapshots: () => ipcRenderer.invoke(IPC_CHANNELS.devFinishSnapshots),
   logStartup: (message) => ipcRenderer.send(IPC_CHANNELS.startupLog, 'renderer', message)
 };
 
