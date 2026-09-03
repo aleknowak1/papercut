@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import type { OpenedProject } from '../../shared/ipc';
 import type { ProjectDocument } from '../../shared/document/types';
 import { removeLayer, setKeyframe } from '../../shared/document/edits';
-import { timeZeroKeyframe } from '../../shared/scene/geometry';
+import { keyframeAtPlayhead } from '../../shared/animation/keyframes';
 import {
   applyEdit as recordEdit,
   canRedo,
@@ -278,7 +278,7 @@ function ProjectView({
       };
       const delta = nudge[event.key];
       if (delta === undefined) return;
-      const zero = timeZeroKeyframe(layer);
+      const zero = keyframeAtPlayhead(layer, 0); // the playhead arrives with the time strip
       if (zero === undefined) return;
       event.preventDefault();
       applyEdit((current) =>

@@ -5,8 +5,7 @@
 // "placement maps to the document exactly" is checkable arithmetic, not a
 // promise (ADR-006: what you see is what exports).
 
-import type { BackgroundFit, Keyframe, Layer, ProjectFormat } from '../document/types';
-import { sampleLayer } from '../animation/interpolate';
+import type { BackgroundFit, Keyframe, ProjectFormat } from '../document/types';
 
 /** The coordinate space keyframes are authored in, per project format. */
 export const REFERENCE_SIZE: Record<ProjectFormat, readonly [number, number]> = {
@@ -78,31 +77,9 @@ export function defaultPlacementKeyframe(
   };
 }
 
-/**
- * The layer's static placement: its keyframe at time 0, which every
- * placement edit rewrites in place through setKeyframe (full keyframing is
- * Phase 5). A layer from an older project whose first keyframe sits later
- * gets one made from how it looks at time 0; a layer with no keyframes has
- * no placement (undefined — it is not shown).
- */
-export function timeZeroKeyframe(layer: Layer): Keyframe | undefined {
-  const first = layer.keyframes[0];
-  if (first === undefined) return undefined;
-  if (first.time === 0) return first;
-  const sample = sampleLayer(layer, 0);
-  if (sample === undefined) return undefined;
-  return {
-    time: 0,
-    x: sample.x,
-    y: sample.y,
-    scale: sample.scale,
-    rotation: sample.rotation,
-    flipX: sample.flipX,
-    opacity: sample.opacity,
-    easing: 'linear',
-    ...(sample.poseId !== undefined ? { poseId: sample.poseId } : {})
-  };
-}
+// The layer's placement at a point in time is keyframeAtPlayhead
+// (shared/animation/keyframes.ts) since Phase 5; it replaced the Phase 4
+// timeZeroKeyframe that lived here.
 
 export interface CanvasFit {
   /** Canvas size in screen pixels, and reference-pixels → screen-pixels scale. */

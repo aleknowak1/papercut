@@ -11,6 +11,7 @@
 
 import { Container, Sprite, Texture } from 'pixi.js';
 import type { ProjectDocument, Scene } from '../../../shared/document/types';
+import { cameraTransform, sampleCamera } from '../../../shared/animation/camera';
 import { sampleLayer } from '../../../shared/animation/interpolate';
 import { backgroundPlacement, referenceSize } from '../../../shared/scene/geometry';
 
@@ -50,6 +51,14 @@ export function createSceneStage(options: SceneStageOptions): SceneStage {
   const frame = referenceSize(document.format);
   const container = new Container();
 
+  // Everything the camera looks at lives in this inner container; update()
+  // scales and shifts it so the camera's x/y sits at the frame centre
+  // (shared/animation/camera.ts). With no camera keyframes the transform
+  // is the identity. Export renders through here too, so the camera needs
+  // no export code at all.
+  const world = new Container();
+  container.addChild(world);
+
   // Background, cover (default) or stretch, same arithmetic as the checks.
   if (scene.backgroundAssetId !== undefined) {
     const texture = textures.get(scene.backgroundAssetId);
@@ -60,7 +69,7 @@ export function createSceneStage(options: SceneStageOptions): SceneStage {
       bg.position.set(place.x, place.y);
       bg.width = place.width;
       bg.height = place.height;
-      container.addChild(bg);
+      world.addChild(bg);
     }
   }
 
@@ -93,7 +102,7 @@ export function createSceneStage(options: SceneStageOptions): SceneStage {
 
     const sprite = new Sprite(defaultTexture);
     sprite.anchor.set(0.5); // keyframe x/y is the picture's centre
-    container.addChild(sprite);
+    world.addChild(sprite);
     entries.push({ layerId: layer.id, sprite, poseTextures, defaultTexture });
   }
 
@@ -103,6 +112,9 @@ export function createSceneStage(options: SceneStageOptions): SceneStage {
   return {
     container,
     update(time: number): void {
+      const camera = cameraTransform(sampleCamera(scene, time, frame), frame);
+      world.scale.set(camera.scale);
+      world.position.set(camera.x, camera.y);
       for (const entry of entries) {
         const layer = layerById.get(entry.layerId);
         const sample = layer && sampleLayer(layer, time);

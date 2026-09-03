@@ -21,13 +21,15 @@ import { setKeyframe, setSceneBackground } from '../../../shared/document/edits'
 import type { Keyframe, ProjectDocument, Scene } from '../../../shared/document/types';
 import { addCharacterToScene, addPropToScene } from '../../../shared/scene/addToScene';
 import { readSceneDragData, SCENE_DRAG_TYPE } from './sceneDrag';
+import { sampleCamera, viewToWorld } from '../../../shared/animation/camera';
 import { sampleLayer } from '../../../shared/animation/interpolate';
+import { keyframeAtPlayhead } from '../../../shared/animation/keyframes';
 import {
   canvasToReference,
   fitCanvas,
+  referenceSize,
   referenceToLayerPixel,
   resizeScale,
-  timeZeroKeyframe,
   type CanvasFit,
   type Point
 } from '../../../shared/scene/geometry';
@@ -40,6 +42,12 @@ export interface SceneCanvasProps {
   readonly document: ProjectDocument;
   readonly scene: Scene;
   readonly selectedLayerId?: string;
+  /**
+   * The playhead, in seconds (frame-snapped by the time strip). The scene
+   * is drawn at this time and every canvas edit writes the keyframe at it.
+   * Absent means 0 — the Phase 4 behaviour.
+   */
+  readonly time?: number;
   /** Live preview of the opacity slider before it commits (0..1). */
   readonly opacityPreview?: number;
   readonly applyEdit: ApplyEdit;
@@ -90,6 +98,10 @@ interface DragState {
 export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
   const { projectDir, document: doc, scene, selectedLayerId, opacityPreview, applyEdit, onSelect } =
     props;
+  const time = props.time ?? 0;
+  // Readable from the stage-building effect without rebuilding per scrub.
+  const timeRef = useRef(time);
+  timeRef.current = time;
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const canvasElRef = useRef<HTMLCanvasElement | null>(null);
   const [renderer, setRenderer] = useState<WebGLRenderer | undefined>(undefined);
@@ -307,7 +319,7 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
     const sceneStage = createSceneStage({ document: doc, scene, textures: textureById });
     sceneStage.container.scale.set(fit.scale);
     root.addChild(sceneStage.container);
-    sceneStage.update(0);
+    sceneStage.update(timeRef.current);
 
     // Editor-only decoration, outside the shared stage.
     const overlay = new Graphics();
@@ -318,13 +330,14 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
     renderer.render(root);
   }, [renderer, fit, textureVersion, doc, scene, drawOverlay]);
 
-  // Selection and the opacity slider's live preview redraw lightly — no
-  // stage rebuild, so the drag a pointer-down just started stays alive.
+  // Selection, the playhead, and the opacity slider's live preview redraw
+  // lightly — no stage rebuild, so the drag a pointer-down just started
+  // stays alive.
   useEffect(() => {
     const stage = stageRef.current;
     if (renderer === undefined || stage === undefined) return;
     if (dragRef.current === undefined) {
-      stage.sceneStage.update(0); // reset any previous preview
+      stage.sceneStage.update(time); // poses everything, resets any preview
       if (selectedLayerId !== undefined && opacityPreview !== undefined) {
         const sprite = stage.sceneStage.getLayerSprite(selectedLayerId);
         if (sprite !== undefined) sprite.alpha = opacityPreview;
@@ -332,7 +345,7 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
     }
     drawOverlay();
     render();
-  }, [renderer, selectedLayerId, opacityPreview, textureVersion, doc, scene, drawOverlay, render]);
+  }, [renderer, selectedLayerId, time, opacityPreview, textureVersion, doc, scene, drawOverlay, render]);
 
   /** Pointer position in canvas pixels, or undefined outside the canvas. */
   const toCanvasPoint = (event: React.PointerEvent): Point | undefined => {
@@ -346,12 +359,22 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
     return point;
   };
 
-  /** The front-most layer whose picture (not its transparent parts) is at refP. */
-  const pickLayer = (refP: Point): string | undefined => {
+  /**
+   * A point in the viewed frame mapped to world coordinates, where layer
+   * keyframes live — through the camera, so picking and dragging land
+   * right at any pan and zoom. With no camera keyframes it is the identity.
+   */
+  const toWorldPoint = (refP: Point): Point => {
+    const frame = referenceSize(doc.format);
+    return viewToWorld(refP, sampleCamera(scene, time, frame), frame);
+  };
+
+  /** The front-most layer whose picture (not its transparent parts) is at worldP. */
+  const pickLayer = (worldP: Point): string | undefined => {
     for (let i = scene.layers.length - 1; i >= 0; i--) {
       const layer = scene.layers[i];
       if (layer === undefined || layer.hidden === true || layer.locked === true) continue;
-      const sample = sampleLayer(layer, 0);
+      const sample = sampleLayer(layer, time);
       if (sample === undefined) continue;
       // The picture this layer currently shows (a character's pose).
       const sprite = stageRef.current?.sceneStage.getLayerSprite(layer.id);
@@ -364,7 +387,7 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
       const pixel = referenceToLayerPixel(
         sample,
         { width: loaded.imageWidth, height: loaded.imageHeight },
-        refP
+        worldP
       );
       if (pixel !== undefined && alphaAt(loaded, pixel) > 25) return layer.id;
     }
@@ -421,13 +444,13 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
       onSelect(undefined);
       return;
     }
-    const refP = canvasToReference(cp, fitNow);
+    const worldP = toWorldPoint(canvasToReference(cp, fitNow));
 
     // A corner handle of the selected layer starts a resize.
     if (selectedLayerId !== undefined) {
       const sprite = stageRef.current?.sceneStage.getLayerSprite(selectedLayerId);
       const layer = scene.layers.find((l) => l.id === selectedLayerId);
-      const zero = layer !== undefined ? timeZeroKeyframe(layer) : undefined;
+      const zero = layer !== undefined ? keyframeAtPlayhead(layer, time) : undefined;
       if (sprite !== undefined && sprite.visible && zero !== undefined) {
         const b = sprite.getBounds();
         const corners = [
@@ -445,7 +468,7 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
             mode: 'resize',
             layerId: selectedLayerId,
             startKeyframe: zero,
-            startRef: refP,
+            startRef: worldP,
             moved: false,
             x: zero.x,
             y: zero.y,
@@ -458,17 +481,17 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
     }
 
     // Otherwise pick whatever is under the cursor and start moving it.
-    const hit = pickLayer(refP);
+    const hit = pickLayer(worldP);
     onSelect(hit);
     if (hit === undefined) return;
     const layer = scene.layers.find((l) => l.id === hit);
-    const zero = layer !== undefined ? timeZeroKeyframe(layer) : undefined;
+    const zero = layer !== undefined ? keyframeAtPlayhead(layer, time) : undefined;
     if (zero === undefined) return;
     dragRef.current = {
       mode: 'move',
       layerId: hit,
       startKeyframe: zero,
-      startRef: refP,
+      startRef: worldP,
       moved: false,
       x: zero.x,
       y: zero.y,
@@ -485,19 +508,18 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
     if (canvas === null) return;
     const rect = canvas.getBoundingClientRect();
     // During a drag the pointer may leave the canvas; keep following it.
-    const refP = canvasToReference(
-      { x: event.clientX - rect.left, y: event.clientY - rect.top },
-      fitNow
+    const worldP = toWorldPoint(
+      canvasToReference({ x: event.clientX - rect.left, y: event.clientY - rect.top }, fitNow)
     );
     const sprite = stageRef.current?.sceneStage.getLayerSprite(drag.layerId);
     if (sprite === undefined) return;
     const k = drag.startKeyframe;
     if (drag.mode === 'move') {
-      drag.x = k.x + (refP.x - drag.startRef.x);
-      drag.y = k.y + (refP.y - drag.startRef.y);
+      drag.x = k.x + (worldP.x - drag.startRef.x);
+      drag.y = k.y + (worldP.y - drag.startRef.y);
       sprite.position.set(drag.x, drag.y);
     } else {
-      drag.scale = resizeScale(k.scale, { x: k.x, y: k.y }, drag.startRef, refP);
+      drag.scale = resizeScale(k.scale, { x: k.x, y: k.y }, drag.startRef, worldP);
       sprite.scale.set(drag.scale * (k.flipX ? -1 : 1), drag.scale);
     }
     if (
@@ -529,9 +551,8 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
     const canvas = canvasElRef.current;
     if (fitNow === undefined || canvas === null) return;
     const rect = canvas.getBoundingClientRect();
-    const at = canvasToReference(
-      { x: event.clientX - rect.left, y: event.clientY - rect.top },
-      fitNow
+    const at = toWorldPoint(
+      canvasToReference({ x: event.clientX - rect.left, y: event.clientY - rect.top }, fitNow)
     );
     let layerId: string | undefined;
     applyEdit((current) => {

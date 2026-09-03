@@ -14,7 +14,7 @@ import {
 } from '../../../shared/document/edits';
 import type { ProjectDocument, Scene } from '../../../shared/document/types';
 import { addCharacterToScene, addPropToScene, cutoutLabel } from '../../../shared/scene/addToScene';
-import { timeZeroKeyframe } from '../../../shared/scene/geometry';
+import { keyframeAtPlayhead } from '../../../shared/animation/keyframes';
 
 type ApplyEdit = (edit: (current: ProjectDocument) => ProjectDocument) => void;
 
@@ -38,7 +38,8 @@ export function LayersPanel(props: LayersPanelProps): JSX.Element {
   const [slidingOpacity, setSlidingOpacity] = useState<number | undefined>(undefined);
 
   const selected = scene.layers.find((l) => l.id === selectedLayerId);
-  const selectedZero = selected !== undefined ? timeZeroKeyframe(selected) : undefined;
+  // The playhead arrives with the time strip; until then edits land at 0.
+  const selectedZero = selected !== undefined ? keyframeAtPlayhead(selected, 0) : undefined;
 
   const addCharacterLayer = (): void => {
     const character = characters.find((c) => c.id === chosenCharacter) ?? characters[0];
