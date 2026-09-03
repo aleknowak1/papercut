@@ -717,6 +717,87 @@ button {
   font-size: 11px;
 }
 
+/* ---- Time strip (M-4.1) ---- */
+
+.time-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* On a narrow window the controls wrap to a second line instead of
+     spilling under the Layers panel (where they could not be clicked). */
+  flex-wrap: wrap;
+  min-width: 0;
+  border: 1px solid var(--panel-edge);
+  background: var(--panel);
+  padding: 4px 8px;
+}
+
+.strip-play {
+  min-width: 34px;
+}
+
+.strip-play[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.strip-track {
+  position: relative;
+  flex: 1;
+  min-width: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.strip-scrubber {
+  width: 100%;
+  margin: 0;
+}
+
+.strip-ticks {
+  position: relative;
+  height: 5px;
+  margin: 2px 7px 0; /* roughly under the slider's travel */
+}
+
+.strip-tick {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 5px;
+  margin-left: -1px;
+  background: var(--accent);
+}
+
+.strip-readout {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.strip-duration input {
+  width: 5ch;
+  text-align: right;
+}
+
+/* ---- Layer inspector (M-4.2) ---- */
+
+.inspector-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+}
+
+.inspector-field input,
+.inspector-field select {
+  flex: 1;
+  min-width: 0;
+}
+
+.inspector-field input {
+  width: 6ch;
+}
+
 /* ---- Mask editor (M-2.4) ---- */
 
 .mask-editor {

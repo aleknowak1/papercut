@@ -18,3 +18,9 @@ export function secondsOf(frame: number, fps: number): number {
 export function snapToFrame(seconds: number, fps: number): number {
   return secondsOf(frameOf(seconds, fps), fps);
 }
+
+/** A time as the strip shows it: minutes:seconds.milliseconds, e.g. 0:01.500. */
+export function formatTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  return `${mins}:${(seconds - mins * 60).toFixed(3).padStart(6, '0')}`;
+}

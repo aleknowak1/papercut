@@ -254,9 +254,84 @@ over time is the animation phase (M-4). Dropping a row from the Assets or
 Characters tab onto the canvas places it exactly where you let go.
 
 ## M-4 Making things move
-- M-4.1 Keyframes explained in one page
-- M-4.2 Move, scale, rotate, flip, fade
-- M-4.3 Easing (how motion speeds up and slows down)
+
+### M-4.1 Keyframes explained in one page
+
+A **keyframe** is a note that says: *at this moment, this layer stands
+here, this big, turned this much, this see-through.* Give a layer two
+keyframes and the app draws every frame in between — the layer moves,
+grows, turns, or fades from the first to the second on its own.
+
+The **time strip** under the canvas is where you pick the moment:
+
+- The slider is the **playhead** — drag it to see the scene at any time.
+  The readout next to it shows the time and the frame number.
+- **▶ (Space)** plays the scene from the playhead and stops at the end.
+  Playing is just a preview; it never changes your project.
+- **‹ ›** (or the **,** and **.** keys) step one frame at a time, for
+  landing on an exact moment.
+- **« »** jump the playhead to the selected layer's previous or next
+  keyframe. The small amber **tick marks** on the slider show where the
+  selected layer's keyframes sit.
+- **Duration** sets how long the scene runs, 1 to 120 seconds. Keyframes
+  past a shortened end are kept — they simply wait beyond the end until
+  you lengthen the scene again.
+
+You never press an "add keyframe" button. **Move the playhead, then
+change something** — drag the layer, resize it, or use the panel on the
+right. If the layer already has a keyframe at that exact moment, your
+change rewrites it; if not, a new keyframe appears right there, matching
+how the layer looked at that instant, so nothing jumps. To make a layer
+travel: with the playhead at the start, place it; move the playhead
+later; drag the layer somewhere else; press ▶.
+
+**Delete keyframe** (right panel) removes the keyframe under the
+playhead, and the motion around it closes over the gap. The last
+keyframe cannot be deleted — a layer always stands somewhere.
+
+The playhead and every keyframe sit on whole frames (at 30 fps, steps of
+1/30 s), so "at this moment" always means exactly one frame. If an older
+project has keyframes at odd in-between times, they load and play exactly
+as saved; editing there simply adds a new keyframe on the nearest frame
+beside them.
+
+### M-4.2 Move, scale, rotate, flip, fade
+
+With a layer selected, the right panel shows the keyframe at the
+playhead (or, between keyframes, how the layer looks right now — editing
+makes a keyframe there):
+
+- **X / Y** — where the layer's centre stands, in scene pixels.
+- **Size** — its size, as a percentage.
+- **Turn** — rotation in degrees (positive turns clockwise). An
+  on-canvas rotate handle is coming with the rest of Phase 5.
+- **Opacity** — the slider previews live and writes one undo step when
+  you let go.
+- **Flip** — mirrors the layer left-to-right. A flip does not blend
+  between keyframes: it switches exactly at the next keyframe that
+  changes it.
+
+Type a number and press Enter (or click elsewhere) to apply; Escape puts
+the field back. Everything the canvas can do — drag to move, corner
+handles to resize, arrow keys to nudge — works the same way at any
+playhead position, and each change is one undo step (Ctrl+Z).
+
+### M-4.3 Easing (how motion speeds up and slows down)
+
+**Easing** is the personality of a movement. Each keyframe carries an
+easing for the motion **leaving** it, in the Easing dropdown:
+
+- **Linear** — steady, mechanical speed the whole way.
+- **Ease in** — starts gently, then speeds up. Good for something
+  getting going.
+- **Ease out** — starts fast, then settles softly. Good for arriving.
+- **Ease in & out** — gentle at both ends, quickest in the middle. The
+  most natural for most moves.
+
+Set the playhead on a keyframe (use « »), pick an easing, and play. The
+start and end of the move stay exactly where the keyframes put them —
+easing only changes the speed along the way.
+
 - M-4.4 Motion presets: bob, walk, shake, pop
 - M-4.5 Swapping poses on the timeline
 - M-4.6 Camera pan and zoom

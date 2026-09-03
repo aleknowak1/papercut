@@ -15,8 +15,8 @@
 **Phase 3 — Assets and cutouts: COMPLETE (CL-0033).** Everything in the phase is built, checked, live-verified and in the manual: image import (JPG/PNG/WebP + HEIC via Windows' decoder) with the Assets panel; automatic cutouts in a background queue (one at a time, cancellable, ≈half a minute per photo on this laptop); characters with poses; the mask editor (brush add/erase, feather, zoom/pan, local stroke undo, versioned saves that document-undo repoints between, Reset to automatic, HD cutout); audio import (MP3/WAV/M4A/OGG) with durations and Play. Undo/redo and auto-save are wired through everything. Alek verified the foundations by hand (CL-0030); his remaining spot-checks are in §5.
 **Phase 4 — Scene and layers: COMPLETE (CL-0043).** Everything in the phase is built, checked, in the manual (M-3.1–M-3.3), and verified by Alek by hand on 2026-09-03: background cover/stretch, every road into the scene (row buttons and drag-and-drop), moving and resizing with one-undo-step drags and Escape-cancel, order/hide/lock/opacity/flip, save and reopen. The scene canvas and export render through the one shared sceneStage (CL-0038), so what the user sees is what exports — the foundation Phase 5 animates.
 **Phase 5 — Animation: IN PROGRESS.** Running from the kickoff prompt in DOC-11 Appendix F (CL-0042): Fable for the foundations, Opus for the feature work, decisions a–k made; plan approved by Alek with two additions (a 9:16 snapshot moment; the non-frame-aligned older-file test). Step 1 done (CL-0044): the animation engine — app/shared/animation/ (frame-exact time, the four easing curves, eased interpolation, keyframeAtPlayhead, deterministic presets, the clamped camera), applyKeyframes and camera-keyframe edits, 48 new arithmetic tests, everything green. Nothing user-visible yet.
-Step 2 done (CL-0045): the camera lives inside sceneStage (export gets it for free), picking/drags/drops map through it, and every editing path writes the keyframe at the playhead (still 0 until the strip exists).
-**Next action:** Phase 5 step: the time strip + playhead + the selected layer's inspector (the "scrub, play, two-keyframe motion" milestone, M-4.1–M-4.3), then the render-snapshot check with its first references.
+Step 2 done (CL-0045): the camera lives inside sceneStage (export gets it for free), picking/drags/drops map through it, and every editing path writes the keyframe at the playhead. Step 3 done (CL-0046): **animation is usable** — the time strip (play/scrub/step/jump, Duration 1–120 s, keyframe ticks) and the inspector (X/Y/Size/Turn, Easing, Pose, Delete keyframe); keyframes appear automatically at the playhead; live-verified with 26 scripted assertions in the real app; M-4.1–M-4.3 written.
+**Next action:** Phase 5 step: the render-snapshot check (ADR-015) riding the export check's hidden window, with its first references for Alek to look at; then the Fable → Opus hand-off (presets UI, camera mode, rotate handle, M-4.4–M-4.6).
 
 ### 1b. Hand-off notes (now historical — the work below was completed by Fable in CL-0031..33, built to these decisions)
 
@@ -69,8 +69,8 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 | Characters with multiple poses | 3 | ☑ (CL-0031) | M-2.5 |
 | Layers: order, opacity, lock, hide | 4 | ☑ (CL-0039; verified by Alek, CL-0043) | M-3.2 |
 | Place and size on canvas | 4 | ☑ (CL-0040; verified by Alek, CL-0043) | M-3.3 |
-| Keyframes: position, scale, rotation, flip, opacity | 5 | ☐ | M-4.1, M-4.2 |
-| Easing presets | 5 | ☐ | M-4.3 |
+| Keyframes: position, scale, rotation, flip, opacity | 5 | ☑ (CL-0046; on-canvas rotate handle still to come with the Opus half) | M-4.1, M-4.2 |
+| Easing presets | 5 | ☑ (CL-0046) | M-4.3 |
 | Motion presets: bob, walk, shake, pop | 5 | ☐ | M-4.4 |
 | Pose swapping on timeline | 5 | ☐ | M-4.5 |
 | Camera pan and zoom | 5 | ☐ | M-4.6 |

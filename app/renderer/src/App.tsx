@@ -3,6 +3,7 @@ import type { OpenedProject } from '../../shared/ipc';
 import type { ProjectDocument } from '../../shared/document/types';
 import { removeLayer, setKeyframe } from '../../shared/document/edits';
 import { keyframeAtPlayhead } from '../../shared/animation/keyframes';
+import { snapToFrame } from '../../shared/animation/time';
 import {
   applyEdit as recordEdit,
   canRedo,
@@ -18,6 +19,7 @@ import { HomeScreen } from './HomeScreen';
 import { LayersPanel } from './scene/LayersPanel';
 import { SceneCanvas } from './scene/SceneCanvas';
 import { SceneToolbar } from './scene/SceneToolbar';
+import { TimeStrip } from './scene/TimeStrip';
 
 // Everything under app/renderer/src/dev/ (and tests/fixtures) is loaded
 // through dynamic imports inside `import.meta.env.DEV` branches. In a
@@ -173,6 +175,10 @@ function ProjectView({
   // Selection is UI state only — never saved, never an undo step.
   const [selectedLayerId, setSelectedLayerId] = useState<string | undefined>(undefined);
   const [opacityPreview, setOpacityPreview] = useState<number | undefined>(undefined);
+  // The playhead (seconds, frame-snapped) — UI state like selection: the
+  // canvas draws the scene at this time and every edit writes the keyframe
+  // at it (shared/animation/keyframes.ts).
+  const [playhead, setPlayhead] = useState(0);
   const doc = history.present;
   const editingAsset = editingMaskOf !== undefined
     ? doc.assets.find((a) => a.id === editingMaskOf)
@@ -185,6 +191,14 @@ function ProjectView({
       ? scene?.layers.find((l) => l.id === selectedLayerId)
       : undefined;
   const effectiveSelection = selectedLayer?.id;
+
+  // When a scene gets shorter, the playhead stays inside it.
+  const sceneDuration = scene?.durationSeconds ?? 0;
+  useEffect(() => {
+    setPlayhead((current) =>
+      current > sceneDuration ? snapToFrame(sceneDuration, doc.fps) : current
+    );
+  }, [sceneDuration, doc.fps]);
 
   // Save whatever is current, a moment after it changes (one save per burst).
   const saveTimer = useRef<number | undefined>(undefined);
@@ -278,7 +292,7 @@ function ProjectView({
       };
       const delta = nudge[event.key];
       if (delta === undefined) return;
-      const zero = keyframeAtPlayhead(layer, 0); // the playhead arrives with the time strip
+      const zero = keyframeAtPlayhead(layer, playhead);
       if (zero === undefined) return;
       event.preventDefault();
       applyEdit((current) =>
@@ -291,7 +305,7 @@ function ProjectView({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [editingMaskOf, selectedLayer, scene, applyEdit]);
+  }, [editingMaskOf, selectedLayer, scene, playhead, applyEdit]);
 
   return (
     <div className="opened project-view">
@@ -369,9 +383,18 @@ function ProjectView({
                 document={doc}
                 scene={scene}
                 selectedLayerId={effectiveSelection}
+                time={playhead}
                 opacityPreview={opacityPreview}
                 applyEdit={applyEdit}
                 onSelect={setSelectedLayerId}
+              />
+              <TimeStrip
+                document={doc}
+                scene={scene}
+                selectedLayer={selectedLayer}
+                playhead={playhead}
+                onPlayhead={setPlayhead}
+                applyEdit={applyEdit}
               />
             </div>
           )}
@@ -381,6 +404,7 @@ function ProjectView({
               scene={scene}
               applyEdit={applyEdit}
               selectedLayerId={effectiveSelection}
+              playhead={playhead}
               onSelect={setSelectedLayerId}
               onOpacityPreview={setOpacityPreview}
             />

@@ -3,7 +3,7 @@
 // rounding question.
 
 import { describe, expect, it } from 'vitest';
-import { frameOf, secondsOf, snapToFrame } from '../../app/shared/animation/time';
+import { formatTime, frameOf, secondsOf, snapToFrame } from '../../app/shared/animation/time';
 
 describe('frame time', () => {
   it('is exact both ways for every frame of a two-minute scene at 30 and 60 fps', () => {
@@ -24,6 +24,13 @@ describe('frame time', () => {
     // Rounds to nearest: 0.48 frames down, 0.51 frames up.
     expect(frameOf(0.016, 30)).toBe(0);
     expect(frameOf(0.017, 30)).toBe(1);
+  });
+
+  it('formats readout times as minutes:seconds.milliseconds', () => {
+    expect(formatTime(0)).toBe('0:00.000');
+    expect(formatTime(1.5)).toBe('0:01.500');
+    expect(formatTime(secondsOf(45, 30))).toBe('0:01.500');
+    expect(formatTime(61.25)).toBe('1:01.250');
   });
 
   it('two times meaning the same frame are the same number', () => {

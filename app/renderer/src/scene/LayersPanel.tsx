@@ -6,15 +6,17 @@
 
 import { useState, type JSX } from 'react';
 import {
+  removeKeyframe,
   removeLayer,
   reorderLayer,
   setKeyframe,
   setLayerHidden,
   setLayerLocked
 } from '../../../shared/document/edits';
-import type { ProjectDocument, Scene } from '../../../shared/document/types';
+import type { EasingType, Keyframe, ProjectDocument, Scene } from '../../../shared/document/types';
 import { addCharacterToScene, addPropToScene, cutoutLabel } from '../../../shared/scene/addToScene';
 import { keyframeAtPlayhead } from '../../../shared/animation/keyframes';
+import { formatTime } from '../../../shared/animation/time';
 
 type ApplyEdit = (edit: (current: ProjectDocument) => ProjectDocument) => void;
 
@@ -23,13 +25,60 @@ export interface LayersPanelProps {
   readonly scene: Scene;
   readonly applyEdit: ApplyEdit;
   readonly selectedLayerId?: string;
+  /** The playhead in seconds, frame-snapped; inspector edits land here. */
+  readonly playhead: number;
   readonly onSelect: (layerId: string | undefined) => void;
   /** Live opacity slider preview (0..1), cleared when it commits. */
   readonly onOpacityPreview: (opacity: number | undefined) => void;
 }
 
+/**
+ * A small number field that commits once on Enter or blur (one undo step),
+ * and snaps back on Escape or nonsense input.
+ */
+function NumberField({
+  label,
+  value,
+  suffix,
+  onCommit
+}: {
+  readonly label: string;
+  /** The document's value, already rounded for display. */
+  readonly value: number;
+  readonly suffix?: string;
+  readonly onCommit: (value: number) => void;
+}): JSX.Element {
+  const [text, setText] = useState<string | undefined>(undefined);
+  const commit = (): void => {
+    if (text === undefined) return;
+    setText(undefined);
+    const parsed = Number(text);
+    if (!Number.isFinite(parsed) || parsed === value) return;
+    onCommit(parsed);
+  };
+  return (
+    <label className="mask-tool inspector-field">
+      {label}
+      <input
+        type="text"
+        inputMode="decimal"
+        aria-label={label}
+        value={text ?? String(value)}
+        onChange={(event) => setText(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') commit();
+          if (event.key === 'Escape') setText(undefined);
+        }}
+      />
+      {suffix}
+    </label>
+  );
+}
+
 export function LayersPanel(props: LayersPanelProps): JSX.Element {
-  const { document: doc, scene, applyEdit, selectedLayerId, onSelect, onOpacityPreview } = props;
+  const { document: doc, scene, applyEdit, selectedLayerId, playhead, onSelect, onOpacityPreview } =
+    props;
   const characters = doc.characters.filter((c) => c.poses.length > 0);
   const cutouts = doc.assets.filter((a) => a.type === 'cutout');
   const [chosenCharacter, setChosenCharacter] = useState('');
@@ -38,8 +87,7 @@ export function LayersPanel(props: LayersPanelProps): JSX.Element {
   const [slidingOpacity, setSlidingOpacity] = useState<number | undefined>(undefined);
 
   const selected = scene.layers.find((l) => l.id === selectedLayerId);
-  // The playhead arrives with the time strip; until then edits land at 0.
-  const selectedZero = selected !== undefined ? keyframeAtPlayhead(selected, 0) : undefined;
+  const selectedZero = selected !== undefined ? keyframeAtPlayhead(selected, playhead) : undefined;
 
   const addCharacterLayer = (): void => {
     const character = characters.find((c) => c.id === chosenCharacter) ?? characters[0];
@@ -67,23 +115,26 @@ export function LayersPanel(props: LayersPanelProps): JSX.Element {
     if (layerId !== undefined) onSelect(layerId);
   };
 
-  const commitOpacity = (opacity: number): void => {
+  /**
+   * One inspector edit: the keyframe at the playhead with these changes —
+   * rewritten in place when one sits exactly here, created (seeded from
+   * the layer's motion) when not. One undo step either way.
+   */
+  const commitKeyframe = (changes: Partial<Keyframe>): void => {
     if (selected === undefined || selectedZero === undefined) return;
     applyEdit((current) =>
-      setKeyframe(current, scene.id, selected.id, { ...selectedZero, opacity })
+      setKeyframe(current, scene.id, selected.id, { ...selectedZero, ...changes })
     );
+  };
+
+  const commitOpacity = (opacity: number): void => {
+    commitKeyframe({ opacity });
     setSlidingOpacity(undefined);
     onOpacityPreview(undefined);
   };
 
   const toggleFlip = (): void => {
-    if (selected === undefined || selectedZero === undefined) return;
-    applyEdit((current) =>
-      setKeyframe(current, scene.id, selected.id, {
-        ...selectedZero,
-        flipX: !selectedZero.flipX
-      })
-    );
+    if (selectedZero !== undefined) commitKeyframe({ flipX: !selectedZero.flipX });
   };
 
   // Front-most first in the list: walk the document's layers backwards.
@@ -237,6 +288,75 @@ export function LayersPanel(props: LayersPanelProps): JSX.Element {
       {selected !== undefined && selectedZero !== undefined && (
         <div className="layer-details">
           <h2>Selected: {selected.name}</h2>
+          <p className="layer-readout">
+            {selected.keyframes.some((k) => k.time === playhead)
+              ? `Keyframe at ${formatTime(playhead)} · ${selected.keyframes.length} on this layer`
+              : `No keyframe at ${formatTime(playhead)} — editing makes one here`}
+          </p>
+          <div className="inspector-grid">
+            <NumberField
+              label="X"
+              value={Math.round(selectedZero.x * 10) / 10}
+              onCommit={(x) => commitKeyframe({ x })}
+            />
+            <NumberField
+              label="Y"
+              value={Math.round(selectedZero.y * 10) / 10}
+              onCommit={(y) => commitKeyframe({ y })}
+            />
+            <NumberField
+              label="Size"
+              value={Math.round(selectedZero.scale * 100)}
+              suffix="%"
+              onCommit={(v) => commitKeyframe({ scale: Math.min(100, Math.max(0.01, v / 100)) })}
+            />
+            <NumberField
+              label="Turn"
+              value={Math.round(selectedZero.rotation * 10) / 10}
+              suffix="°"
+              onCommit={(rotation) => commitKeyframe({ rotation })}
+            />
+          </div>
+          <label className="mask-tool inspector-field">
+            Easing
+            <select
+              aria-label="Easing of the motion leaving this keyframe"
+              title="How the motion leaving this keyframe speeds up and slows down"
+              value={selectedZero.easing}
+              onChange={(event) => commitKeyframe({ easing: event.target.value as EasingType })}
+            >
+              <option value="linear">Linear</option>
+              <option value="ease-in">Ease in</option>
+              <option value="ease-out">Ease out</option>
+              <option value="ease-in-out">Ease in & out</option>
+            </select>
+          </label>
+          {selected.source.kind === 'character' &&
+            (() => {
+              const characterId = selected.source.characterId;
+              const character = doc.characters.find((c) => c.id === characterId);
+              if (character === undefined || character.poses.length === 0) return null;
+              return (
+                <label className="mask-tool inspector-field">
+                  Pose
+                  <select
+                    aria-label="Pose shown from this keyframe on"
+                    title="The pose shown from this keyframe until the next keyframe that names one"
+                    value={selectedZero.poseId ?? ''}
+                    onChange={(event) => {
+                      if (event.target.value !== '') commitKeyframe({ poseId: event.target.value });
+                    }}
+                  >
+                    {selectedZero.poseId === undefined && <option value="">(first pose)</option>}
+                    {character.poses.map((pose) => (
+                      <option key={pose.id} value={pose.id}>
+                        {pose.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              );
+            })()}
           <label className="mask-tool layer-opacity">
             Opacity
             <input
@@ -273,11 +393,24 @@ export function LayersPanel(props: LayersPanelProps): JSX.Element {
             >
               Flip
             </button>
-            <span className="layer-readout">
-              at {Math.round(selectedZero.x)}, {Math.round(selectedZero.y)} · size{' '}
-              {Math.round(selectedZero.scale * 100)}%
-              {selectedZero.rotation !== 0 && ` · turned ${Math.round(selectedZero.rotation)}°`}
-            </span>
+            <button
+              type="button"
+              className="btn"
+              disabled={
+                !selected.keyframes.some((k) => k.time === playhead) ||
+                selected.keyframes.length <= 1
+              }
+              title={
+                selected.keyframes.length <= 1
+                  ? 'The last keyframe cannot be deleted'
+                  : 'Delete the keyframe at the playhead (the motion around it closes over the gap)'
+              }
+              onClick={() =>
+                applyEdit((current) => removeKeyframe(current, scene.id, selected.id, playhead))
+              }
+            >
+              Delete keyframe
+            </button>
           </div>
         </div>
       )}
