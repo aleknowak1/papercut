@@ -14,8 +14,8 @@
 **Phase 3 — Assets and cutouts: IN PROGRESS.** The OQ-020 gate is closed (ADR-017): Smart App Control never objected (onnxruntime-node is Microsoft-signed throughout), and Alek chose fp32-on-CPU with revised targets (< 15 s reference machine, ≤ 45 s minimum-spec, always a background queue). Full evidence trail in DOC-13. Step 2 is built and green (CL-0027): the segmentation worker runs BiRefNet fp32 in an Electron utility process with a one-at-a-time job queue, status updates, cancellation, and the original-pixels+alpha output rule enforced byte-for-byte by a check; memory arena off (measured faster and frees ~everything between jobs); worker process ends when the queue goes idle. Measured on this laptop: lite ≈32–37 s/photo, HD ≈54 s, model load ≈5–8 s.
 **Phase 3 — Assets and cutouts: COMPLETE (CL-0033).** Everything in the phase is built, checked, live-verified and in the manual: image import (JPG/PNG/WebP + HEIC via Windows' decoder) with the Assets panel; automatic cutouts in a background queue (one at a time, cancellable, ≈half a minute per photo on this laptop); characters with poses; the mask editor (brush add/erase, feather, zoom/pan, local stroke undo, versioned saves that document-undo repoints between, Reset to automatic, HD cutout); audio import (MP3/WAV/M4A/OGG) with durations and Play. Undo/redo and auto-save are wired through everything. Alek verified the foundations by hand (CL-0030); his remaining spot-checks are in §5.
 **Phase 4 — Scene and layers: COMPLETE (CL-0043).** Everything in the phase is built, checked, in the manual (M-3.1–M-3.3), and verified by Alek by hand on 2026-09-03: background cover/stretch, every road into the scene (row buttons and drag-and-drop), moving and resizing with one-undo-step drags and Escape-cancel, order/hide/lock/opacity/flip, save and reopen. The scene canvas and export render through the one shared sceneStage (CL-0038), so what the user sees is what exports — the foundation Phase 5 animates.
-**Phase 5 — Animation: IN PROGRESS.** Running from the kickoff prompt in DOC-11 Appendix F (CL-0042): Fable for the foundations, Opus for the feature work, decisions a–k already made.
-**Next action:** Phase 5 plan awaits Alek's approval; after approval, build begins with the animation engine (app/shared/animation/).
+**Phase 5 — Animation: IN PROGRESS.** Running from the kickoff prompt in DOC-11 Appendix F (CL-0042): Fable for the foundations, Opus for the feature work, decisions a–k made; plan approved by Alek with two additions (a 9:16 snapshot moment; the non-frame-aligned older-file test). Step 1 done (CL-0044): the animation engine — app/shared/animation/ (frame-exact time, the four easing curves, eased interpolation, keyframeAtPlayhead, deterministic presets, the clamped camera), applyKeyframes and camera-keyframe edits, 48 new arithmetic tests, everything green. Nothing user-visible yet.
+**Next action:** Phase 5 step: the camera inside sceneStage and the view↔world wiring of picking/drags, then the time strip + playhead + inspector (the "scrub, play, two-keyframe motion" milestone), then the render-snapshot check with its first references.
 
 ### 1b. Hand-off notes (now historical — the work below was completed by Fable in CL-0031..33, built to these decisions)
 
@@ -96,6 +96,7 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 | Save / reopen | ☑ | ✅ |
 | Undo | ☑ | ✅ |
 | Scene and layers (edits round-trip; placement geometry as arithmetic) | ☑ | ✅ |
+| Animation engine (easing, eased interpolation, frame-exact time, keyframeAtPlayhead, presets, camera — all as arithmetic; camera edits round-trip) | ☑ | ✅ |
 | Render snapshots | ☐ (Phase 2+) | — |
 | Export | ☑ | ✅ |
 | Segmentation (real worker + model + coverage + pixels-untouched + memory) | ☑ | ✅ |
@@ -104,7 +105,7 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 | License allow-list | ☑ | ✅ |
 | AI-spend guard | ☑ | ✅ |
 
-Run everything with one command: `npm run check` (145 tests + licenses + build scan + segmentation + export with the audio fixtures; measured 68–86 seconds across Phase 4/4b runs — the spread is the segmentation check's one real cutout varying with laptop load; the scene tests are pure arithmetic and cost ~1 s). `npm run check:segmentation:hd` exercises the HD model on demand. A green run leaves tests/output/ empty (the CL-0024 housekeeping rule, enforced by the tests themselves).
+Run everything with one command: `npm run check` (188 tests + licenses + build scan + segmentation + export with the audio fixtures; measured 68–86 seconds across Phase 4/4b/5 runs — the spread is the segmentation check's one real cutout varying with laptop load; the scene and animation tests are pure arithmetic and cost ~2 s). `npm run check:segmentation:hd` exercises the HD model on demand. A green run leaves tests/output/ empty (the CL-0024 housekeeping rule, enforced by the tests themselves).
 
 ## 5. Waiting on Alek
 

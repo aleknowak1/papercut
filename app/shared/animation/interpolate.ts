@@ -1,13 +1,16 @@
 // Samples a layer's keyframes at a point in time: "where is this layer,
-// how big, how transparent, at second t?" Used by the export prototype's
-// frame drawer; the full animation engine with easing curves is Phase 5.
+// how big, how transparent, at second t?" The one sampling function the
+// live canvas and the export both render through (via sceneStage), so what
+// the user sees is what exports (ADR-006/013).
 //
 // Behaviour: before the first keyframe the first applies; after the last
-// the last applies; between two keyframes every value moves linearly.
-// Easing presets are recorded in the document but rendered as linear until
-// Phase 5 builds the real curves.
+// the last applies; between two keyframes every numeric value moves along
+// the easing curve recorded on the keyframe the segment STARTS from.
+// On/off values (flip, pose) are steps: they hold from their keyframe
+// until the next keyframe is reached.
 
 import type { Keyframe, Layer } from '../document/types';
+import { ease } from './easing';
 
 export interface LayerSample {
   readonly x: number;
@@ -47,7 +50,7 @@ export function sampleLayer(layer: Layer, time: number): LayerSample | undefined
     if (a === undefined || b === undefined) break;
     if (time < a.time || time > b.time) continue;
     const span = b.time - a.time;
-    const t = span <= 0 ? 0 : (time - a.time) / span;
+    const t = span <= 0 ? 0 : ease(a.easing, (time - a.time) / span);
     const mix = (from: number, to: number): number => from + (to - from) * t;
     return {
       x: mix(a.x, b.x),

@@ -6,7 +6,7 @@
 // promise (ADR-006: what you see is what exports).
 
 import type { BackgroundFit, Keyframe, Layer, ProjectFormat } from '../document/types';
-import { sampleLayer } from '../export/interpolate';
+import { sampleLayer } from '../animation/interpolate';
 
 /** The coordinate space keyframes are authored in, per project format. */
 export const REFERENCE_SIZE: Record<ProjectFormat, readonly [number, number]> = {

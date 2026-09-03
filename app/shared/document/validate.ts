@@ -47,6 +47,15 @@ function checkKeyframe(value: unknown, path: string): void {
   checkOptionalString(value['poseId'], `${path}.poseId`);
 }
 
+function checkCameraKeyframe(value: unknown, path: string): void {
+  if (!isRecord(value)) fail(path, 'a camera keyframe');
+  checkNumber(value['time'], `${path}.time`);
+  checkNumber(value['x'], `${path}.x`);
+  checkNumber(value['y'], `${path}.y`);
+  checkNumber(value['zoom'], `${path}.zoom`);
+  checkString(value['easing'], `${path}.easing`);
+}
+
 function checkLayer(value: unknown, path: string): void {
   if (!isRecord(value)) fail(path, 'a layer');
   checkString(value['id'], `${path}.id`);
@@ -94,6 +103,9 @@ function checkScene(value: unknown, path: string): void {
     fail(`${path}.backgroundFit`, '"cover" or "stretch"');
   }
   checkArray(value['cameraKeyframes'], `${path}.cameraKeyframes`);
+  value['cameraKeyframes'].forEach((k, i) =>
+    checkCameraKeyframe(k, `${path}.cameraKeyframes[${i}]`)
+  );
   checkArray(value['layers'], `${path}.layers`);
   value['layers'].forEach((l, i) => checkLayer(l, `${path}.layers[${i}]`));
   checkArray(value['audioClips'], `${path}.audioClips`);

@@ -11,7 +11,7 @@
 
 import { Container, Sprite, Texture } from 'pixi.js';
 import type { ProjectDocument, Scene } from '../../../shared/document/types';
-import { sampleLayer } from '../../../shared/export/interpolate';
+import { sampleLayer } from '../../../shared/animation/interpolate';
 import { backgroundPlacement, referenceSize } from '../../../shared/scene/geometry';
 
 export interface SceneStage {

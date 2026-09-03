@@ -21,7 +21,7 @@ import { setKeyframe, setSceneBackground } from '../../../shared/document/edits'
 import type { Keyframe, ProjectDocument, Scene } from '../../../shared/document/types';
 import { addCharacterToScene, addPropToScene } from '../../../shared/scene/addToScene';
 import { readSceneDragData, SCENE_DRAG_TYPE } from './sceneDrag';
-import { sampleLayer } from '../../../shared/export/interpolate';
+import { sampleLayer } from '../../../shared/animation/interpolate';
 import {
   canvasToReference,
   fitCanvas,

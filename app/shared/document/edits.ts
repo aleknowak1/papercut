@@ -9,6 +9,7 @@ import type {
   Asset,
   AudioClip,
   BackgroundFit,
+  CameraKeyframe,
   Character,
   Keyframe,
   Layer,
@@ -276,6 +277,29 @@ export function setKeyframe(
   );
 }
 
+/**
+ * Writes many keyframes to one layer in ONE edit — how a motion preset
+ * bakes in as a single undo step (Phase 5 decision d). Existing keyframes
+ * at the same times are replaced; all others are kept.
+ */
+export function applyKeyframes(
+  doc: ProjectDocument,
+  sceneId: string,
+  layerId: string,
+  keyframes: readonly Keyframe[]
+): ProjectDocument {
+  if (keyframes.length === 0) return doc;
+  return replaceScene(doc, sceneId, (scene) =>
+    replaceLayer(scene, layerId, (layer) => {
+      const times = new Set(keyframes.map((k) => k.time));
+      const merged = [...layer.keyframes.filter((k) => !times.has(k.time)), ...keyframes].sort(
+        (a, b) => a.time - b.time
+      );
+      return { ...layer, keyframes: merged };
+    })
+  );
+}
+
 export function removeKeyframe(
   doc: ProjectDocument,
   sceneId: string,
@@ -288,6 +312,36 @@ export function removeKeyframe(
       keyframes: layer.keyframes.filter((k) => k.time !== time)
     }))
   );
+}
+
+// ---- camera ----
+
+/**
+ * Adds a camera keyframe to a scene, keeping them sorted by time. A
+ * keyframe at exactly the same time replaces the existing one — the same
+ * rule as setKeyframe for layers.
+ */
+export function setCameraKeyframe(
+  doc: ProjectDocument,
+  sceneId: string,
+  keyframe: CameraKeyframe
+): ProjectDocument {
+  return replaceScene(doc, sceneId, (scene) => {
+    const others = scene.cameraKeyframes.filter((k) => k.time !== keyframe.time);
+    const cameraKeyframes = [...others, keyframe].sort((a, b) => a.time - b.time);
+    return { ...scene, cameraKeyframes };
+  });
+}
+
+export function removeCameraKeyframe(
+  doc: ProjectDocument,
+  sceneId: string,
+  time: number
+): ProjectDocument {
+  return replaceScene(doc, sceneId, (scene) => ({
+    ...scene,
+    cameraKeyframes: scene.cameraKeyframes.filter((k) => k.time !== time)
+  }));
 }
 
 // ---- audio ----
