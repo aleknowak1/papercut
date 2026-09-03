@@ -138,3 +138,57 @@ export function canvasToReference(point: Point, fit: CanvasFit): Point {
 export function referenceToCanvas(point: Point, fit: CanvasFit): Point {
   return { x: point.x * fit.scale, y: point.y * fit.scale };
 }
+
+export interface LayerTransform {
+  readonly x: number;
+  readonly y: number;
+  readonly scale: number;
+  /** Degrees, as in the document. */
+  readonly rotation: number;
+  readonly flipX: boolean;
+}
+
+/**
+ * A point in reference space, mapped into a layer's source picture
+ * (pixels from the picture's top-left). The layer's keyframe places the
+ * picture's CENTRE at (x, y), then scales, rotates, and flips it — this
+ * runs that backwards. Undefined when the point misses the picture
+ * entirely; the caller then checks the pixel's alpha, so transparent
+ * corners of a cutout do not catch clicks.
+ */
+export function referenceToLayerPixel(
+  transform: LayerTransform,
+  image: Size,
+  point: Point
+): Point | undefined {
+  if (!(transform.scale > 0) || image.width <= 0 || image.height <= 0) return undefined;
+  const dx = point.x - transform.x;
+  const dy = point.y - transform.y;
+  const angle = (-transform.rotation * Math.PI) / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  let localX = (dx * cos - dy * sin) / transform.scale;
+  const localY = (dx * sin + dy * cos) / transform.scale;
+  if (transform.flipX) localX = -localX;
+  const px = localX + image.width / 2;
+  const py = localY + image.height / 2;
+  if (px < 0 || py < 0 || px >= image.width || py >= image.height) return undefined;
+  return { x: px, y: py };
+}
+
+/**
+ * Uniform resize by dragging a corner: the layer's new scale is its
+ * starting scale times how much farther from the layer's centre the
+ * pointer now is, clamped to sane bounds.
+ */
+export function resizeScale(
+  startScale: number,
+  center: Point,
+  startPoint: Point,
+  currentPoint: Point
+): number {
+  const startDist = Math.hypot(startPoint.x - center.x, startPoint.y - center.y);
+  const currentDist = Math.hypot(currentPoint.x - center.x, currentPoint.y - center.y);
+  if (startDist < 1e-6) return startScale;
+  return Math.min(100, Math.max(0.01, startScale * (currentDist / startDist)));
+}

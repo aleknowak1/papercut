@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import type { OpenedProject } from '../../shared/ipc';
 import type { ProjectDocument } from '../../shared/document/types';
+import { removeLayer, setKeyframe } from '../../shared/document/edits';
+import { timeZeroKeyframe } from '../../shared/scene/geometry';
 import {
   applyEdit as recordEdit,
   canRedo,
@@ -245,6 +247,52 @@ function ProjectView({
     return () => window.removeEventListener('keydown', onKey);
   }, [doUndo, doRedo]);
 
+  // Keyboard for the selected layer: arrows nudge by 1 reference pixel
+  // (Shift = 10), Delete removes the layer, Escape deselects. Each press
+  // is one plain undo step. Typing fields are left alone.
+  useEffect(() => {
+    if (editingMaskOf !== undefined) return; // the mask editor owns the keys
+    const onKey = (event: KeyboardEvent): void => {
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      const layer = selectedLayer;
+      const currentScene = scene;
+      if (layer === undefined || currentScene === undefined) return;
+      if (event.key === 'Escape') {
+        setSelectedLayerId(undefined);
+        return;
+      }
+      if (event.key === 'Delete') {
+        event.preventDefault();
+        setSelectedLayerId(undefined);
+        applyEdit((current) => removeLayer(current, currentScene.id, layer.id));
+        return;
+      }
+      const step = event.shiftKey ? 10 : 1;
+      const nudge: Record<string, readonly [number, number]> = {
+        ArrowLeft: [-step, 0],
+        ArrowRight: [step, 0],
+        ArrowUp: [0, -step],
+        ArrowDown: [0, step]
+      };
+      const delta = nudge[event.key];
+      if (delta === undefined) return;
+      const zero = timeZeroKeyframe(layer);
+      if (zero === undefined) return;
+      event.preventDefault();
+      applyEdit((current) =>
+        setKeyframe(current, currentScene.id, layer.id, {
+          ...zero,
+          x: zero.x + delta[0],
+          y: zero.y + delta[1]
+        })
+      );
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [editingMaskOf, selectedLayer, scene, applyEdit]);
+
   return (
     <div className="opened project-view">
       <div className="project-masthead">
@@ -318,6 +366,8 @@ function ProjectView({
                 scene={scene}
                 selectedLayerId={effectiveSelection}
                 opacityPreview={opacityPreview}
+                applyEdit={applyEdit}
+                onSelect={setSelectedLayerId}
               />
             </div>
           )}

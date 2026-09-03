@@ -221,7 +221,24 @@ canvas). Below the list, the selected layer has an **Opacity** slider
 it back in one step) and a **Flip** button that mirrors it left-to-right.
 Every operation here is one undo step (Ctrl+Z).
 
-- M-3.3 Placing and sizing things
+### M-3.3 Placing and sizing things
+
+Click a layer **on the canvas** to select it — clicks land on the actual
+picture, so the see-through parts of a cutout never get in the way of
+grabbing something behind them. Clicking empty space deselects.
+
+- **Move** — drag the layer. Nothing is written down until you let go, so
+  the whole drag is a single undo step. Press **Escape** mid-drag to put
+  it back as if nothing happened.
+- **Resize** — drag any of the four corner handles. Size changes evenly
+  (no squashing), and again commits once when you let go.
+- **Nudge** — arrow keys move the selected layer 1 pixel at a time
+  (hold **Shift** for 10). **Delete** removes the layer. **Escape**
+  deselects.
+
+A locked layer ignores all of this until you unlock it. Where a layer
+stands now is where it stands at the start of the scene; making it move
+over time is the animation phase (M-4).
 
 ## M-4 Making things move
 - M-4.1 Keyframes explained in one page

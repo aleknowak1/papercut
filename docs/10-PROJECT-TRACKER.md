@@ -1,7 +1,7 @@
 # DOC-10 — Project Tracker
 
 **Status:** Active
-**Last updated:** 2026-09-02 (Phase 4 — editor layout, scene canvas and Layers panel live-verified, CL-0039)
+**Last updated:** 2026-09-02 (Phase 4 features complete — placing and sizing on the canvas, CL-0040; Alek's try-out in §5)
 **Purpose:** The one page to read when returning to the project. Where we are, what is done, what is next, and what is waiting on Alek. Updated with every change-log entry (DOC-04).
 
 ---
@@ -13,8 +13,8 @@
 **Phase 2 — Export prototype: USABLE, decision made (CL-0018/CL-0019).** ADR-013 is proven on real hardware: the ten-second test project exports to a correct .mp4 through Windows' own encoders, 60 s of 1080p30 extrapolates to ≈ 43 s even without a GPU (target: under 3 minutes), audio drift ≤ 9.6 ms. OQ-019 closed, ADR-013 now plainly Accepted, mp4-muxer locked (MIT). Full numbers in DOC-12. Windows 10 remains untested (no machine).
 **Phase 3 — Assets and cutouts: IN PROGRESS.** The OQ-020 gate is closed (ADR-017): Smart App Control never objected (onnxruntime-node is Microsoft-signed throughout), and Alek chose fp32-on-CPU with revised targets (< 15 s reference machine, ≤ 45 s minimum-spec, always a background queue). Full evidence trail in DOC-13. Step 2 is built and green (CL-0027): the segmentation worker runs BiRefNet fp32 in an Electron utility process with a one-at-a-time job queue, status updates, cancellation, and the original-pixels+alpha output rule enforced byte-for-byte by a check; memory arena off (measured faster and frees ~everything between jobs); worker process ends when the queue goes idle. Measured on this laptop: lite ≈32–37 s/photo, HD ≈54 s, model load ≈5–8 s.
 **Phase 3 — Assets and cutouts: COMPLETE (CL-0033).** Everything in the phase is built, checked, live-verified and in the manual: image import (JPG/PNG/WebP + HEIC via Windows' decoder) with the Assets panel; automatic cutouts in a background queue (one at a time, cancellable, ≈half a minute per photo on this laptop); characters with poses; the mask editor (brush add/erase, feather, zoom/pan, local stroke undo, versioned saves that document-undo repoints between, Reset to automatic, HD cutout); audio import (MP3/WAV/M4A/OGG) with durations and Play. Undo/redo and auto-save are wired through everything. Alek verified the foundations by hand (CL-0030); his remaining spot-checks are in §5.
-**Phase 4 — Scene and layers: IN PROGRESS.** Plan approved by Alek (decisions a–i in DOC-11 Appendix E addendum); building alone, one feature at a time. Step 1 done (CL-0037): Layer.hidden/locked and Scene.backgroundFit in the document (old files load unchanged), reorder/hide/lock/fit edits, shared pure geometry, scene check green. Step 2 done (CL-0038): sceneStage is the one drawing path — export renders through it (character layers and cover/stretch included). Step 3 done (CL-0039): the editor layout (tabs · canvas · Layers), background + fit, add/order/hide/lock/opacity/flip layers, all live-verified end to end in the running app. Next: step 4 — placing and sizing on the canvas (select, drag, resize, nudge; M-3.3).
-**Next action:** Continue Phase 4 step 4 — canvas interaction: click-select (transparent pixels don't catch clicks), drag to move (one setKeyframe on release, Escape cancels), uniform corner resize, arrow-key nudges, Delete removes; M-3.3.
+**Phase 4 — Scene and layers: IN PROGRESS.** Plan approved by Alek (decisions a–i in DOC-11 Appendix E addendum); building alone, one feature at a time. Step 1 done (CL-0037): Layer.hidden/locked and Scene.backgroundFit in the document (old files load unchanged), reorder/hide/lock/fit edits, shared pure geometry, scene check green. Step 2 done (CL-0038): sceneStage is the one drawing path — export renders through it. Step 3 done (CL-0039): editor layout (tabs · canvas · Layers), background + fit, add/order/hide/lock/opacity/flip. Step 4 done (CL-0040): click-select on real pixels, drag with one-commit-on-release and Escape-cancel, uniform corner resize, nudges, Delete. **All Phase 4 features are built, checked, live-verified and in the manual (M-3.1–M-3.3).**
+**Next action:** Alek tries Phase 4 by hand (§5), then Phase 5 (Animation) begins — DOC-10 §2 lists Fable for the keyframe engine, then Opus: *"Read CLAUDE.md and DOC-10, then start Phase 5: keyframes (position, scale, rotation, flip, opacity), easing, motion presets, pose swapping, camera pan/zoom, and the render-snapshot check (DOC-01 §5.1, DOC-03 §3)."* Plan-first recommended: the render-snapshot check and the keyframe engine are foundations.
 
 ### 1b. Hand-off notes (now historical — the work below was completed by Fable in CL-0031..33, built to these decisions)
 
@@ -36,7 +36,7 @@ Phases run in this order; a phase does not start until the previous one is usabl
 | 1 | **Scaffold** | Empty Electron/TypeScript/React app opens to the Home screen on Windows; project document format defined; undo/redo; check suite running (save/reopen, undo, license, network, AI-spend guard) | **Usable** | Fable |
 | 2 | **Export prototype** (OQ-019) | Ten-second test project exports to .mp4 using Windows' built-in encoders with correct duration, resolution, audio sync | **Usable** (checks green, DOC-12 written, OQ-019 closed; Complete once Alek has watched the export) | Fable |
 | 3 | **Assets and cutouts** | Import images/audio; BiRefNet_lite auto-cutout; HD cutout; mask editor; HEIC handling | **Complete** (CL-0033: every feature ☑, all M-2 manual sections written; Alek's spot-checks in §5 — mask editor on a real photo, HEIC, real MP3/OGG) | Fable (Alek's choice, CL-0030) |
-| 4 | **Scene and layers** | Background, character/prop layers, ordering, opacity, lock/hide, placing and sizing on canvas | **In progress** (step 1 of 4: document fields + scene check, CL-0037) | Fable |
+| 4 | **Scene and layers** | Background, character/prop layers, ordering, opacity, lock/hide, placing and sizing on canvas | **Complete** (CL-0037–0040: every feature ☑, M-3 sections written, live-verified by driving the real app; Alek's try-out in §5) | Fable |
 | 5 | **Animation** | Keyframes (position, scale, rotation, flip, opacity), easing, motion presets, pose swapping, camera pan/zoom, render snapshot checks | Not started | Fable for keyframe engine → Opus |
 | 6 | **Timeline and audio** | Multi-track timeline, scrub/snap/zoom, audio clips (volume, fade, trim), imported sounds | Not started | Opus |
 | 7 | **Scenes and transitions** | Multiple scenes, reorder, seven transition types | Not started | Opus |
@@ -66,7 +66,7 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 | Mask editor (brush add/erase, feather) | 3 | ☑ (CL-0032) | M-2.4 |
 | Characters with multiple poses | 3 | ☑ (CL-0031) | M-2.5 |
 | Layers: order, opacity, lock, hide | 4 | ☑ (CL-0039; Alek's own try-out pending, §5) | M-3.2 |
-| Place and size on canvas | 4 | ☐ | M-3.3 |
+| Place and size on canvas | 4 | ☑ (CL-0040; Alek's own try-out pending, §5) | M-3.3 |
 | Keyframes: position, scale, rotation, flip, opacity | 5 | ☐ | M-4.1, M-4.2 |
 | Easing presets | 5 | ☐ | M-4.3 |
 | Motion presets: bob, walk, shake, pop | 5 | ☐ | M-4.4 |
@@ -94,6 +94,7 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 |-------|--------|---------|
 | Save / reopen | ☑ | ✅ |
 | Undo | ☑ | ✅ |
+| Scene and layers (edits round-trip; placement geometry as arithmetic) | ☑ | ✅ |
 | Render snapshots | ☐ (Phase 2+) | — |
 | Export | ☑ | ✅ |
 | Segmentation (real worker + model + coverage + pixels-untouched + memory) | ☑ | ✅ |
@@ -102,12 +103,13 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 | License allow-list | ☑ | ✅ |
 | AI-spend guard | ☑ | ✅ |
 
-Run everything with one command: `npm run check` (106 tests + licenses + build scan + segmentation + export with the audio fixtures; measured 75 seconds — the segmentation check runs one real cutout). `npm run check:segmentation:hd` exercises the HD model on demand. A green run leaves tests/output/ empty (the CL-0024 housekeeping rule, enforced by the tests themselves).
+Run everything with one command: `npm run check` (139 tests + licenses + build scan + segmentation + export with the audio fixtures; measured 68 seconds after Phase 4 — the segmentation check's one real cutout is most of it; the new scene tests are pure arithmetic and cost ~1 s). `npm run check:segmentation:hd` exercises the HD model on demand. A green run leaves tests/output/ empty (the CL-0024 housekeeping rule, enforced by the tests themselves).
 
 ## 5. Waiting on Alek
 
 | Item | Needed by | Ref |
 |------|-----------|-----|
+| Try Phase 4 by hand: open a project (`npm run dev`), assign a background and switch Cover/Stretch, add a character and a prop layer, drag/resize/flip them, hide/lock/reorder in the Layers panel, and press Ctrl+Z a few times — everything should step back one change at a time. M-3.1–M-3.3 describe it all. | Now (verifies Phase 4) | M-3.1–M-3.3 |
 | If you have a real iPhone photo (.heic): import it the same way — it should just appear (this laptop has the HEIF extension). That verifies the HEIC works-path; the missing-extension message is covered by checks. | Now (verifies CL-0029) | M-9.2 |
 | Watch and listen to the exported test video: open the app (`npm run dev`), open or create a project, click "Load test content (dev)" then "Export prototype (dev)", and play export-dev.mp4 from the project folder. The square should move smoothly, the counter should tick, and each beep should land exactly on its white flash. | Now (closes Phase 2) | DOC-12 §3 |
 | Create an OpenAI account, generate a key, set a small monthly hard cap, keep the key private | Phase 11 (not before) | DOC-09 §5 |
