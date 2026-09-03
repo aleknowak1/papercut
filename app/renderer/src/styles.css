@@ -351,6 +351,7 @@ button {
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .characters-panel {
@@ -431,6 +432,7 @@ button {
 .assets-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -459,7 +461,8 @@ button {
 .asset-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  flex-wrap: wrap; /* the narrow left column: extras drop to a second line */
+  gap: 4px 10px;
   background: var(--bg);
   border: 1px solid var(--panel-edge);
   padding: 4px 8px;
@@ -497,7 +500,6 @@ button {
 
 .asset-kind {
   flex: none;
-  width: 16ch;
   color: var(--ink-dim);
   text-transform: uppercase;
   font-size: 11px;
@@ -506,7 +508,6 @@ button {
 
 .asset-size {
   flex: none;
-  width: 10ch;
   color: var(--ink-dim);
   font-size: 11px;
 }
@@ -536,6 +537,184 @@ button {
 .dev-tools {
   border-top: 1px dashed var(--panel-edge);
   padding-top: 10px;
+}
+
+/* ---- Editor layout: tabs · scene canvas · Layers (Phase 4) ---- */
+
+.editor-columns {
+  align-items: stretch;
+}
+
+.left-column {
+  flex: 0 0 320px;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.left-column .assets-panel,
+.left-column .characters-panel {
+  flex: 1;
+}
+
+.tab-row {
+  display: flex;
+  gap: 6px;
+}
+
+.tab-btn {
+  flex: 1;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  padding: 6px 8px;
+}
+
+.tab-btn[aria-selected='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.canvas-column {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scene-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.scene-background-select {
+  max-width: 24ch;
+}
+
+.scene-canvas-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--panel-edge);
+  background: #101213;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.scene-canvas {
+  display: block;
+}
+
+.scene-canvas-hint {
+  position: absolute;
+  margin: 0;
+  padding: 0 24px;
+  text-align: center;
+  color: var(--ink-dim);
+  pointer-events: none;
+}
+
+.scene-canvas-error {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  right: 12px;
+  background: var(--bg);
+}
+
+.layers-panel {
+  flex: 0 0 300px;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.layer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.layer-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--panel-edge);
+  padding: 3px 6px;
+}
+
+.layer-row-selected {
+  border-color: var(--accent);
+}
+
+.layer-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  font: inherit;
+  padding: 4px 2px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.layer-name[aria-pressed='true'] {
+  color: var(--accent);
+}
+
+.layer-kind {
+  flex: none;
+  color: var(--ink-dim);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+
+.layer-row .btn[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.layer-details {
+  border-top: 1px dashed var(--panel-edge);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.layer-opacity input[type='range'] {
+  flex: 1;
+  width: auto;
+}
+
+.layer-detail-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.layer-readout {
+  color: var(--ink-dim);
+  font-size: 11px;
 }
 
 /* ---- Mask editor (M-2.4) ---- */

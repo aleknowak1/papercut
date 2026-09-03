@@ -4,13 +4,15 @@
 // export renderer call, so placement maps to the document exactly.
 
 import { describe, expect, it } from 'vitest';
+import type { Layer } from '../../app/shared/document/types';
 import {
   backgroundPlacement,
   canvasToReference,
   defaultPlacementKeyframe,
   fitCanvas,
   referenceSize,
-  referenceToCanvas
+  referenceToCanvas,
+  timeZeroKeyframe
 } from '../../app/shared/scene/geometry';
 
 describe('reference space', () => {
@@ -85,6 +87,30 @@ describe('default placement of a new layer', () => {
       'pose-1'
     );
     expect('poseId' in defaultPlacementKeyframe({ width: 100, height: 100 }, '1:1')).toBe(false);
+  });
+});
+
+describe('the time-0 keyframe (static placement)', () => {
+  const layer = (keyframes: Layer['keyframes']): Layer => ({
+    id: 'l1',
+    name: 'Layer',
+    source: { kind: 'prop', assetId: 'cut1' },
+    keyframes
+  });
+  const k = defaultPlacementKeyframe({ width: 100, height: 100 }, '1:1');
+
+  it('is the first keyframe when it sits at time 0', () => {
+    expect(timeZeroKeyframe(layer([k]))).toBe(k);
+  });
+
+  it('is built from how the layer looks at time 0 when the first keyframe sits later', () => {
+    const later = { ...k, time: 2, x: 77, opacity: 0.5, poseId: 'p1' };
+    const zero = timeZeroKeyframe(layer([later]));
+    expect(zero).toEqual({ ...later, time: 0, easing: 'linear' });
+  });
+
+  it('is undefined for a layer with no keyframes', () => {
+    expect(timeZeroKeyframe(layer([]))).toBeUndefined();
   });
 });
 

@@ -177,8 +177,50 @@ Placing sounds on the timeline — with volume, fades and trimming — arrives
 with the timeline phase.
 
 ## M-3 Building a scene
-- M-3.1 Backgrounds and the scene canvas
-- M-3.2 Adding, ordering, locking, hiding layers
+
+### M-3.1 Backgrounds and the scene canvas
+
+Open a project and the middle of the screen is the **scene canvas**: your
+video, exactly as it will export, in your project's shape (9:16, 16:9 or
+1:1). The same drawing code renders the canvas and the final video, so
+what you see here is what you get.
+
+Above the canvas, choose a **Background** from any photo you imported as a
+background. **Fit** decides how it fills the frame:
+
+- **Cover** (the default) — the photo is enlarged until it fills the frame
+  and the overflow is cropped evenly. Nothing is distorted; the edges of
+  the photo may be cut off.
+- **Stretch** — the whole photo is squeezed or stretched to fit the frame
+  exactly. Nothing is cropped; shapes may look distorted.
+
+Pick **(none)** to clear the background. Each change is one undo step.
+
+The panels on the left — **Assets** and **Characters** — are the same
+panels as before, now behind two tabs to give the canvas room.
+
+### M-3.2 Adding, ordering, locking, hiding layers
+
+The **Layers** panel on the right lists everything placed in the scene,
+**front-most at the top** — like sheets of paper seen from above.
+
+- **+ Character** adds a character (it shows its first pose). **+ Prop**
+  adds any cutout directly. A new layer lands in the middle of the frame,
+  sized to at most half its height, in front of everything.
+- **↑ / ↓** bring a layer forward or send it backward.
+- **◉ / ○ (hide)** — a hidden layer is not drawn at all, in the editor
+  AND in the export. Use it to try a scene without something.
+- **▢ / ▣ (lock)** — a locked layer still shows and still exports; it
+  just cannot be selected or moved, so you cannot nudge it by accident.
+- **✕** removes the layer from the scene. The cutout itself stays in the
+  project.
+
+Click a layer's name to select it (an amber outline appears on the
+canvas). Below the list, the selected layer has an **Opacity** slider
+(see through the layer — the number commits when you let go, so undo takes
+it back in one step) and a **Flip** button that mirrors it left-to-right.
+Every operation here is one undo step (Ctrl+Z).
+
 - M-3.3 Placing and sizing things
 
 ## M-4 Making things move

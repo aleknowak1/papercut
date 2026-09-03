@@ -13,6 +13,9 @@ import { AssetsPanel } from './assets/AssetsPanel';
 import { CharactersPanel } from './assets/CharactersPanel';
 import { MaskEditor } from './assets/MaskEditor';
 import { HomeScreen } from './HomeScreen';
+import { LayersPanel } from './scene/LayersPanel';
+import { SceneCanvas } from './scene/SceneCanvas';
+import { SceneToolbar } from './scene/SceneToolbar';
 
 // Everything under app/renderer/src/dev/ (and tests/fixtures) is loaded
 // through dynamic imports inside `import.meta.env.DEV` branches. In a
@@ -149,10 +152,10 @@ export function App(): JSX.Element {
 }
 
 /**
- * The opened-project view. Phase 3 gives it the Assets panel and wires the
- * document through the undo/redo history (every edit is one history step;
- * the document is saved after each change). The full editor layout is
- * Phase 4.
+ * The opened-project view (the editor): Assets/Characters tabs on the
+ * left, the scene canvas in the middle, the Layers panel on the right.
+ * The document runs through the undo/redo history (every edit is one
+ * history step; the document is saved after each change).
  */
 function ProjectView({
   opened,
@@ -164,10 +167,22 @@ function ProjectView({
   const [history, setHistory] = useState(() => createHistory(opened.document));
   const [saveError, setSaveError] = useState<string | undefined>(undefined);
   const [editingMaskOf, setEditingMaskOf] = useState<string | undefined>(undefined);
+  const [leftTab, setLeftTab] = useState<'assets' | 'characters'>('assets');
+  // Selection is UI state only — never saved, never an undo step.
+  const [selectedLayerId, setSelectedLayerId] = useState<string | undefined>(undefined);
+  const [opacityPreview, setOpacityPreview] = useState<number | undefined>(undefined);
   const doc = history.present;
   const editingAsset = editingMaskOf !== undefined
     ? doc.assets.find((a) => a.id === editingMaskOf)
     : undefined;
+  // The editor shows the first scene until multiple scenes arrive (Phase 7).
+  const scene = doc.scenes[0];
+  // A selection whose layer was removed (or undone away) simply ends.
+  const selectedLayer =
+    selectedLayerId !== undefined
+      ? scene?.layers.find((l) => l.id === selectedLayerId)
+      : undefined;
+  const effectiveSelection = selectedLayer?.id;
 
   // Save whatever is current, a moment after it changes (one save per burst).
   const saveTimer = useRef<number | undefined>(undefined);
@@ -257,14 +272,65 @@ function ProjectView({
           onClose={() => setEditingMaskOf(undefined)}
         />
       ) : (
-        <div className="project-columns">
-          <AssetsPanel
-            projectDir={opened.projectDir}
-            document={doc}
-            applyEdit={applyEdit}
-            onEditMask={setEditingMaskOf}
-          />
-          <CharactersPanel projectDir={opened.projectDir} document={doc} applyEdit={applyEdit} />
+        <div className="project-columns editor-columns">
+          <div className="left-column">
+            <div className="tab-row" role="tablist">
+              <button
+                type="button"
+                className="btn tab-btn"
+                role="tab"
+                aria-selected={leftTab === 'assets'}
+                onClick={() => setLeftTab('assets')}
+              >
+                Assets
+              </button>
+              <button
+                type="button"
+                className="btn tab-btn"
+                role="tab"
+                aria-selected={leftTab === 'characters'}
+                onClick={() => setLeftTab('characters')}
+              >
+                Characters
+              </button>
+            </div>
+            {leftTab === 'assets' ? (
+              <AssetsPanel
+                projectDir={opened.projectDir}
+                document={doc}
+                applyEdit={applyEdit}
+                onEditMask={setEditingMaskOf}
+              />
+            ) : (
+              <CharactersPanel
+                projectDir={opened.projectDir}
+                document={doc}
+                applyEdit={applyEdit}
+              />
+            )}
+          </div>
+          {scene !== undefined && (
+            <div className="canvas-column">
+              <SceneToolbar document={doc} scene={scene} applyEdit={applyEdit} />
+              <SceneCanvas
+                projectDir={opened.projectDir}
+                document={doc}
+                scene={scene}
+                selectedLayerId={effectiveSelection}
+                opacityPreview={opacityPreview}
+              />
+            </div>
+          )}
+          {scene !== undefined && (
+            <LayersPanel
+              document={doc}
+              scene={scene}
+              applyEdit={applyEdit}
+              selectedLayerId={effectiveSelection}
+              onSelect={setSelectedLayerId}
+              onOpacityPreview={setOpacityPreview}
+            />
+          )}
         </div>
       )}
       {import.meta.env.DEV && (
