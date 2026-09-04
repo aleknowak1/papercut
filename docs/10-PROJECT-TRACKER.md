@@ -1,7 +1,7 @@
 # DOC-10 — Project Tracker
 
 **Status:** Active
-**Last updated:** 2026-09-04 (Phase 6 Complete, CL-0063; Phase 6b full-width timeline layout, CL-0064)
+**Last updated:** 2026-09-04 (Phase 6b verified by Alek — CL-0066)
 **Purpose:** The one page to read when returning to the project. Where we are, what is done, what is next, and what is waiting on Alek. Updated with every change-log entry (DOC-04).
 
 ---
@@ -27,7 +27,8 @@ Step 7 done (CL-0061): **the preview has sound.** On play, previewSchedule's ent
 Step 9 done (CL-0062): M-1.3 written as the full interface tour and M-5.5's clip controls added; a StrictMode save-consistency impurity the final sweep caught is fixed (saving now happens from the committed document, never inside a state updater); the closing sweep ran the exact hands-on flow live — drop, trim, fade, play with sound, drag a diamond, reopen — 6 of 6.
 **Phase 6 — Timeline and audio: COMPLETE (CL-0055–CL-0062; verified by Alek, CL-0063 on 2026-09-04):** the full §5 try-out — both roads onto the timeline (an overlapping clip took its own lane), clip body/edge/fade drags each one Ctrl+Z with Escape writing nothing, the Sound clip panel, play with sound (beeps on flashes, pause silencing at once, silent scrubbing), keyframe diamond drags with the Escape cancel and the occupied-frame refusal, and reopening with everything kept. All worked.
 **Phase 6b — the full-width timeline (CL-0064):** the one usability change from Alek's try-out. The timeline now spans the whole window width beneath all three columns (the tracks get the whole width), with a draggable horizontal divider setting its height — UI state like zoom, not saved, never an undo step. Layout/CSS only: Timeline.tsx and sceneStage untouched, the 14 snapshots unchanged; live-verified with 34 scripted assertions including the earlier timeline assertions re-run. M-1.3 retold.
-**Next action:** Phase 7 (Scenes and transitions) is planned in the Cowork session per DOC-11 §4, as Phases 5 and 6 were.
+**Verified by Alek (CL-0066, on 2026-09-04):** the Phase 6b layout tried by hand — the timeline spans the window, the divider resizes it, the canvas still fits. Accepted.
+**Next action:** Phase 7 (Scenes and transitions) starts from the DOC-11 Appendix H kickoff prompt (CL-0065; decisions a–r in its addendum). Alek's Phase 6b acceptance is recorded (CL-0066); Fable now builds the foundations (document fields and edits, the overlap timing model, transition arithmetic, projectStage, export over every scene, the two-scene export check, nine new snapshots) and hands the scene strip, Transition panel, switching and play-through to Opus.
 
 ### 1b. Hand-off notes (now historical — the work below was completed by Fable in CL-0031..33, built to these decisions)
 
@@ -52,7 +53,7 @@ Phases run in this order; a phase does not start until the previous one is usabl
 | 4 | **Scene and layers** | Background, character/prop layers, ordering, opacity, lock/hide, placing and sizing on canvas | **Complete** (CL-0037–0041; verified by Alek by hand, CL-0043) | Fable |
 | 5 | **Animation** | Keyframes (position, scale, rotation, flip, opacity), easing, motion presets, pose swapping, camera pan/zoom, render snapshot checks | **Complete** (CL-0044–0052; reviewer audit run; verified by Alek, CL-0048 and CL-0054) | Fable throughout (Alek's choice, as Phases 3–4) |
 | 6 | **Timeline and audio** | Multi-track timeline, scrub/snap/zoom, audio clips (volume, fade, trim), imported sounds | **Complete** (CL-0055–0062; verified by Alek by hand, CL-0063) | Fable throughout (foundations CL-0055–0057, UI CL-0059–0062) |
-| 7 | **Scenes and transitions** | Multiple scenes, reorder, seven transition types | Not started | Opus |
+| 7 | **Scenes and transitions** | Multiple scenes, reorder, seven transition types | **Planned** (DOC-11 Appendix H, CL-0065) | Fable foundations, then Opus UI (Alek may run both on Fable, as Phases 5–6) |
 | 8 | **Text and captions** | Titles/captions, OFL fonts, fade/pop animation | Not started | Opus |
 | 9 | **Real export** | Platform presets, 720p/1080p, 30/60 fps, optional "AI-generated" label, progress and reveal-in-folder | Not started | Opus |
 | 10 | **Company server** | Accounts, subscription via merchant of record, usage caps, `/tts` and `/agent` proxies, hosting chosen (OQ-011, OQ-018) | Not started | Fable |

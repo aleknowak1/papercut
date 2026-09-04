@@ -1,7 +1,7 @@
 # DOC-11 — Development Workflow
 
 **Status:** Active
-**Last updated:** 2026-09-04 (Appendix G: Phase 6 kickoff prompt and Alek's decisions a–n)
+**Last updated:** 2026-09-04 (Appendix H: Phase 7 kickoff prompt and Alek's decisions a–r)
 **Purpose:** How Alek and Claude build PAPERCUT day to day. Tools, session rhythm, roles, and the standing files that keep every session on track.
 
 ---
@@ -1020,3 +1020,308 @@ n. (From Alek's question) Every layer — each character and each prop —
    has its own row on the timeline in Layers-panel order; the camera has
    one row above them; the background has none. A row shows whole
    keyframes as diamonds, not per-property sub-rows.
+
+## Appendix H — Phase 7 kickoff prompt (paste into Claude Code)
+
+Model: Fable for the foundations (verification record, document fields and edits, projectTime and projectSchedule, the transition arithmetic, projectStage, export over every scene, the export check and the nine new snapshots, M-6.2's rules and M-6.3's timing text), then Opus for the scene strip, the Transition panel, canvas/timeline switching, play-through with sound, the ruler tints and M-6.1 (DOC-10 §2 lists Opus for the phase; Alek ran both halves of Phases 5 and 6 on Fable and may again). Plan first — the timing model and projectStage are the layer every later phase's export rides on. Alek approved decisions a–r (addendum below) in the planning session; the prompt hands them over so they are not re-asked. No reviewer agent for this phase (DOC-11 §6 lists it for Phases 1, 5, 10 and 12).
+
+```
+You are working in the PAPERCUT repository at:
+C:\Users\Alek\Documents\Claude Code Projects\papercut
+GitHub remote (origin): https://github.com/aleknowak1/papercut.git
+
+Read CLAUDE.md in the repository root first. Then read, in this order:
+docs/10-PROJECT-TRACKER.md (where we are), docs/02-DECISIONS.md (ADR-001,
+ADR-006, ADR-013 and ADR-015 in particular), docs/03-ARCHITECTURE.md
+(sections 3, 4.3 and 5), docs/01-PRODUCT-SPEC.md (section 5.1, the Scenes
+and Timeline rows), docs/04-CHANGELOG.md CL-0053 to CL-0065 (what Phase 6
+actually built and how its sessions were run), docs/11-WORKFLOW.md
+(Appendix G and its addendum show how Phase 6 was run; Appendix H is this
+prompt and its addendum holds the decisions already made), docs/05-MANUAL.md
+(M-1.3 and M-5.5 as written; the M-6.1–M-6.3 headings you will fill in),
+and the code Phase 7 builds on: app/shared/document/types.ts (Scene,
+TransitionType — the seven types already exist), create.ts, edits.ts
+(addScene, removeScene, renameScene, setSceneDuration, setSceneTransition)
+and validate.ts, app/renderer/src/scene/sceneStage.ts (the ONE renderer the
+canvas and export share — it does not change in this phase) and
+SceneCanvas.tsx, app/renderer/src/timeline/Timeline.tsx and
+previewPlayer.ts (the current scene only), app/renderer/src/export/
+exportProject.ts and frameSource.ts (the first scene only today),
+app/shared/timeline/previewSchedule.ts and app/shared/export/audioMix.ts
+(per-scene audio), tests/fixtures/snapshotProject.ts and
+app/renderer/src/dev/snapshotRunner.ts (the 14 moments), app/renderer/src/
+dev/exportTestAssets.ts, checkRunner.ts and verifyMp4.ts (what the export
+check can measure), and App.tsx (scene = doc.scenes[0], the play loop, the
+selection state, the editor layout with the timeline dock).
+
+Phases 0-6 are Complete. Phase 6b (CL-0064) moved the timeline below all
+three columns, full window width, with a draggable divider for its height.
+Alek tried it by hand on 2026-09-04 and accepted it: the timeline spans the
+window, the divider resizes it, the canvas still fits. THIS IS NOT YET IN
+THE CHANGE LOG. Your first commit, before any Phase 7 work: record it as
+CL-0066 in docs/04-CHANGELOG.md (area "Verification", as CL-0063 did),
+note it in DOC-10 §1 under the Phase 6b paragraph, and push. The working
+tree already holds uncommitted docs edits from the planning session
+(CL-0065: this prompt archived as DOC-11 Appendix H, DOC-10 "Next action"
+repointed) — include them in that same first commit, as CL-0053 was
+handled. If an untracked "Claude outputs" folder sits in the repo root,
+leave it alone and tell Alek; it is not part of the project.
+
+The app today: Home screen; project document with undo/redo and
+auto-save; Assets and Characters tabs; automatic cutouts; the mask editor;
+the three-column editor with the PixiJS scene canvas drawn by sceneStage
+(the same code export renders through); Layers panel with the keyframe
+inspector, motion presets and camera panel; the full-width timeline below
+the columns with the transport, ruler, camera and layer rows, and the sound
+lanes with Web Audio preview. The document already has scenes[] with
+transitionOut and the seven TransitionType values, and edits to add,
+remove, rename, set the duration and set the transition of a scene — but
+the editor shows scenes[0] only, export renders scenes[0] only, addScene
+appends at the end, removeScene will delete the last scene, and nothing
+draws a transition anywhere.
+
+We are starting Phase 7: Scenes and transitions (DOC-10 §2 row 7; DOC-01
+§5.1 Scenes row):
+
+1. The document (decisions b, f). Scene gains ONE optional field,
+   transitionOutSeconds (absent = 0.5 s); older project.json files load
+   unchanged (the existing check proves it). types.ts gains a
+   TRANSITION_TYPES list like EASING_TYPES; validate.ts refuses an unknown
+   transition type and a nonsense length in plain language. Edits through
+   the one-undo-step path, rules in the edits themselves (ADR-011):
+   insertScene(doc, afterSceneId, scene) (addScene may stay for the
+   fixtures), duplicateScene(doc, sceneId, ids) copying the whole scene —
+   layers, keyframes, camera, clips, background, transition — with fresh
+   ids, reorderScene(doc, sceneId, direction), removeScene REFUSING the
+   last scene, setSceneTransition (exists) and setSceneTransitionLength
+   clamped to 0.1–3 s and to half of the shorter neighbouring scene. A
+   refused or pointless edit returns the SAME document (no empty undo
+   step). DOC-03 §3 updated in the same commit.
+
+2. The timing model, pure (decisions e, f, g, i). New
+   app/shared/timeline/projectTime.ts: the effective transition length of
+   each scene (stored or default, clamped again to half the shorter
+   neighbour, 0 for a cut and for the last scene), each scene's global
+   start (a scene begins t seconds before the previous one ends), the
+   total length (sum of durations minus the transition lengths), global ↔
+   (scene, local time) both ways, and for a global time: which scene(s)
+   show and the transition's progress 0..1. New
+   app/shared/transitions/transition.ts: for (type, progress) the numbers
+   the renderer applies to the outgoing and incoming scene — alpha, x/y
+   offset in reference pixels, scale about the centre, and the wipe's
+   reveal width — exactly per decision g. New projectSchedule(doc,
+   fromGlobalTime, soundSeconds) beside previewSchedule: every scene's
+   previewSchedule shifted by that scene's global start (each scene's
+   clips still cut at their own scene's end; during an overlap both scenes
+   sound), the one translation export AND the preview consume (decision
+   j: no automatic fades). All arithmetic, all under vitest.
+
+3. Rendering (decision h). New app/renderer/src/scene/projectStage.ts:
+   owns one sceneStage per scene it needs, and for a global time poses one
+   scene, or two during a transition, applying transition.ts's numbers
+   (a mask rectangle for the wipe; the incoming scene drawn at its own
+   local time). sceneStage.ts DOES NOT CHANGE and the 14 snapshots stay
+   untouched. The canvas draws through projectStage at the global time of
+   (current scene, local playhead), so the last half-second before a
+   crossfade really shows the next scene fading in, exactly as export will
+   (ADR-006); picking, dragging and the camera preview still address only
+   the current scene's sprites. The canvas needs textures for the current
+   scene and its two neighbours.
+
+4. Export (decision i). exportProject renders EVERY scene: the frame count
+   from projectTime's total, each frame drawn by projectStage at its global
+   time; audio mixed from projectSchedule through the unchanged mixer.
+   frameSource takes projectStage instead of sceneStage. Phase 9's presets
+   and export screen are not this phase.
+
+5. The scene strip (decisions a, b, c). Across the full window width
+   directly above the timeline's header, inside the dock: one card per
+   scene in play order — number, name, duration — a small arrow between
+   cards showing the transition type, "+ Scene" at the end, the total
+   video length at the right. "+ Scene" inserts an empty scene (no
+   background, no layers, a new project's default duration) after the
+   selected one and selects it; the selected card has Duplicate, ◀ ▶
+   (reorder, one undo step each) and ✕ (refused for the last scene;
+   deleting the selected scene selects its neighbour); click the name to
+   rename (Enter confirms, Escape cancels). Selection is UI state like
+   layer selection — not saved, not an undo step: it switches the canvas,
+   the Layers panel, the toolbar's Background/Fit, every "Add to scene" /
+   "Add to timeline" target and the timeline to that scene; the playhead
+   resets to 0, layer/clip selection clears, camera mode ends. If undo
+   removes the selected scene, selection falls back to the first scene.
+
+6. The Transition panel (decision m). Clicking the arrow between two
+   cards (or a "Transition" button on the selected card) turns the right
+   panel into the Transition panel: Type dropdown (Cut first, then the
+   six), Length field (hidden for Cut; 0.1–3 s, clamped as in step 1), a
+   one-line hint per type, Done. One undo step per change; Escape steps
+   back out, as the Camera and Sound clip panels do.
+
+7. The timeline and play-through (decisions k, l). The timeline still
+   shows the current scene only; the ruler tints the transition-out window
+   at the scene's end and the transition-in window at its start (the
+   readout stays local). Play no longer stops at the scene's end unless it
+   is the last scene: at the end of scene A the current scene switches to
+   B with B's playhead at the overlap length, the view follows, and play
+   stops at the end of the last scene. Sound for the whole run is
+   scheduled ONCE from projectSchedule at the global playhead, so nothing
+   restarts at the boundary — the scene switch is UI state, not an edit,
+   and must not tear the play run down. Scrubbing stays silent and inside
+   the current scene.
+
+8. Checks (ADR-015), all part of `npm run check`: projectTime and
+   transition.ts as arithmetic (starts, total, both mappings, progress,
+   the clamps, every type at 0 / 0.5 / 1); projectSchedule at known
+   global times with an overlap; every new edit round-trips save/reopen
+   and undo; the last-scene refusal; older files load unchanged; bad
+   types and lengths refused by name. The export check's dev content gains
+   a SECOND scene — short, with its own beep on its own flash at a known
+   local time and a different background brightness — joined by a 0.5 s
+   crossfade: the read-back duration and frame count must equal
+   10 + scene 2 − 0.5 s to the frame, and scene 2's beep must land at its
+   shifted global time within the existing drift limit (decision n). If
+   it can be done without disturbing the flash detection, the
+   mid-crossfade frame's mean brightness must sit between the two scenes'
+   levels; otherwise the snapshots carry the picture proof. "Load test
+   content (dev)" gives Alek the same two-scene project. Snapshots
+   (decision o): NINE new moments through the real projectStage with a
+   two-scene fixture — mid-progress crossfade, slide left/right/up/down,
+   zoom in, zoom out, wipe, and the first frame after a cut — 14 → 23,
+   first references written for Alek to look at, contact sheet and
+   `npm run snapshots:approve` as before. Nothing downloaded. Tell me in
+   the plan what `npm run check` will cost afterwards (about 75–90 s now;
+   keep it around two minutes).
+
+9. Manual (decision p): M-6.1 adding, duplicating, reordering, renaming,
+   deleting and selecting scenes; M-6.2 the seven types with a "when to
+   use" hint each and the overlap rule; M-6.3 scene duration, transition
+   length, how the total is computed, and what sound does at a boundary —
+   in the voice of M-4/M-5.5. M-1.3's tour gains one sentence for the
+   strip. DOC-10 §2/§3/§4 rows updated in the same commits.
+
+10. Hand-off from Fable to Opus (decision q). You (Fable) do the
+    verification commit and steps 1, 2, 3, 4 and 8, plus M-6.2's rules and
+    M-6.3's timing text — the foundations. Steps 5, 6, 7 and the rest of
+    9 are contained feature work for Opus. When the foundations are usable
+    and green (export of a two-scene dev project proven by the check),
+    commit, push, and end the session with a written hand-off in DOC-10 §1
+    "Next action" plus a one-line prompt for the Opus session in the
+    DOC-11 §4 step 2 form ("Read CLAUDE.md and DOC-10, then continue
+    Phase 7: <task>"). Make the boundary clear in the plan; I may move it.
+    Build alone, one feature at a time.
+
+Do not write code yet (after the verification commit). First produce a
+plan for my approval: the module layout, the exact timing arithmetic with
+one worked example (three scenes, two transitions, the total and each
+start), how projectStage composes two sceneStages per type and how the
+canvas and frameSource both consume it, how the textures for neighbouring
+scenes reach the canvas, how the play loop and previewPlayer change for
+play-through without restarting sound, how the export check's second
+scene and beep are built, the decisions you are making within the ADRs,
+what exactly is out of scope, and any questions for me. Decisions a–r
+below are already made; do not re-ask them.
+
+Out of scope for Phase 7 (decision r): drag-and-drop reorder of scene
+cards; scene thumbnails in the strip; a project-wide timeline; remembered
+per-scene playheads; automatic audio fades at transitions; wipe directions
+other than left-to-right and any transition easing controls; transitions
+within a scene or on layers; copying layers between scenes (Duplicate
+scene covers it); text (8); the export screen, presets and stereo (9,
+OQ-024). No paid AI calls (DOC-09). No new npm dependencies without a
+DOC-08 row first. Every check cleans up tests/output/ on success. Update
+docs/04-CHANGELOG.md, docs/10-PROJECT-TRACKER.md, docs/03-ARCHITECTURE.md
+(§3 for the new field) and docs/05-MANUAL.md in the same commit as the
+code, commit and push after each usable step, live-verify each feature in
+the running app as the Phase 5 and 6 sessions did, and end each session
+with the report described in CLAUDE.md (what changed, which checks pass,
+exactly what I should open and try — for the Opus session: add a second
+scene, put something in it, set a crossfade, press play from the end of
+scene 1 and watch it flow across, reorder, duplicate, delete, reopen — and
+what is next). This kickoff prompt is already archived as
+docs/11-WORKFLOW.md Appendix H (CL-0065); do not add it again.
+```
+
+### Appendix H addendum — Alek's Phase 7 decisions (given with the kickoff; apply, do not re-ask)
+
+a. Scenes live in a scene strip across the full window width directly
+   above the timeline header: one card per scene in play order (number,
+   name, duration), a small arrow between cards showing the transition
+   type, "+ Scene" at the end, the total video length at the right.
+b. "+ Scene" inserts an empty scene after the selected one and selects
+   it; Duplicate copies the whole scene with fresh ids; click the name to
+   rename; ✕ deletes, refused for the last scene (a project always has
+   one), and deleting the selected scene selects its neighbour; ◀ ▶
+   reorder, one undo step each. No drag-and-drop reorder.
+c. The selected scene is UI state like layer selection (not saved, not an
+   undo step). Selecting switches the canvas, the Layers panel, the
+   toolbar's Background/Fit, every "Add to scene" / "Add to timeline"
+   target and the timeline; the playhead resets to 0, layer/clip
+   selection clears, camera mode ends. If undo removes the selected
+   scene, selection falls back to the first scene.
+d. Duration stays per scene through the timeline's Duration field; the
+   strip shows each length and the total. Nothing new in the document.
+e. Timing model: overlap. A transition of length t makes the next scene
+   start t seconds before this one ends; the total is the sum of scene
+   durations minus the transition lengths. During the overlap the outgoing
+   scene plays its last t seconds and the incoming scene its first t
+   seconds. A cut has no length and no overlap.
+f. Scene gains optional transitionOutSeconds (absent = 0.5 s). Older files
+   load unchanged. A TRANSITION_TYPES list; validation refuses unknown
+   types and nonsense lengths. The length is clamped to 0.1–3 s and to
+   half of the shorter neighbouring scene, in the edit and again in
+   projectTime. The last scene's transitionOut is kept but ignored; a
+   moved scene takes its transition with it. DOC-03 §3 updated.
+g. The seven types: cut — hard switch. Crossfade — the incoming scene
+   fades in over the outgoing one, linear. Slide left/right/up/down — a
+   push: the outgoing scene moves off in that direction while the incoming
+   one moves in behind it, ease-in-out. Zoom in — the outgoing scene grows
+   to 2.5× about the centre and fades out, revealing the incoming scene
+   beneath. Zoom out — the incoming scene arrives at 2.5×, shrinking to 1×
+   and fading in over the outgoing one. Wipe — the incoming scene revealed
+   left-to-right by a hard vertical edge. All computed as numbers per
+   frame by a pure module from type and progress.
+h. One new layer above sceneStage: projectTime.ts (pure) and
+   projectStage.ts (renderer), which owns one sceneStage per scene and
+   composes one or two of them for a global time. sceneStage does not
+   change; the 14 snapshots stay untouched. The canvas and export both
+   draw through projectStage, so the canvas shows a transition exactly as
+   export will (ADR-006/013); picking still addresses the current scene.
+i. Export renders every scene through projectStage over projectTime's
+   total; audio comes from projectSchedule (every scene's previewSchedule
+   shifted by its global start), which feeds the mixer and the preview
+   alike. Each scene's clips are still cut at their own scene's end.
+j. No automatic audio fade at a transition: both scenes are audible during
+   the overlap; the user's own clip fades shape it.
+k. Play continues into the next scene through the transition (the current
+   scene switches at the boundary, the incoming scene's playhead starting
+   at the overlap length) and stops at the end of the last scene. Sound
+   for the run is scheduled once from projectSchedule; the scene switch
+   must not restart it. Scrubbing stays silent, inside the current scene.
+l. The timeline shows the current scene only; its ruler tints the
+   transition-out window at the end and the transition-in window at the
+   start. The readout stays local. No project-wide timeline.
+m. The Transition panel replaces the right panel when the arrow between
+   two cards (or the selected card's Transition button) is clicked: Type
+   (Cut first), Length (hidden for Cut), a hint per type, Done; one undo
+   step per change; Escape steps out.
+n. The export check's dev content gains a second scene with its own beep
+   on its own flash and a different background brightness, joined by a
+   0.5 s crossfade; read-back duration, frame count and the shifted beep
+   prove the timing model and audio offset end to end; the mid-crossfade
+   brightness check is added only if it does not disturb flash detection.
+   Nothing downloaded.
+o. Nine new snapshot moments through projectStage: mid-progress
+   crossfade, slide ×4, zoom in, zoom out, wipe, and the first frame after
+   a cut (14 → 23).
+p. M-6.1 scenes; M-6.2 the seven types with "when to use" hints and the
+   overlap rule; M-6.3 duration, transition length, the total, sound at a
+   boundary. M-1.3 gains one sentence for the strip.
+q. Model: Fable for the foundations (steps 1–4 and 8, M-6.2 rules, M-6.3
+   timing), Opus for the strip, the Transition panel, switching,
+   play-through and M-6.1, at the boundary in step 10; Alek may move it
+   or run both halves on Fable as in Phases 5 and 6. No reviewer agent.
+r. Out of scope: drag-and-drop reorder; scene thumbnails; a project-wide
+   timeline; remembered per-scene playheads; automatic audio fades; wipe
+   directions other than left-to-right and transition easing controls;
+   transitions within a scene or on layers; copying layers between scenes;
+   text (8); the export screen, presets and stereo (9, OQ-024).
