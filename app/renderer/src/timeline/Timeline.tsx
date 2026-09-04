@@ -54,6 +54,7 @@ import {
 import { snapDraggedTime, type SnapTarget } from '../../../shared/timeline/snap';
 import type { ProjectDocument, Scene } from '../../../shared/document/types';
 import { AudioLanes } from './AudioLanes';
+import { startAudioPreview } from './previewPlayer';
 
 type ApplyEdit = (edit: (current: ProjectDocument) => ProjectDocument) => void;
 
@@ -252,12 +253,15 @@ export function Timeline(props: TimelineProps): JSX.Element {
   liveRef.current = { playhead, duration, fps, onPlayhead, zoom, trackWidthPx };
 
   // The preview loop: wall clock in, frame-snapped playhead out; the view
-  // pages along so the playhead stays visible (decision e).
+  // pages along so the playhead stays visible (decision e). The sound
+  // rides along through Web Audio (decision i) and stops the instant the
+  // preview does — pause, the scene end, or any document edit.
   useEffect(() => {
     if (!playing) return;
     const live = liveRef.current;
     // Play at the end starts over from the beginning.
     const from = live.playhead >= live.duration ? 0 : live.playhead;
+    const audio = startAudioPreview(projectDir, doc, scene, from);
     const startWall = performance.now();
     let raf = 0;
     const tick = (now: number): void => {
@@ -280,7 +284,13 @@ export function Timeline(props: TimelineProps): JSX.Element {
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      audio.stop();
+    };
+    // doc and scene are read once per play; any edit pauses (the effect
+    // below), so a stale closure can never play stale sound.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing]);
 
   // Any document edit (including undo/redo) pauses the preview.
