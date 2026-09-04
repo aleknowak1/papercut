@@ -136,6 +136,16 @@ export interface AudioClip {
   readonly volume: number;
   readonly fadeInSeconds: number;
   readonly fadeOutSeconds: number;
+  /**
+   * How far into the sound the clip begins (the trim from its left edge),
+   * in seconds. Absent means 0 — older project files never carry this.
+   */
+  readonly trimStartSeconds?: number;
+  /**
+   * How much of the sound plays, in seconds. Absent means the rest of the
+   * sound after trimStartSeconds — older project files never carry this.
+   */
+  readonly durationSeconds?: number;
   /** Layer this clip is attached to (drives the talking indicator later). */
   readonly attachedToLayerId?: string;
 }

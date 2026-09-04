@@ -114,6 +114,19 @@ function checkAudioClip(value: unknown, path: string): void {
   checkNumber(value['volume'], `${path}.volume`);
   checkNumber(value['fadeInSeconds'], `${path}.fadeInSeconds`);
   checkNumber(value['fadeOutSeconds'], `${path}.fadeOutSeconds`);
+  // The trim fields (Phase 6 decision f) are optional; when present they
+  // must make sense — a negative trim or a clip that plays for no time at
+  // all would misrender instead of failing here with a name.
+  const trimStart = value['trimStartSeconds'];
+  if (trimStart !== undefined) {
+    checkNumber(trimStart, `${path}.trimStartSeconds`);
+    if ((trimStart as number) < 0) fail(`${path}.trimStartSeconds`, 'zero or more seconds');
+  }
+  const playLength = value['durationSeconds'];
+  if (playLength !== undefined) {
+    checkNumber(playLength, `${path}.durationSeconds`);
+    if ((playLength as number) <= 0) fail(`${path}.durationSeconds`, 'more than zero seconds');
+  }
   checkOptionalString(value['attachedToLayerId'], `${path}.attachedToLayerId`);
 }
 

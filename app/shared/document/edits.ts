@@ -5,6 +5,7 @@
 // cheap: an unchanged scene, layer, or asset is the same object in every
 // history entry, not a duplicate.
 
+import { secondsOf, snapToFrame } from '../animation/time';
 import type {
   Asset,
   AudioClip,
@@ -332,6 +333,39 @@ export function removeKeyframe(
   );
 }
 
+/**
+ * Moves a layer's keyframe from one time to another, keeping every other
+ * value. The destination is snapped to a whole frame and REFUSED when
+ * another keyframe already sits on that frame — the timeline drag stops
+ * beside it (Phase 6 decision c). The rule lives in the edit itself, not
+ * just the drag, because the agent (ADR-011) will one day call this
+ * directly. A refused or pointless move returns the SAME document, so no
+ * empty undo step is recorded.
+ */
+export function moveKeyframe(
+  doc: ProjectDocument,
+  sceneId: string,
+  layerId: string,
+  fromTime: number,
+  toTime: number
+): ProjectDocument {
+  const layer = doc.scenes
+    .find((s) => s.id === sceneId)
+    ?.layers.find((l) => l.id === layerId);
+  const moving = layer?.keyframes.find((k) => k.time === fromTime);
+  if (layer === undefined || moving === undefined) return doc;
+  const to = Math.max(0, snapToFrame(toTime, doc.fps));
+  if (to === fromTime || layer.keyframes.some((k) => k.time === to)) return doc;
+  return replaceScene(doc, sceneId, (scene) =>
+    replaceLayer(scene, layerId, (l) => ({
+      ...l,
+      keyframes: [...l.keyframes.filter((k) => k !== moving), { ...moving, time: to }].sort(
+        (a, b) => a.time - b.time
+      )
+    }))
+  );
+}
+
 // ---- camera ----
 
 /**
@@ -369,6 +403,30 @@ export function removeCameraKeyframe(
   }));
 }
 
+/**
+ * Moves a camera keyframe in time — the same rules as moveKeyframe: the
+ * destination snaps to a whole frame, an occupied frame is refused, and a
+ * refused or pointless move returns the same document.
+ */
+export function moveCameraKeyframe(
+  doc: ProjectDocument,
+  sceneId: string,
+  fromTime: number,
+  toTime: number
+): ProjectDocument {
+  const scene = doc.scenes.find((s) => s.id === sceneId);
+  const moving = scene?.cameraKeyframes.find((k) => k.time === fromTime);
+  if (scene === undefined || moving === undefined) return doc;
+  const to = Math.max(0, snapToFrame(toTime, doc.fps));
+  if (to === fromTime || scene.cameraKeyframes.some((k) => k.time === to)) return doc;
+  return replaceScene(doc, sceneId, (s) => ({
+    ...s,
+    cameraKeyframes: [...s.cameraKeyframes.filter((k) => k !== moving), { ...moving, time: to }].sort(
+      (a, b) => a.time - b.time
+    )
+  }));
+}
+
 // ---- audio ----
 
 export function addAudioClip(
@@ -388,4 +446,130 @@ export function removeAudioClip(
     ...s,
     audioClips: s.audioClips.filter((c) => c.id !== clipId)
   }));
+}
+
+function findAudioClip(
+  doc: ProjectDocument,
+  sceneId: string,
+  clipId: string
+): AudioClip | undefined {
+  return doc.scenes.find((s) => s.id === sceneId)?.audioClips.find((c) => c.id === clipId);
+}
+
+function replaceAudioClip(
+  doc: ProjectDocument,
+  sceneId: string,
+  clipId: string,
+  update: (clip: AudioClip) => AudioClip
+): ProjectDocument {
+  return replaceScene(doc, sceneId, (s) => ({
+    ...s,
+    audioClips: s.audioClips.map((c) => (c.id === clipId ? update(c) : c))
+  }));
+}
+
+/**
+ * Moves an audio clip to a new start time, snapped to a whole frame and
+ * never below 0. Moving a clip to where it already sits (or a clip that
+ * does not exist) returns the SAME document — no empty undo step.
+ */
+export function moveAudioClip(
+  doc: ProjectDocument,
+  sceneId: string,
+  clipId: string,
+  startSeconds: number
+): ProjectDocument {
+  const clip = findAudioClip(doc, sceneId, clipId);
+  if (clip === undefined) return doc;
+  const start = Math.max(0, snapToFrame(startSeconds, doc.fps));
+  if (start === clip.startSeconds) return doc;
+  return replaceAudioClip(doc, sceneId, clipId, (c) => ({ ...c, startSeconds: start }));
+}
+
+/**
+ * Trims an audio clip: how far into its sound it begins, and how much of
+ * the sound plays. Both are snapped to whole frames and then clamped so
+ * the clip can never reach outside the sound's real extent — the caller
+ * passes the sound's true length (sourceDurationSeconds). The clamp wins
+ * over the snap at the sound's edges, so the last sliver of a sound stays
+ * reachable even when it is shorter than one frame. A trim that changes
+ * nothing returns the same document.
+ */
+export function trimAudioClip(
+  doc: ProjectDocument,
+  sceneId: string,
+  clipId: string,
+  trimStartSeconds: number,
+  durationSeconds: number,
+  sourceDurationSeconds: number
+): ProjectDocument {
+  const clip = findAudioClip(doc, sceneId, clipId);
+  if (clip === undefined || !(sourceDurationSeconds > 0)) return doc;
+  const minLength = Math.min(secondsOf(1, doc.fps), sourceDurationSeconds);
+  const start = Math.min(
+    Math.max(snapToFrame(trimStartSeconds, doc.fps), 0),
+    sourceDurationSeconds - minLength
+  );
+  const length = Math.min(
+    Math.max(snapToFrame(durationSeconds, doc.fps), minLength),
+    sourceDurationSeconds - start
+  );
+  const currentStart = clip.trimStartSeconds ?? 0;
+  const currentLength = clip.durationSeconds ?? sourceDurationSeconds - currentStart;
+  if (start === currentStart && length === currentLength) return doc;
+  return replaceAudioClip(doc, sceneId, clipId, (c) => ({
+    ...c,
+    trimStartSeconds: start,
+    durationSeconds: length
+  }));
+}
+
+/** Sets a clip's volume, clamped to 0..1. No change, same document. */
+export function setAudioClipVolume(
+  doc: ProjectDocument,
+  sceneId: string,
+  clipId: string,
+  volume: number
+): ProjectDocument {
+  const clip = findAudioClip(doc, sceneId, clipId);
+  if (clip === undefined) return doc;
+  const next = Math.min(Math.max(volume, 0), 1);
+  if (next === clip.volume) return doc;
+  return replaceAudioClip(doc, sceneId, clipId, (c) => ({ ...c, volume: next }));
+}
+
+/**
+ * Sets a clip's fade-in length, clamped so the two fades together never
+ * exceed the clip's played length (clipLengthSeconds — the caller passes
+ * the length after trim). No change, same document.
+ */
+export function setAudioClipFadeIn(
+  doc: ProjectDocument,
+  sceneId: string,
+  clipId: string,
+  fadeInSeconds: number,
+  clipLengthSeconds: number
+): ProjectDocument {
+  const clip = findAudioClip(doc, sceneId, clipId);
+  if (clip === undefined) return doc;
+  const room = Math.max(0, clipLengthSeconds - clip.fadeOutSeconds);
+  const next = Math.min(Math.max(fadeInSeconds, 0), room);
+  if (next === clip.fadeInSeconds) return doc;
+  return replaceAudioClip(doc, sceneId, clipId, (c) => ({ ...c, fadeInSeconds: next }));
+}
+
+/** Sets a clip's fade-out length — the mirror of setAudioClipFadeIn. */
+export function setAudioClipFadeOut(
+  doc: ProjectDocument,
+  sceneId: string,
+  clipId: string,
+  fadeOutSeconds: number,
+  clipLengthSeconds: number
+): ProjectDocument {
+  const clip = findAudioClip(doc, sceneId, clipId);
+  if (clip === undefined) return doc;
+  const room = Math.max(0, clipLengthSeconds - clip.fadeInSeconds);
+  const next = Math.min(Math.max(fadeOutSeconds, 0), room);
+  if (next === clip.fadeOutSeconds) return doc;
+  return replaceAudioClip(doc, sceneId, clipId, (c) => ({ ...c, fadeOutSeconds: next }));
 }

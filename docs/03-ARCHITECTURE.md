@@ -78,7 +78,9 @@ project
                         hidden (not drawn anywhere, export included),
                         locked (still renders; refuses selection/dragging)
     keyframes[]      → time, x, y, scale, rotation, flipX, opacity, easing, pose
-    audioClips[]     → asset or ttsLine, start, volume, fades, attachedTo (layer)
+    audioClips[]     → asset or ttsLine, start, volume, fades, attachedTo (layer),
+                        trim (optional: how far into the sound the clip begins +
+                        how much of it plays; absent = the whole sound)
     ttsLine          → character, text, delivery instruction, voice, cached audio asset
 ```
 
