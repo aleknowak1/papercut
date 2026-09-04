@@ -8,8 +8,9 @@
 // nothing here depends on the editor UI.
 
 import type { ProjectDocument } from '../../../shared/document/types';
-import { EXPORT_SAMPLE_RATE, mixClips, type MixClip } from '../../../shared/export/audioMix';
-import { parseWav } from '../../../shared/export/wav';
+import { EXPORT_SAMPLE_RATE, mixSchedule, type AudioSource } from '../../../shared/export/audioMix';
+import { previewSchedule } from '../../../shared/timeline/previewSchedule';
+import { decodeAssetAudio } from '../audio/decodeAudio';
 import { sceneImageAssetIds } from '../scene/sceneStage';
 import { encodeMp4, type EncoderChoice } from './encodePipeline';
 import { createSceneFrameSource } from './frameSource';
@@ -61,24 +62,30 @@ export async function exportProject(request: ProjectExportRequest): Promise<Proj
     images.set(id, await createImageBitmap(new Blob([bytes as Uint8Array<ArrayBuffer>])));
   }
 
-  // Mix the scene's audio clips. TTS clips take part only once their audio
-  // has been generated and cached (Phase 11); others are skipped, not faked.
-  const mix: MixClip[] = [];
+  // Decode every sound the scene's clips reference through Chromium's
+  // decoder (Phase 6 decision j): MP3, M4A, OGG and any sample rate all
+  // arrive as 48 kHz mono samples. TTS clips take part only once their
+  // audio has been generated and cached (Phase 11); others are skipped,
+  // not faked. previewSchedule then decides what sounds when — the same
+  // entries the editor's preview plays — and the mixer renders them.
+  const sources = new Map<string, AudioSource>();
+  const soundSeconds = new Map<string, number>();
   for (const clip of scene.audioClips) {
     const assetId =
       clip.source.kind === 'asset' ? clip.source.assetId : clip.source.ttsLine.cachedAssetId;
-    if (assetId === undefined) continue;
+    if (assetId === undefined || sources.has(assetId)) continue;
     const asset = assetById.get(assetId);
     if (asset === undefined) throw new Error(`An audio clip references a missing asset (${assetId}).`);
-    mix.push({
-      audio: parseWav(await request.readAsset(asset.file)),
-      startSeconds: clip.startSeconds,
-      volume: clip.volume,
-      fadeInSeconds: clip.fadeInSeconds,
-      fadeOutSeconds: clip.fadeOutSeconds
-    });
+    const decoded = await decodeAssetAudio(await request.readAsset(asset.file));
+    sources.set(assetId, decoded);
+    soundSeconds.set(assetId, decoded.samples.length / decoded.sampleRate);
   }
-  const audio = mixClips(mix, scene.durationSeconds, EXPORT_SAMPLE_RATE);
+  const audio = mixSchedule(
+    previewSchedule(scene, 0, soundSeconds),
+    sources,
+    scene.durationSeconds,
+    EXPORT_SAMPLE_RATE
+  );
   const audioPeak = audio.reduce((max, s) => Math.max(max, Math.abs(s)), 0);
 
   const frameSource = await createSceneFrameSource({

@@ -1,7 +1,7 @@
 # DOC-07 — Open Questions and Risks
 
 **Status:** Active
-**Last updated:** 2026-09-02
+**Last updated:** 2026-09-04 (OQ-024 added: stereo export, for Phase 9)
 
 Each item has an owner and a "must resolve by" milestone. Closed items stay listed with their resolution.
 
@@ -30,3 +30,4 @@ Each item has an owner and a "must resolve by" milestone. Closed items stay list
 | OQ-021 | Mask-editor cutout versioning will accumulate files: each save writes a new cutout PNG (5–20 MB at phone-photo size) so document-level undo can point back at earlier versions. When and how are old versions tidied (e.g. on project close, keeping only versions the undo history still references)? | Claude to propose | Phase 4 or later (not Phase 3) | Open | — |
 | OQ-022 | DirectML as an optional cutout accelerator: the Microsoft-signed DirectML engine already ships inside onnxruntime-node and would likely cut cutout times to seconds on capable machines, but it fails with out-of-memory on 8 GB minimum-spec machines (DOC-13 §9.3). If adopted later: detected at runtime, machines with ≥ 16 GB only, never the baseline, CPU always the fallback. Out of scope for Phase 3 (ADR-017). | Claude to propose when relevant | After v1.0 (or a performance pass) | Open | — |
 | OQ-023 | HD cutout model delivery: BiRefNet full fp32 is 973 MB. Bundled (ADR-009/017) it pushes the installer to ≈1.2 GB of models; downloaded on first use it keeps the installer near 400 MB but adds a download step, a server/CDN cost, and an offline gap. Which ships in v1? | Alek | Before Phase 9 (real export/packaging) | Open | Bundled for now per ADR-017; revisit before packaging. |
+| OQ-024 | Stereo export. Phase 6 decodes every sound to mono and mixes/encodes one channel (decision j) — imported stereo music loses its width. Going stereo touches the decoder (keep both channels), the mixer (two-channel arithmetic), the AAC encoder configuration, and verifyMp4's audio checks. Worth doing at Phase 9 (real export), where the encoder configuration is rebuilt anyway? | Alek decides at Phase 9; Claude implements | Phase 9 (real export) | Open | — |

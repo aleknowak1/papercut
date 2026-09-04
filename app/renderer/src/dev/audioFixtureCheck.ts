@@ -17,8 +17,8 @@ export interface AudioFixtureResult {
   readonly problem?: string;
 }
 
-/** A mono AAC .m4a of the given length, via WebCodecs + mp4-muxer. */
-async function makeM4a(seconds: number): Promise<Uint8Array> {
+/** Mono samples encoded as an AAC .m4a via WebCodecs + mp4-muxer. */
+export async function makeM4aFromSamples(samples: Float32Array): Promise<Uint8Array> {
   const sampleRate = 48000;
   const target = new ArrayBufferTarget();
   const muxer = new Muxer({
@@ -33,18 +33,15 @@ async function makeM4a(seconds: number): Promise<Uint8Array> {
   });
   encoder.configure({ codec: 'mp4a.40.2', sampleRate, numberOfChannels: 1, bitrate: 96_000 });
   const frameSize = 1024;
-  const total = Math.round(seconds * sampleRate);
-  for (let start = 0; start < total; start += frameSize) {
-    const count = Math.min(frameSize, total - start);
-    const data = new Float32Array(count);
-    for (let i = 0; i < count; i++) {
-      data[i] = Math.sin((2 * Math.PI * 330 * (start + i)) / sampleRate) * 0.3;
-    }
+  for (let start = 0; start < samples.length; start += frameSize) {
+    // slice (not subarray) so the chunk owns a plain ArrayBuffer, as the
+    // AudioData constructor's type requires.
+    const data = samples.slice(start, Math.min(start + frameSize, samples.length));
     encoder.encode(
       new AudioData({
         format: 'f32',
         sampleRate,
-        numberOfFrames: count,
+        numberOfFrames: data.length,
         numberOfChannels: 1,
         timestamp: Math.round((start / sampleRate) * 1_000_000),
         data
@@ -56,6 +53,16 @@ async function makeM4a(seconds: number): Promise<Uint8Array> {
   muxer.finalize();
   if (errors.length > 0) throw new Error(`AAC encoding failed: ${String(errors[0])}`);
   return new Uint8Array(target.buffer);
+}
+
+/** A mono AAC .m4a containing a soft sine tone, for the fixture check. */
+function makeM4a(seconds: number): Promise<Uint8Array> {
+  const sampleRate = 48000;
+  const samples = new Float32Array(Math.round(seconds * sampleRate));
+  for (let i = 0; i < samples.length; i++) {
+    samples[i] = Math.sin((2 * Math.PI * 330 * i) / sampleRate) * 0.3;
+  }
+  return makeM4aFromSamples(samples);
 }
 
 export async function verifyAudioFixtures(): Promise<AudioFixtureResult[]> {

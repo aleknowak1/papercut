@@ -5,18 +5,14 @@
 import { REFERENCE_SIZE } from '../export/frameSource';
 import { exportProject } from '../export/exportProject';
 import type { OpenedProject } from '../../../shared/ipc';
-import {
-  applyExportTestContent,
-  exportTestAssetFiles
-} from '../../../../tests/fixtures/exportTestProject';
+import { applyExportTestContent } from '../../../../tests/fixtures/exportTestProject';
+import { writeExportTestAssets } from './exportTestAssets';
 
 export const DEV_EXPORT_FILE = 'export-dev.mp4';
 
 /** Fills the open project with the ten-second export test content and saves it. */
 export async function loadTestContent(opened: OpenedProject): Promise<OpenedProject> {
-  for (const file of exportTestAssetFiles()) {
-    await window.papercut.writeProjectFile(opened.projectDir, file.path, file.bytes);
-  }
+  await writeExportTestAssets(opened.projectDir);
   const document = applyExportTestContent(opened.document);
   await window.papercut.saveProjectDocument(opened.projectDir, document);
   return { projectDir: opened.projectDir, document };

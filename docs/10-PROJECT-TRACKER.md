@@ -1,7 +1,7 @@
 # DOC-10 — Project Tracker
 
 **Status:** Active
-**Last updated:** 2026-09-04 (Phase 5 fully verified by Alek, CL-0054; Phase 6 kickoff prompt in DOC-11 Appendix G, CL-0053)
+**Last updated:** 2026-09-04 (Phase 6 Fable foundations complete, CL-0055–0057; next: the timeline UI on Opus)
 **Purpose:** The one page to read when returning to the project. Where we are, what is done, what is next, and what is waiting on Alek. Updated with every change-log entry (DOC-04).
 
 ---
@@ -19,8 +19,8 @@ Step 2 done (CL-0045): the camera lives inside sceneStage (export gets it for fr
 **Verified by Alek (CL-0048, on 2026-09-03):** the time strip (scrub, play with Space, frame stepping, Duration), a layer moving between two keyframes, the Easing dropdown, Ctrl+Z back through it all, and the 14 snapshot references in tests/snapshots/. All worked.
 **Verified by Alek (CL-0054, on 2026-09-04):** the feature half of Phase 5 — the four motion presets applied and undone (Walk's destination clicked on the canvas), camera mode with wheel zoom and drag pan at two playhead positions gliding between them on play, and the rotate handle with Escape mid-swing writing nothing. All worked. Phase 5 stands verified end to end.
 **Phase 6 — Timeline and audio: IN PROGRESS (plan approved by Alek 2026-09-04).** Fable foundations under way. Step 1 done (CL-0055): AudioClip's optional trim fields (older files load unchanged), plain-language validation for them, and the new one-undo-step edits — moveAudioClip, trimAudioClip (clamped inside the sound's real extent), volume and fades (never longer than the clip together), and moveKeyframe/moveCameraKeyframe with the occupied-frame refusal (decision c) living in the edits themselves. 18 new tests. Nothing user-visible yet.
-Step 2 done (CL-0056): the pure timeline module, app/shared/timeline/ — time↔pixel mapping with the zoom bounds and follow-the-playhead paging, the snap function that names what it snapped to, deterministic lane packing, and previewSchedule (scene + start time + real sound lengths → each audible clip's delay, source offset, played length and gain envelope), the one translation both the Web Audio preview and the export mixer will consume. 27 new tests.
-**Next action:** Fable continues with step 3 — the Chromium decoder replacing parseWav in export, the trim-aware mixer taking its entries from previewSchedule, the extended export check (a trimmed WAV clip and an M4A clip whose beeps must land on their flashes), OQ-024 in DOC-07, and M-5.5's mixing rules. Then the hand-off to Opus for the timeline UI (DOC-11 Appendix G step 10).
+Step 2 done (CL-0056): the pure timeline module, app/shared/timeline/ — time↔pixel mapping with the zoom bounds and follow-the-playhead paging, the snap function that names what it snapped to, deterministic lane packing, and previewSchedule (scene + start time + real sound lengths → each audible clip's delay, source offset, played length and gain envelope), the one translation both the Web Audio preview and the export mixer will consume. 27 new tests. Step 3 done (CL-0057): export decodes every clip through Chromium's decoder at 48 kHz mono (MP3/M4A/OGG and any sample rate now export; parseWav stays for fixtures), the mixer renders previewSchedule's entries sample-for-sample, and the export check proves the whole path end to end with a trimmed WAV clip (a hidden second beep would expose an ignored trim) and a check-time-generated M4A clip — seven beeps on seven flashes. OQ-024 (stereo) opened for Phase 9. **The Phase 6 Fable foundations are complete.**
+**Next action (hand-off to Opus, decision l):** in a fresh session, select Opus (/model) and paste: *"Read CLAUDE.md and DOC-10, then continue Phase 6: build the timeline panel that replaces the time strip on the app/shared/timeline foundations (DOC-11 Appendix G steps 4–7, decisions a–n) — the header transport moved over from TimeStrip.tsx plus Snap toggle and zoom slider, the ruler with draggable playhead, one camera row and one row per layer with draggable keyframe diamonds (moveKeyframe/moveCameraKeyframe are ready and refuse occupied frames), the audio lanes with 'Add to timeline' on every ♪ row and drag-and-drop through one shared module, clip move/trim/fade editing with one undo step per gesture (the edits exist: moveAudioClip, trimAudioClip, setAudioClipVolume/FadeIn/FadeOut), Web Audio preview on play scheduling previewSchedule's entries (decodeAudio.ts decodes; cache per session), delete TimeStrip.tsx when the timeline carries everything, write M-1.3 and M-5.5's clip controls, live-verify in the running app."* The foundations (document edits, shared/timeline, decoder+mixer, checks) are green and pushed; everything Opus needs is listed in CL-0055–CL-0057.
 
 ### 1b. Hand-off notes (now historical — the work below was completed by Fable in CL-0031..33, built to these decisions)
 
@@ -44,7 +44,7 @@ Phases run in this order; a phase does not start until the previous one is usabl
 | 3 | **Assets and cutouts** | Import images/audio; BiRefNet_lite auto-cutout; HD cutout; mask editor; HEIC handling | **Complete** (CL-0033: every feature ☑, all M-2 manual sections written; Alek's spot-checks in §5 — mask editor on a real photo, HEIC, real MP3/OGG) | Fable (Alek's choice, CL-0030) |
 | 4 | **Scene and layers** | Background, character/prop layers, ordering, opacity, lock/hide, placing and sizing on canvas | **Complete** (CL-0037–0041; verified by Alek by hand, CL-0043) | Fable |
 | 5 | **Animation** | Keyframes (position, scale, rotation, flip, opacity), easing, motion presets, pose swapping, camera pan/zoom, render snapshot checks | **Complete** (CL-0044–0052; reviewer audit run; verified by Alek, CL-0048 and CL-0054) | Fable throughout (Alek's choice, as Phases 3–4) |
-| 6 | **Timeline and audio** | Multi-track timeline, scrub/snap/zoom, audio clips (volume, fade, trim), imported sounds | **In progress** (CL-0055: document half — trim fields and clip/keyframe-move edits) | Fable foundations → Opus UI (decision l) |
+| 6 | **Timeline and audio** | Multi-track timeline, scrub/snap/zoom, audio clips (volume, fade, trim), imported sounds | **In progress** (CL-0055–0057: Fable foundations complete — document edits, shared/timeline, decoder + trim-aware mixer, extended export check; timeline UI next, on Opus) | Fable foundations → Opus UI (decision l) |
 | 7 | **Scenes and transitions** | Multiple scenes, reorder, seven transition types | Not started | Opus |
 | 8 | **Text and captions** | Titles/captions, OFL fonts, fade/pop animation | Not started | Opus |
 | 9 | **Real export** | Platform presets, 720p/1080p, 30/60 fps, optional "AI-generated" label, progress and reveal-in-folder | Not started | Opus |
@@ -102,6 +102,7 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 | Undo | ☑ | ✅ |
 | Scene and layers (edits round-trip; placement geometry as arithmetic) | ☑ | ✅ |
 | Animation engine (easing, eased interpolation, frame-exact time, keyframeAtPlayhead, presets, camera — all as arithmetic; camera edits round-trip) | ☑ | ✅ |
+| Timeline foundations (mapping/snap/lanes/previewSchedule as arithmetic; clip trim and keyframe-move edits round-trip; the mixer sample-for-sample) | ☑ | ✅ |
 | Render snapshots (14 moments through the real sceneStage vs approved references; `npm run snapshots:approve`) | ☑ | ✅ |
 | Export | ☑ | ✅ |
 | Segmentation (real worker + model + coverage + pixels-untouched + memory) | ☑ | ✅ |
@@ -110,7 +111,7 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 | License allow-list | ☑ | ✅ |
 | AI-spend guard | ☑ | ✅ |
 
-Run everything with one command: `npm run check` (205 tests + licenses + build scan + segmentation + export with the audio fixtures and the 14 render snapshots; measured ≈70–90 seconds — the spread is the segmentation check's one real cutout varying with laptop load; the snapshots add only ~2 s because they ride in the export check's hidden window). When a snapshot fails, open tests/output/snapshots/contact-sheet.png (expected | actual | diff, differences in red); if the new look is right, `npm run snapshots:approve` and commit. `npm run check:segmentation:hd` exercises the HD model on demand. A green run leaves tests/output/ empty (the CL-0024 housekeeping rule, enforced by the tests themselves).
+Run everything with one command: `npm run check` (255 tests + licenses + build scan + segmentation + export with the audio fixtures, the two trimmed clips and the 14 render snapshots; measured ≈70–90 seconds — the spread is the segmentation check's one real cutout varying with laptop load; the snapshots add only ~2 s because they ride in the export check's hidden window). When a snapshot fails, open tests/output/snapshots/contact-sheet.png (expected | actual | diff, differences in red); if the new look is right, `npm run snapshots:approve` and commit. `npm run check:segmentation:hd` exercises the HD model on demand. A green run leaves tests/output/ empty (the CL-0024 housekeeping rule, enforced by the tests themselves).
 
 ## 5. Waiting on Alek
 

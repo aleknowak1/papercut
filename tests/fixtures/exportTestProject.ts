@@ -33,6 +33,7 @@ import { solidPng } from './png';
 export const EXPORT_TEST = {
   durationSeconds: 10,
   fps: 30,
+  /** The five plain, untrimmed beep clips. */
   beepTimes: [0, 2.5, 5, 7.5, 9.5],
   beepSeconds: 0.2,
   beepHz: 880,
@@ -40,8 +41,124 @@ export const EXPORT_TEST = {
   flashFrames: 3,
   backgroundFile: 'assets/images/export-test-bg.png',
   squareFile: 'assets/images/export-test-square.png',
-  beepFile: 'assets/audio/export-test-beep.wav'
+  beepFile: 'assets/audio/export-test-beep.wav',
+  /**
+   * A TRIMMED WAV clip (Phase 6): the file hides its beep 0.4 s in and
+   * carries a SECOND beep in the part the trim cuts off. Only with both
+   * trim values honoured does exactly one beep sound, exactly at the clip
+   * start — a wrong trimStart drifts it 400 ms, an ignored duration adds
+   * an extra beep, and either fails the check.
+   */
+  trimmedWav: {
+    file: 'assets/audio/export-test-trimmed.wav',
+    clipStart: 3.8,
+    trimStart: 0.4,
+    duration: 0.2,
+    hz: 660,
+    sourceSeconds: 1.15
+  },
+  /**
+   * A trimmed M4A clip (Phase 6): same idea through the AAC decoder path
+   * (one beep, 0.5 s in). The bytes are generated at check time with the
+   * WebCodecs AAC encoder (dev/exportTestAssets.ts) since AAC needs
+   * Chromium; only the samples are defined here.
+   */
+  trimmedM4a: {
+    file: 'assets/audio/export-test-trimmed.m4a',
+    clipStart: 6.2,
+    trimStart: 0.5,
+    duration: 0.2,
+    hz: 550,
+    sourceSeconds: 1
+  }
 } as const;
+
+/** Every moment a beep should sound and a flash should show, sorted. */
+export function allBeepTimes(): number[] {
+  return [
+    ...EXPORT_TEST.beepTimes,
+    EXPORT_TEST.trimmedWav.clipStart,
+    EXPORT_TEST.trimmedM4a.clipStart
+  ].sort((a, b) => a - b);
+}
+
+/** A sine tone with 3 ms ramps against clicks, as raw samples. */
+function toneSamples(seconds: number, hz: number, gain: number): Float32Array {
+  const count = Math.round(seconds * EXPORT_SAMPLE_RATE);
+  const ramp = Math.round(0.003 * EXPORT_SAMPLE_RATE);
+  const out = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    let g = gain;
+    if (i < ramp) g *= i / ramp;
+    if (i >= count - ramp) g *= (count - i) / ramp;
+    out[i] = Math.sin((2 * Math.PI * hz * i) / EXPORT_SAMPLE_RATE) * g;
+  }
+  return out;
+}
+
+function concatSamples(...parts: readonly Float32Array[]): Float32Array {
+  const out = new Float32Array(parts.reduce((sum, p) => sum + p.length, 0));
+  let at = 0;
+  for (const part of parts) {
+    out.set(part, at);
+    at += part.length;
+  }
+  return out;
+}
+
+/** Samples wrapped as a mono 48 kHz 16-bit PCM WAV. */
+function wav16(samples: Float32Array): Uint8Array {
+  const dataBytes = samples.length * 2;
+  const bytes = new Uint8Array(44 + dataBytes);
+  const view = new DataView(bytes.buffer);
+  const ascii = (offset: number, text: string): void => {
+    for (let i = 0; i < text.length; i++) bytes[offset + i] = text.charCodeAt(i);
+  };
+  ascii(0, 'RIFF');
+  view.setUint32(4, 36 + dataBytes, true);
+  ascii(8, 'WAVE');
+  ascii(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, EXPORT_SAMPLE_RATE, true);
+  view.setUint32(28, EXPORT_SAMPLE_RATE * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  ascii(36, 'data');
+  view.setUint32(40, dataBytes, true);
+  for (let i = 0; i < samples.length; i++) {
+    view.setInt16(44 + i * 2, Math.round((samples[i] ?? 0) * 32767), true);
+  }
+  return bytes;
+}
+
+/**
+ * The trimmed-WAV fixture file: silence, the beep the trim selects, then
+ * a gap and a SECOND beep that must never be heard (the duration cuts it).
+ */
+export function trimmedWavBytes(): Uint8Array {
+  const t = EXPORT_TEST.trimmedWav;
+  return wav16(
+    concatSamples(
+      new Float32Array(Math.round(t.trimStart * EXPORT_SAMPLE_RATE)),
+      toneSamples(t.duration, t.hz, 0.5),
+      new Float32Array(Math.round(0.15 * EXPORT_SAMPLE_RATE)),
+      toneSamples(0.2, t.hz, 0.5),
+      new Float32Array(Math.round(0.2 * EXPORT_SAMPLE_RATE))
+    )
+  );
+}
+
+/** The trimmed-M4A fixture's samples: silence, one beep, silence. */
+export function trimmedM4aSamples(): Float32Array {
+  const t = EXPORT_TEST.trimmedM4a;
+  return concatSamples(
+    new Float32Array(Math.round(t.trimStart * EXPORT_SAMPLE_RATE)),
+    toneSamples(t.duration, t.hz, 0.5),
+    new Float32Array(Math.round(0.3 * EXPORT_SAMPLE_RATE))
+  );
+}
 
 /** A 16-bit PCM mono WAV containing one sine beep, with 3 ms ramps to avoid clicks. */
 export function beepWav(): Uint8Array {
@@ -77,13 +194,18 @@ export function beepWav(): Uint8Array {
   return new Uint8Array(buffer);
 }
 
-/** The image and sound files the test project needs, as bytes to write into its assets/. */
+/**
+ * The image and sound files the test project needs, as bytes to write into
+ * its assets/ — everything except the M4A, which needs Chromium's AAC
+ * encoder and is written by dev/exportTestAssets.ts at run time.
+ */
 export function exportTestAssetFiles(): readonly { path: string; bytes: Uint8Array }[] {
   return [
     // Tiny solid-colour images; the renderer stretches them to size.
     { path: EXPORT_TEST.backgroundFile, bytes: solidPng(64, 36, [28, 39, 51, 255]) },
     { path: EXPORT_TEST.squareFile, bytes: solidPng(64, 64, [255, 140, 26, 255]) },
-    { path: EXPORT_TEST.beepFile, bytes: beepWav() }
+    { path: EXPORT_TEST.beepFile, bytes: beepWav() },
+    { path: EXPORT_TEST.trimmedWav.file, bytes: trimmedWavBytes() }
   ];
 }
 
@@ -96,6 +218,8 @@ export function applyExportTestContent(doc: ProjectDocument): ProjectDocument {
   const bgId = newId();
   const squareId = newId();
   const beepId = newId();
+  const trimmedWavId = newId();
+  const trimmedM4aId = newId();
   const layerId = newId();
 
   let out = doc;
@@ -116,6 +240,18 @@ export function applyExportTestContent(doc: ProjectDocument): ProjectDocument {
     type: 'audio',
     file: EXPORT_TEST.beepFile,
     metadata: { durationSeconds: EXPORT_TEST.beepSeconds }
+  });
+  out = addAsset(out, {
+    id: trimmedWavId,
+    type: 'audio',
+    file: EXPORT_TEST.trimmedWav.file,
+    metadata: { durationSeconds: EXPORT_TEST.trimmedWav.sourceSeconds }
+  });
+  out = addAsset(out, {
+    id: trimmedM4aId,
+    type: 'audio',
+    file: EXPORT_TEST.trimmedM4a.file,
+    metadata: { durationSeconds: EXPORT_TEST.trimmedM4a.sourceSeconds }
   });
   // A new project starts with one empty scene; the test fills that scene.
   let sceneId = out.scenes[0]?.id;
@@ -161,6 +297,24 @@ export function applyExportTestContent(doc: ProjectDocument): ProjectDocument {
       volume: 1,
       fadeInSeconds: 0,
       fadeOutSeconds: 0
+    });
+  }
+  // The two TRIMMED clips (Phase 6): each plays only the beep its trim
+  // selects, so it must land exactly on its flash — the end-to-end proof
+  // of the decoder-and-trim path.
+  for (const [assetId, spec] of [
+    [trimmedWavId, EXPORT_TEST.trimmedWav],
+    [trimmedM4aId, EXPORT_TEST.trimmedM4a]
+  ] as const) {
+    out = addAudioClip(out, sceneId, {
+      id: newId(),
+      source: { kind: 'asset', assetId },
+      startSeconds: spec.clipStart,
+      volume: 1,
+      fadeInSeconds: 0,
+      fadeOutSeconds: 0,
+      trimStartSeconds: spec.trimStart,
+      durationSeconds: spec.duration
     });
   }
   return out;

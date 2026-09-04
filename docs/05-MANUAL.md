@@ -1,7 +1,7 @@
 # DOC-05 — User Manual
 
 **Status:** In progress (sections are filled in as each feature ships; a section is not written until its feature exists)
-**Last updated:** 2026-09-02 (M-1.2, M-9.3 written)
+**Last updated:** 2026-09-04 (M-5.5 mixing rules written; its clip controls follow with the timeline)
 
 Sections are numbered M-N.N and referenced from DOC-01 and DOC-04. Every feature listed in DOC-01 §5.1 must have a section here before v1.0 ships.
 
@@ -413,7 +413,36 @@ exports: the camera is applied in the same drawing code the export uses.
 - M-5.2b Delivery notes: telling a voice how to act
 - M-5.3 The talking indicator
 - M-5.4 The sound library: browsing, searching, categories
-- M-5.5 Placing, trimming, fading, and mixing audio
+
+### M-5.5 Placing, trimming, fading, and mixing audio
+
+*(The controls for placing and shaping clips arrive with the timeline;
+this section starts with the rules the mix always follows.)*
+
+**How your sounds are mixed.** Every sound in the scene follows the same
+rules, whether you are listening in the editor or exporting the video —
+they are computed by the same code, so what you hear is what you get:
+
+- **A clip plays the part of its sound you chose.** Trimming from the
+  left sets where in the sound the clip begins; the clip's length sets
+  how much of it plays. The rest of the file is simply not used — the
+  original sound is never changed.
+- **Volume and fades shape the clip.** Volume is 0–100%. A fade-in ramps
+  the sound up from silence over its length; a fade-out ramps it down to
+  silence at the clip's end. The two fades together can never be longer
+  than the clip itself.
+- **Overlapping sounds add together.** Two clips playing at once simply
+  sum, like two instruments in a room. If the total would be louder than
+  the loudest possible level, it is limited to that level — turn clip
+  volumes down if a busy moment sounds crushed.
+- **The scene end is a hard stop.** A clip running past the end of the
+  scene is cut off there; sound never extends the video.
+- **Any format works.** MP3, WAV, M4A and OGG, at any sample rate, all
+  play and export correctly — the sound is decoded by Windows' own
+  decoders on the way in.
+- **Export is mono for now.** Both speakers carry the same signal;
+  stereo imports are folded down. True stereo is planned for the real
+  export screen.
 
 ## M-6 Scenes and transitions
 - M-6.1 Adding and reordering scenes

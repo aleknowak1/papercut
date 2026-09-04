@@ -4,9 +4,10 @@
 // .mp4 by reading it back, and reports the result to the main process,
 // which prints it and exits. Development only; never ships.
 
-import { EXPORT_TEST, applyExportTestContent, exportTestAssetFiles } from '../../../../tests/fixtures/exportTestProject';
+import { EXPORT_TEST, allBeepTimes, applyExportTestContent } from '../../../../tests/fixtures/exportTestProject';
 import type { OpenedProject } from '../../../shared/ipc';
 import { exportProject, type ProjectExportResult } from '../export/exportProject';
+import { writeExportTestAssets } from './exportTestAssets';
 import { verifyExportedMp4, type ExportVerification } from './verifyMp4';
 
 const MAX_DRIFT_MS = 50; // 1.5 frames at 30 fps
@@ -26,9 +27,7 @@ interface RunSummary {
 
 async function buildFixtureProject(where: 'temp' | 'tests-output'): Promise<OpenedProject> {
   const created = await window.papercut.devCreateScratchProject('Export Test', '16:9', where);
-  for (const file of exportTestAssetFiles()) {
-    await window.papercut.writeProjectFile(created.projectDir, file.path, file.bytes);
-  }
+  await writeExportTestAssets(created.projectDir);
   const document = applyExportTestContent(created.document);
   await window.papercut.saveProjectDocument(created.projectDir, document);
   return { projectDir: created.projectDir, document };
@@ -59,7 +58,9 @@ async function runOne(
     width,
     height,
     fps: EXPORT_TEST.fps,
-    beepTimes: EXPORT_TEST.beepTimes,
+    // The five plain beeps plus the two TRIMMED clips (WAV and M4A): each
+    // must land on its flash, proving the decoder-and-trim path end to end.
+    beepTimes: allBeepTimes(),
     maxDriftMs: MAX_DRIFT_MS
   });
   return {

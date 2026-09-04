@@ -3,7 +3,12 @@
 import { describe, expect, it } from 'vitest';
 import { newProject } from '../../app/shared/document/create';
 import { validateProjectDocument } from '../../app/shared/document/validate';
-import { EXPORT_TEST, applyExportTestContent, exportTestAssetFiles } from '../fixtures/exportTestProject';
+import {
+  EXPORT_TEST,
+  allBeepTimes,
+  applyExportTestContent,
+  exportTestAssetFiles
+} from '../fixtures/exportTestProject';
 import { solidPng } from '../fixtures/png';
 
 describe('export test project', () => {
@@ -21,19 +26,26 @@ describe('export test project', () => {
     expect(scene?.layers[0]?.keyframes).toHaveLength(2);
   });
 
-  it('places one beep clip at each of the agreed times', () => {
-    const starts = doc.scenes[0]?.audioClips.map((c) => c.startSeconds);
-    expect(starts).toEqual([...EXPORT_TEST.beepTimes]);
-    // The last beep must finish before the video ends.
-    const lastBeep = EXPORT_TEST.beepTimes[EXPORT_TEST.beepTimes.length - 1] ?? 0;
+  it('places one clip at each of the agreed beep times, trimmed clips included', () => {
+    const starts = doc.scenes[0]?.audioClips.map((c) => c.startSeconds).sort((a, b) => a - b);
+    expect(starts).toEqual(allBeepTimes());
+    // Every beep must finish before the video ends.
+    const lastBeep = allBeepTimes().pop() ?? 0;
     expect(lastBeep + EXPORT_TEST.beepSeconds).toBeLessThanOrEqual(EXPORT_TEST.durationSeconds);
   });
 
-  it('references exactly the generated asset files', () => {
+  it('the trimmed clips carry exactly the agreed trim values', () => {
+    const clips = doc.scenes[0]!.audioClips;
+    for (const spec of [EXPORT_TEST.trimmedWav, EXPORT_TEST.trimmedM4a]) {
+      const clip = clips.find((c) => c.startSeconds === spec.clipStart);
+      expect(clip?.trimStartSeconds).toBe(spec.trimStart);
+      expect(clip?.durationSeconds).toBe(spec.duration);
+    }
+  });
+
+  it('references exactly the generated asset files (plus the run-time M4A)', () => {
     const referenced = doc.assets.map((a) => a.file).sort();
-    const generated = exportTestAssetFiles()
-      .map((f) => f.path)
-      .sort();
+    const generated = [...exportTestAssetFiles().map((f) => f.path), EXPORT_TEST.trimmedM4a.file].sort();
     expect(referenced).toEqual(generated);
   });
 });
