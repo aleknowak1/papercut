@@ -734,9 +734,15 @@ button {
   font-size: 11px;
 }
 
-/* ---- Time strip (M-4.1) ---- */
+/* ---- Timeline (M-1.3) ---- */
 
-.time-strip {
+.timeline {
+  border: 1px solid var(--panel-edge);
+  background: var(--panel);
+  min-width: 0;
+}
+
+.tl-header {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -744,9 +750,8 @@ button {
      spilling under the Layers panel (where they could not be clicked). */
   flex-wrap: wrap;
   min-width: 0;
-  border: 1px solid var(--panel-edge);
-  background: var(--panel);
   padding: 4px 8px;
+  border-bottom: 1px solid var(--panel-edge);
 }
 
 .strip-play {
@@ -758,33 +763,9 @@ button {
   color: var(--accent);
 }
 
-.strip-track {
-  position: relative;
-  flex: 1;
-  min-width: 60px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.strip-scrubber {
-  width: 100%;
-  margin: 0;
-}
-
-.strip-ticks {
-  position: relative;
-  height: 5px;
-  margin: 2px 7px 0; /* roughly under the slider's travel */
-}
-
-.strip-tick {
-  position: absolute;
-  top: 0;
-  width: 2px;
-  height: 5px;
-  margin-left: -1px;
-  background: var(--accent);
+.tl-header .btn[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .strip-readout {
@@ -792,9 +773,128 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
+.tl-snap-note {
+  color: var(--accent);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.tl-header-spacer {
+  flex: 1;
+}
+
+.tl-zoom {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.tl-zoom input[type='range'] {
+  width: 90px;
+  margin: 0;
+}
+
 .strip-duration input {
   width: 5ch;
   text-align: right;
+}
+
+.tl-body {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tl-ruler {
+  position: relative;
+  height: 18px;
+  border-bottom: 1px solid var(--panel-edge);
+  cursor: ew-resize;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+}
+
+.tl-ruler-mark {
+  position: absolute;
+  top: 2px;
+  padding-left: 4px;
+  border-left: 1px solid var(--ink-dim);
+  color: var(--ink-dim);
+  font-size: 10px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.tl-rows {
+  /* Room for the camera row and six layer rows; more rows scroll. */
+  max-height: 170px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.tl-row {
+  display: flex;
+  align-items: center;
+  height: 24px; /* ROW_HEIGHT_PX */
+  border-bottom: 1px dashed var(--panel-edge);
+}
+
+.tl-row-selected {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.tl-row-label {
+  flex: none;
+  width: 96px; /* TRACK_LABEL_PX */
+  padding: 0 6px;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-dim);
+  font-size: 11px;
+  border-right: 1px solid var(--panel-edge);
+}
+
+.tl-row-label-camera {
+  color: var(--ink);
+  letter-spacing: 0.06em;
+}
+
+.tl-row-track {
+  flex: none;
+  display: block;
+  touch-action: none;
+}
+
+.tl-diamond {
+  fill: var(--accent);
+  stroke: none;
+  cursor: grab;
+}
+
+.tl-diamond-lifted {
+  opacity: 0.25;
+}
+
+.tl-diamond-ghost {
+  opacity: 0.9;
+  stroke: var(--ink);
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+.tl-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  margin-left: -0.5px;
+  background: var(--ink);
+  opacity: 0.85;
+  pointer-events: none;
 }
 
 /* ---- Layer inspector (M-4.2) ---- */

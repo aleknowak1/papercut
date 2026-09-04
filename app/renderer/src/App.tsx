@@ -20,7 +20,7 @@ import { HomeScreen } from './HomeScreen';
 import { LayersPanel } from './scene/LayersPanel';
 import { SceneCanvas } from './scene/SceneCanvas';
 import { SceneToolbar } from './scene/SceneToolbar';
-import { TimeStrip } from './scene/TimeStrip';
+import { Timeline } from './timeline/Timeline';
 
 // Everything under app/renderer/src/dev/ (and tests/fixtures) is loaded
 // through dynamic imports inside `import.meta.env.DEV` branches. In a
@@ -436,14 +436,24 @@ function ProjectView({
                       }
                 }
               />
-              <TimeStrip
+              <Timeline
                 document={doc}
                 scene={scene}
-                selectedLayer={selectedLayer}
+                selectedLayerId={effectiveSelection}
                 cameraMode={cameraMode}
                 playhead={playhead}
                 onPlayhead={setPlayhead}
                 applyEdit={applyEdit}
+                onSelectLayer={(layerId) => {
+                  // A layer diamond takes the canvas back from the camera.
+                  setCameraMode(false);
+                  setCameraPreview(undefined);
+                  setCanvasPick(undefined);
+                  setSelectedLayerId(layerId);
+                }}
+                onEnterCameraMode={() => {
+                  if (!cameraMode) toggleCameraMode();
+                }}
               />
             </div>
           )}

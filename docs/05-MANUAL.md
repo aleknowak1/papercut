@@ -262,17 +262,34 @@ here, this big, turned this much, this see-through.* Give a layer two
 keyframes and the app draws every frame in between — the layer moves,
 grows, turns, or fades from the first to the second on its own.
 
-The **time strip** under the canvas is where you pick the moment:
+The **timeline** under the canvas is where you pick the moment:
 
-- The slider is the **playhead** — drag it to see the scene at any time.
-  The readout next to it shows the time and the frame number.
+- The **ruler** along its top is time itself — click or drag anywhere on
+  it to move the **playhead** (the thin vertical line) and see the scene
+  at that instant. The readout in the header shows the time and the
+  frame number.
 - **▶ (Space)** plays the scene from the playhead and stops at the end.
-  Playing is just a preview; it never changes your project.
+  Playing is just a preview; it never changes your project. While it
+  plays, the view scrolls along so the playhead stays on screen.
 - **‹ ›** (or the **,** and **.** keys) step one frame at a time, for
   landing on an exact moment.
 - **« »** jump the playhead to the selected layer's previous or next
-  keyframe. The small amber **tick marks** on the slider show where the
-  selected layer's keyframes sit.
+  keyframe (the camera's, in camera mode).
+- Every layer has its own **row**, front-most at the top — the same
+  order as the Layers panel — with the **Camera** row above them all
+  (the background has no row; it cannot move). Each keyframe is an
+  amber **diamond**: click one to select its layer and land the
+  playhead exactly on it, or drag it left or right to move that
+  keyframe in time. A drag is one undo step, Escape mid-drag cancels
+  it, and a frame that already holds a keyframe refuses the drop — the
+  diamond stops beside it.
+- **Snap** makes drags land on useful places: whole frames always, and
+  while it is on also the playhead, the row's other keyframes, sound
+  clip edges and whole seconds (a small note in the header says what
+  caught the drag). The magnifier **slider** zooms the timeline from
+  the whole scene down to a fifth of a second per hundred pixels —
+  **Ctrl+wheel** over the tracks does the same, and the wheel (or
+  **Shift+wheel**) slides the view along.
 - **Duration** sets how long the scene runs, 1 to 120 seconds. Keyframes
   past a shortened end are kept — they simply wait beyond the end until
   you lengthen the scene again.
@@ -359,8 +376,8 @@ square drifting right that you give a Bob keeps drifting right, now
 bobbing as it goes. Keyframes the preset makes are added to the layer's
 existing ones (only one sitting at exactly the same time is replaced).
 
-After Apply they are just keyframes — look at the tick marks on the time
-strip. Edit any of them by hand, or press **Ctrl+Z once** to remove the
+After Apply they are just keyframes — look at the diamonds on the
+layer's timeline row. Edit any of them by hand, or press **Ctrl+Z once** to remove the
 whole preset in one step. Applying a preset twice stacks the second on
 top of the first, which is rarely what you want — undo first if you are
 experimenting.
@@ -396,8 +413,8 @@ beyond the edges of the scene, so a camera move never shows black bars.
 At 1× there is nowhere to pan — zoom in first.
 
 Camera moves are keyframes, exactly like layer motion: every change
-writes the **camera keyframe at the playhead** (the tick marks and « »
-now follow the camera's keyframes). To make a move: set the playhead,
+writes the **camera keyframe at the playhead** (its diamonds sit on the
+timeline's Camera row, and « » now follows them). To make a move: set the playhead,
 frame your opening shot, move the playhead later, frame the next shot,
 press ▶. The **Easing** dropdown shapes the move leaving each keyframe,
 and **Delete camera keyframe** removes the one under the playhead —
