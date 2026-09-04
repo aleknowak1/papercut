@@ -1,7 +1,7 @@
 # DOC-05 — User Manual
 
 **Status:** In progress (sections are filled in as each feature ships; a section is not written until its feature exists)
-**Last updated:** 2026-09-04 (M-5.5 mixing rules written; its clip controls follow with the timeline)
+**Last updated:** 2026-09-04 (M-1.3 the full interface tour; M-5.5 clip controls — Phase 6 timeline complete)
 
 Sections are numbered M-N.N and referenced from DOC-01 and DOC-04. Every feature listed in DOC-01 §5.1 must have a section here before v1.0 ships.
 
@@ -38,7 +38,51 @@ own.
 
 The app's version number is shown in the bottom-right corner.
 
-- M-1.3 A tour of the interface
+### M-1.3 A tour of the interface
+
+Open a project and the editor fills the window: three columns, with the
+timeline running under the middle one. Everything you do here is one undo
+step — the masthead's **Undo / Redo** buttons (**Ctrl+Z**, **Ctrl+Y**)
+walk back through imports, edits and drags alike — and the project saves
+itself moments after every change.
+
+**Left — your material.** Two tabs. **Assets** (M-2) lists everything
+you have imported: background photos, character/prop photos with their
+cutouts, and sounds — each ♪ row has **Play** to listen and **Add to
+timeline** to use it (M-5.5). **Characters** (M-2.5) holds your
+characters and their poses. Rows carry buttons for where each thing can
+go, and most rows can simply be dragged there instead — photos onto the
+canvas, sounds onto the timeline's lanes.
+
+**Middle — the scene canvas.** Your scene exactly as it stands at the
+playhead, drawn by the same code that exports the video — what you see
+is what you get. The toolbar above it sets the background photo and its
+fit, and holds the **Camera** button (M-4.6). On the canvas itself:
+click a layer to select it, drag to move, corner handles to resize, the
+round handle on the stem to turn (M-3.3, M-4.2).
+
+**Right — the details panel.** Normally **Layers** (M-3.2): the stack of
+layers front-most first, and below it the selected layer's inspector —
+position, size, turn, opacity, easing, pose, and the motion presets
+(M-4). The panel changes with what you are doing: in camera mode it
+becomes the **Camera** panel (M-4.6), and with a sound clip selected it
+becomes the **Sound clip** panel (M-5.5). **Escape** steps back out of
+whichever is open.
+
+**Bottom — the timeline.** The header carries the transport: **▶**
+play/pause (**Space**), one-frame steps **‹ ›** (the **,** and **.**
+keys), keyframe jumps **« »**, the time and frame readout, the **Snap**
+toggle, the zoom slider, and the scene **Duration**. Under it, the
+**ruler** — click or drag anywhere on it to scrub; the thin vertical
+line is the playhead. Then one row per moving thing: **Camera** on top,
+every layer beneath it in Layers-panel order, keyframes shown as amber
+**diamonds** — click one to edit it, drag it sideways to move it in time
+(M-4.1). Below the rows, the **sound lanes** hold your audio clips as
+waveform blocks (M-5.5). Zoom with **Ctrl+wheel** or the slider, slide
+the view with the wheel (or **Shift+wheel**), and during play the view
+follows the playhead. Playing is a preview with sound; it never changes
+your project.
+
 - M-1.4 Your first 10-second video (walkthrough)
 
 ## M-2 Bringing in your material
@@ -433,8 +477,34 @@ exports: the camera is applied in the same drawing code the export uses.
 
 ### M-5.5 Placing, trimming, fading, and mixing audio
 
-*(The controls for placing and shaping clips arrive with the timeline;
-this section starts with the rules the mix always follows.)*
+**Putting a sound on the timeline.** Two roads, one result: press **Add
+to timeline** on the sound's ♪ row — the clip lands at the playhead — or
+drag the row onto the timeline's sound lanes, and it lands where you let
+go. Either way the whole sound arrives at full volume, drawn as a block
+with its name and waveform. Clips that overlap in time move into
+separate lanes on their own; nothing ever hides behind anything.
+
+**Shaping a clip.** Everything is a drag, and every drag is one undo
+step (Escape mid-drag cancels it):
+
+- **Move** — drag the block. It snaps to whole frames, and (while Snap
+  is on) to the playhead, other clips' edges and whole seconds — the
+  header says what caught it.
+- **Trim** — drag either edge. The left edge sets where in the sound the
+  clip begins; the sound underneath stays anchored in time, so trimming
+  the start never shifts what remains. The right edge sets how much
+  plays. Trimming never changes the sound file — untrim any time.
+- **Fade** — drag the small round handles at the block's top corners
+  sideways. The diagonal lines show each fade's reach.
+- **Numbers instead** — click the clip and the right panel becomes the
+  **Sound clip** panel: **Start**, **Volume**, **Fade in**, **Fade
+  out**, **Play** (how much of the sound plays) and **Delete clip**.
+  The **Delete** key removes the selected clip too; the sound itself
+  always stays in Assets.
+
+A clip that runs past the scene's end is drawn hatched from that point —
+that part is simply cut off, in the preview and the export alike. Press
+**▶** to hear your sounds in place; scrubbing is silent.
 
 **How your sounds are mixed.** Every sound in the scene follows the same
 rules, whether you are listening in the editor or exporting the video —

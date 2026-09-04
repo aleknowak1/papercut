@@ -254,32 +254,29 @@ function ProjectView({
     [opened.projectDir]
   );
 
-  const applyEdit = useCallback(
-    (edit: (current: ProjectDocument) => ProjectDocument): void => {
-      setHistory((current) => {
-        const next = recordEdit(current, edit(current.present));
-        if (next !== current) scheduleSave(next.present);
-        return next;
-      });
-    },
-    [scheduleSave]
-  );
+  const applyEdit = useCallback((edit: (current: ProjectDocument) => ProjectDocument): void => {
+    setHistory((current) => recordEdit(current, edit(current.present)));
+  }, []);
 
   const doUndo = useCallback((): void => {
-    setHistory((current) => {
-      const next = undo(current);
-      if (next !== current) scheduleSave(next.present);
-      return next;
-    });
-  }, [scheduleSave]);
+    setHistory(undo);
+  }, []);
 
   const doRedo = useCallback((): void => {
-    setHistory((current) => {
-      const next = redo(current);
-      if (next !== current) scheduleSave(next.present);
-      return next;
-    });
-  }, [scheduleSave]);
+    setHistory(redo);
+  }, []);
+
+  // Saving happens HERE, from the committed document — never inside a
+  // state updater. (React's StrictMode runs updaters twice in
+  // development; an updater that minted a fresh id and saved as a side
+  // effect could briefly write the discarded twin's ids to disk. Caught
+  // by the Phase 6 final live sweep.)
+  const lastScheduled = useRef(history.present);
+  useEffect(() => {
+    if (history.present === lastScheduled.current) return;
+    lastScheduled.current = history.present;
+    scheduleSave(history.present);
+  }, [history.present, scheduleSave]);
 
   // Keyboard: Ctrl+Z undo, Ctrl+Y or Ctrl+Shift+Z redo.
   useEffect(() => {

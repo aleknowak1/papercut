@@ -1,7 +1,7 @@
 # DOC-10 — Project Tracker
 
 **Status:** Active
-**Last updated:** 2026-09-04 (Phase 6 step 7 done, CL-0061: the Web Audio preview on play; next: M-1.3, M-5.5 and the final sweep)
+**Last updated:** 2026-09-04 (Phase 6 timeline UI complete, CL-0059–0062; Usable — waiting on Alek's hands-on verification, §5)
 **Purpose:** The one page to read when returning to the project. Where we are, what is done, what is next, and what is waiting on Alek. Updated with every change-log entry (DOC-04).
 
 ---
@@ -24,7 +24,8 @@ Step 2 done (CL-0056): the pure timeline module, app/shared/timeline/ — time�
 Step 4 done (CL-0059): **the timeline panel replaces the time strip** (app/renderer/src/timeline/Timeline.tsx, React/SVG; TimeStrip.tsx deleted; sceneStage untouched, snapshots unchanged). The strip's whole transport moved into the header (play/Space, frame steps, « », readout, Duration) plus the Snap toggle and zoom slider; ruler with draggable playhead; a Camera row and one row per layer, front-most on top, keyframes as draggable diamonds — click selects and lands the playhead, drag moves the keyframe in time (one undo step, Escape cancels, occupied frames refused, the ghost stopping beside). Zoom Ctrl+wheel/slider from whole-scene to 200 px/s, wheel scroll, the view paging along during play; rows past seven scroll vertically, memoised per layer. Live-verified with 33 scripted assertions in the real app — including scrubbing at 60 fps with 21 keyframed rows on the dev laptop (DOC-03 §5 shown, not assumed).
 Steps 5–6 done (CL-0060): **sounds onto the timeline, and clip editing.** One shared road on (addToTimeline.ts, the Phase 4b pattern): "Add to timeline" on every ♪ row lands the clip at the playhead, dragging the row onto the lanes lands it at the drop time. Clips draw with the sound's name and a waveform from session-decoded peaks (decoded once per session, nothing written to disk — decision k); overlaps pack into lanes (decision g); past the scene end the block is hatched. Editing per decision h: body drag moves, edge drags trim (the left edge keeps the sound anchored in time), corner handles set the fades, and the right panel becomes the Sound clip panel (Start/Volume/Fades/Play/Delete) — every gesture and field one undo step, Escape cancels. Live-verified with 25 scripted assertions. 8 new tests (263).
 Step 7 done (CL-0061): **the preview has sound.** On play, previewSchedule's entries are scheduled through Web Audio (one source + gain per clip: trim as the source offset, volume and fades as the gain envelope) from the playhead — the same translation of the document the export mixer renders and the same session decode cache the waveforms use, so what plays is what exports by construction. Pause, the scene end, and any edit silence it at once; scrubbing is silent. Live-verified with 5 scripted assertions; the ear test is Alek's.
-**Next action (the timeline UI session, under way):** the timeline panel (CL-0059), the audio lanes with clip editing (CL-0060) and the Web Audio preview (CL-0061) are in. Last in this session: M-1.3 (the full interface tour) and M-5.5's clip controls, the tracker rows, and the final live sweep — then Alek's hands-on verification closes the phase.
+Step 9 done (CL-0062): M-1.3 written as the full interface tour and M-5.5's clip controls added; a StrictMode save-consistency impurity the final sweep caught is fixed (saving now happens from the committed document, never inside a state updater); the closing sweep ran the exact hands-on flow live — drop, trim, fade, play with sound, drag a diamond, reopen — 6 of 6. **The Phase 6 timeline UI is complete; the phase is Usable, waiting on Alek's hands-on verification (§5).**
+**Next action:** Alek verifies Phase 6 by hand (§5 — drop a sound, trim, fade, play, drag a diamond) and records it as the next CL entry; then Phase 7 (Scenes and transitions) is planned in the Cowork session per DOC-11 §4, as Phases 5 and 6 were.
 
 ### 1b. Hand-off notes (now historical — the work below was completed by Fable in CL-0031..33, built to these decisions)
 
@@ -48,7 +49,7 @@ Phases run in this order; a phase does not start until the previous one is usabl
 | 3 | **Assets and cutouts** | Import images/audio; BiRefNet_lite auto-cutout; HD cutout; mask editor; HEIC handling | **Complete** (CL-0033: every feature ☑, all M-2 manual sections written; Alek's spot-checks in §5 — mask editor on a real photo, HEIC, real MP3/OGG) | Fable (Alek's choice, CL-0030) |
 | 4 | **Scene and layers** | Background, character/prop layers, ordering, opacity, lock/hide, placing and sizing on canvas | **Complete** (CL-0037–0041; verified by Alek by hand, CL-0043) | Fable |
 | 5 | **Animation** | Keyframes (position, scale, rotation, flip, opacity), easing, motion presets, pose swapping, camera pan/zoom, render snapshot checks | **Complete** (CL-0044–0052; reviewer audit run; verified by Alek, CL-0048 and CL-0054) | Fable throughout (Alek's choice, as Phases 3–4) |
-| 6 | **Timeline and audio** | Multi-track timeline, scrub/snap/zoom, audio clips (volume, fade, trim), imported sounds | **In progress** (CL-0055–0057: Fable foundations complete — document edits, shared/timeline, decoder + trim-aware mixer, extended export check; timeline UI next, on Opus) | Fable foundations → Opus UI (decision l) |
+| 6 | **Timeline and audio** | Multi-track timeline, scrub/snap/zoom, audio clips (volume, fade, trim), imported sounds | **Usable** (CL-0055–0062: foundations + timeline UI complete, manual written, checks green; Complete once Alek's hands-on try-out passes, §5) | Fable throughout (foundations CL-0055–0057, UI CL-0059–0062) |
 | 7 | **Scenes and transitions** | Multiple scenes, reorder, seven transition types | Not started | Opus |
 | 8 | **Text and captions** | Titles/captions, OFL fonts, fade/pop animation | Not started | Opus |
 | 9 | **Real export** | Platform presets, 720p/1080p, 30/60 fps, optional "AI-generated" label, progress and reveal-in-folder | Not started | Opus |
@@ -68,7 +69,7 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 | Sign up / sign in / subscription / acceptable-use agreement | 10 | ☐ | M-1.1b |
 | Create/open/save project, autosave, project folder | 1 | ◐ (autosave pending) | M-1.2, M-9.3 |
 | Format choice (9:16, 16:9, 1:1) and save location | 1 | ☑ | M-1.2 |
-| Undo / redo | 1 | ◐ (engine, checks, UI buttons and Ctrl+Z/Ctrl+Y; M-1.3 tour pending) | M-1.3 |
+| Undo / redo | 1 | ☑ (engine, checks, UI buttons and Ctrl+Z/Ctrl+Y; M-1.3 tour written, CL-0062) | M-1.3 |
 | Image import (JPG, PNG, WebP; HEIC via Windows) | 3 | ☑ (CL-0028/29; HEIC works-path verified by Alek with a real iPhone photo, §5) | M-2.2, M-9.2 |
 | Audio import (MP3, WAV, M4A, OGG) | 3 | ☑ (CL-0033; MP3/OGG spot-checked by Alek with real files, §5) | M-2.6 |
 | Automatic cutout (BiRefNet_lite) | 3 | ☑ (CL-0028) | M-2.3 |
@@ -82,8 +83,8 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 | Motion presets: bob, walk, shake, pop | 5 | ☑ (CL-0049; live-verified with 34 scripted assertions) | M-4.4 |
 | Pose swapping on timeline | 5 | ☑ (CL-0046 document half + Pose dropdown; M-4.5 written CL-0049) | M-4.5 |
 | Camera pan and zoom | 5 | ☑ (CL-0044/45 engine + render; CL-0050 authoring UI, live-verified with 19 scripted assertions) | M-4.6 |
-| Multi-track timeline, scrub, snap, zoom | 6 | ◐ (CL-0059: panel, transport, ruler, keyframe rows, snap, zoom; audio lanes next; M-1.3 tour pending) | M-1.3 |
-| Audio clips: volume, fade, trim | 6 | ◐ (CL-0055/57 document+export half; CL-0060 lanes, gestures, clip panel; preview + M-5.5 controls pending) | M-5.5 |
+| Multi-track timeline, scrub, snap, zoom | 6 | ☑ (CL-0059/60/62; live-verified incl. 60 fps scrubbing with 21 rows; M-1.3 written) | M-1.3 |
+| Audio clips: volume, fade, trim | 6 | ☑ (CL-0055/57 document+export; CL-0060 lanes, gestures, clip panel; CL-0061 preview; M-5.5 written, CL-0062) | M-5.5 |
 | Multiple scenes, reorder, duration | 7 | ☐ | M-6.1, M-6.3 |
 | Transitions: cut, crossfade, slide ×4, zoom in/out, wipe | 7 | ☐ | M-6.2 |
 | Titles and captions with animation | 8 | ☐ | M-7.1, M-7.2 |
@@ -121,6 +122,7 @@ Run everything with one command: `npm run check` (255 tests + licenses + build s
 
 | Item | Needed by | Ref |
 |------|-----------|-----|
+| Try the Phase 6 timeline by hand: open a project (or click "Load test content (dev)"), then — press "Add to timeline" on a ♪ row and also drag a ♪ row onto the sound lanes; drag a clip's body, its edges (trim) and the little corner handles (fades); click a clip and change its numbers in the right panel; press Space and LISTEN (each beep on its flash; pause cuts sound at once; scrubbing is silent); drag a keyframe diamond along its row (Escape mid-drag cancels; dropping on a frame that has one refuses); reopen the project and confirm it all stuck. | Now (closes Phase 6) | M-1.3, M-5.5 |
 | If you have a real iPhone photo (.heic): import it the same way — it should just appear (this laptop has the HEIF extension). That verifies the HEIC works-path; the missing-extension message is covered by checks. | Now (verifies CL-0029) | M-9.2 |
 | Create an OpenAI account, generate a key, set a small monthly hard cap, keep the key private | Phase 11 (not before) | DOC-09 §5 |
 | Choose merchant of record after Claude's comparison | Phase 10 | OQ-018 |
