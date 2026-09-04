@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type JSX,
+  type PointerEvent as ReactPointerEvent
+} from 'react';
 import type { OpenedProject } from '../../shared/ipc';
 import type { ProjectDocument } from '../../shared/document/types';
 import { removeAudioClip, removeLayer, setKeyframe } from '../../shared/document/edits';
@@ -28,6 +35,13 @@ import { Timeline } from './timeline/Timeline';
 // through dynamic imports inside `import.meta.env.DEV` branches. In a
 // production build DEV is false, the branches are dead code, and none of
 // it is bundled or shipped.
+
+// The timeline dock (Phase 6b): the timeline spans the full window width
+// beneath all three columns, and the divider above it drags its height.
+const TIMELINE_DEFAULT_HEIGHT_PX = 260;
+const TIMELINE_MIN_HEIGHT_PX = 160;
+/** The least height the three columns keep while the divider drags. */
+const COLUMNS_MIN_HEIGHT_PX = 220;
 
 /** Hidden-window screen used by scripts/check-export.mjs (dev only). */
 function DevExportRunScreen({ mode }: { mode: 'export-check' | 'export-measure' }): JSX.Element {
@@ -160,7 +174,9 @@ export function App(): JSX.Element {
 
 /**
  * The opened-project view (the editor): Assets/Characters tabs on the
- * left, the scene canvas in the middle, the Layers panel on the right.
+ * left, the scene canvas in the middle, the Layers panel on the right,
+ * and the timeline spanning the full window width beneath all three,
+ * with a draggable divider setting its height (Phase 6b).
  * The document runs through the undo/redo history (every edit is one
  * history step; the document is saved after each change).
  */
@@ -198,6 +214,47 @@ function ProjectView({
   const [cameraPreview, setCameraPreview] = useState<
     { x: number; y: number; zoom: number } | undefined
   >(undefined);
+  // The timeline dock's height — UI state like zoom and scroll: not
+  // saved, not an undo step. The divider above the timeline drags it,
+  // clamped so the columns above always keep a usable height (the editor
+  // area is measured so a window resize re-clamps too).
+  const [timelineHeight, setTimelineHeight] = useState(TIMELINE_DEFAULT_HEIGHT_PX);
+  const [editorAreaHeight, setEditorAreaHeight] = useState<number | undefined>(undefined);
+  const editorAreaRef = useRef<HTMLDivElement | null>(null);
+  const dividerDrag = useRef<{ startY: number; startHeight: number } | undefined>(undefined);
+
+  const editorOpen = editingMaskOf === undefined;
+  useEffect(() => {
+    const area = editorAreaRef.current;
+    if (area === null) return;
+    const measure = (): void => setEditorAreaHeight(area.clientHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(area);
+    return () => observer.disconnect();
+  }, [editorOpen]);
+
+  const maxTimelineHeight =
+    editorAreaHeight !== undefined
+      ? Math.max(TIMELINE_MIN_HEIGHT_PX, editorAreaHeight - COLUMNS_MIN_HEIGHT_PX)
+      : TIMELINE_DEFAULT_HEIGHT_PX;
+  const dockHeight = Math.min(Math.max(timelineHeight, TIMELINE_MIN_HEIGHT_PX), maxTimelineHeight);
+
+  const onDividerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dividerDrag.current = { startY: event.clientY, startHeight: dockHeight };
+  };
+  const onDividerMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    const start = dividerDrag.current;
+    if (start === undefined || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    // Dragging up makes the timeline taller.
+    const next = start.startHeight + (start.startY - event.clientY);
+    setTimelineHeight(Math.min(Math.max(next, TIMELINE_MIN_HEIGHT_PX), maxTimelineHeight));
+  };
+  const onDividerUp = (): void => {
+    dividerDrag.current = undefined;
+  };
   const doc = history.present;
   const editingAsset = editingMaskOf !== undefined
     ? doc.assets.find((a) => a.id === editingMaskOf)
@@ -404,147 +461,166 @@ function ProjectView({
           onClose={() => setEditingMaskOf(undefined)}
         />
       ) : (
-        <div className="project-columns editor-columns">
-          <div className="left-column">
-            <div className="tab-row" role="tablist">
-              <button
-                type="button"
-                className="btn tab-btn"
-                role="tab"
-                aria-selected={leftTab === 'assets'}
-                onClick={() => setLeftTab('assets')}
-              >
-                Assets
-              </button>
-              <button
-                type="button"
-                className="btn tab-btn"
-                role="tab"
-                aria-selected={leftTab === 'characters'}
-                onClick={() => setLeftTab('characters')}
-              >
-                Characters
-              </button>
+        <div className="editor-area" ref={editorAreaRef}>
+          <div className="project-columns editor-columns">
+            <div className="left-column">
+              <div className="tab-row" role="tablist">
+                <button
+                  type="button"
+                  className="btn tab-btn"
+                  role="tab"
+                  aria-selected={leftTab === 'assets'}
+                  onClick={() => setLeftTab('assets')}
+                >
+                  Assets
+                </button>
+                <button
+                  type="button"
+                  className="btn tab-btn"
+                  role="tab"
+                  aria-selected={leftTab === 'characters'}
+                  onClick={() => setLeftTab('characters')}
+                >
+                  Characters
+                </button>
+              </div>
+              {leftTab === 'assets' ? (
+                <AssetsPanel
+                  projectDir={opened.projectDir}
+                  document={doc}
+                  scene={scene}
+                  applyEdit={applyEdit}
+                  onEditMask={setEditingMaskOf}
+                  onLayerAdded={selectLayer}
+                  onAddSoundToTimeline={
+                    scene === undefined
+                      ? undefined
+                      : (assetId) => {
+                          // The clip lands at the playhead (decision h) and
+                          // is selected so its numbers are right there.
+                          const sceneId = scene.id;
+                          let clipId: string | undefined;
+                          applyEdit((current) => {
+                            const added = addSoundToTimeline(current, sceneId, assetId, playhead);
+                            clipId = added?.clipId;
+                            return added?.doc ?? current;
+                          });
+                          if (clipId !== undefined) selectClip(clipId);
+                        }
+                  }
+                />
+              ) : (
+                <CharactersPanel
+                  projectDir={opened.projectDir}
+                  document={doc}
+                  scene={scene}
+                  applyEdit={applyEdit}
+                  onLayerAdded={selectLayer}
+                />
+              )}
             </div>
-            {leftTab === 'assets' ? (
-              <AssetsPanel
-                projectDir={opened.projectDir}
-                document={doc}
-                scene={scene}
-                applyEdit={applyEdit}
-                onEditMask={setEditingMaskOf}
-                onLayerAdded={selectLayer}
-                onAddSoundToTimeline={
-                  scene === undefined
-                    ? undefined
-                    : (assetId) => {
-                        // The clip lands at the playhead (decision h) and
-                        // is selected so its numbers are right there.
-                        const sceneId = scene.id;
-                        let clipId: string | undefined;
-                        applyEdit((current) => {
-                          const added = addSoundToTimeline(current, sceneId, assetId, playhead);
-                          clipId = added?.clipId;
-                          return added?.doc ?? current;
-                        });
-                        if (clipId !== undefined) selectClip(clipId);
-                      }
-                }
-              />
-            ) : (
-              <CharactersPanel
-                projectDir={opened.projectDir}
-                document={doc}
-                scene={scene}
-                applyEdit={applyEdit}
-                onLayerAdded={selectLayer}
-              />
+            {scene !== undefined && (
+              <div className="canvas-column">
+                <SceneToolbar
+                  document={doc}
+                  scene={scene}
+                  applyEdit={applyEdit}
+                  cameraMode={cameraMode}
+                  onToggleCameraMode={toggleCameraMode}
+                />
+                <SceneCanvas
+                  projectDir={opened.projectDir}
+                  document={doc}
+                  scene={scene}
+                  selectedLayerId={effectiveSelection}
+                  time={playhead}
+                  opacityPreview={opacityPreview}
+                  applyEdit={applyEdit}
+                  onSelect={selectLayer}
+                  cameraMode={cameraMode}
+                  cameraPreview={cameraPreview}
+                  onPickPoint={
+                    canvasPick === undefined
+                      ? undefined
+                      : (point) => {
+                          canvasPick.onPick(point);
+                          setCanvasPick(undefined);
+                        }
+                  }
+                />
+              </div>
             )}
+            {scene !== undefined &&
+              (cameraMode ? (
+                <CameraPanel
+                  document={doc}
+                  scene={scene}
+                  playhead={playhead}
+                  applyEdit={applyEdit}
+                  onCameraPreview={setCameraPreview}
+                  onClose={toggleCameraMode}
+                />
+              ) : selectedClip !== undefined ? (
+                <ClipPanel
+                  document={doc}
+                  scene={scene}
+                  clip={selectedClip}
+                  applyEdit={applyEdit}
+                  onClose={() => setSelectedClipId(undefined)}
+                />
+              ) : (
+                <LayersPanel
+                  document={doc}
+                  scene={scene}
+                  applyEdit={applyEdit}
+                  selectedLayerId={effectiveSelection}
+                  playhead={playhead}
+                  onSelect={selectLayer}
+                  onOpacityPreview={setOpacityPreview}
+                  requestCanvasPick={(onPick) => setCanvasPick({ onPick })}
+                  canvasPicking={canvasPick !== undefined}
+                />
+              ))}
           </div>
           {scene !== undefined && (
-            <div className="canvas-column">
-              <SceneToolbar
-                document={doc}
-                scene={scene}
-                applyEdit={applyEdit}
-                cameraMode={cameraMode}
-                onToggleCameraMode={toggleCameraMode}
+            <>
+              <div
+                className="tl-divider"
+                role="separator"
+                aria-orientation="horizontal"
+                aria-label="Timeline height"
+                title="Drag to set the timeline's height"
+                onPointerDown={onDividerDown}
+                onPointerMove={onDividerMove}
+                onPointerUp={onDividerUp}
+                onPointerCancel={onDividerUp}
               />
-              <SceneCanvas
-                projectDir={opened.projectDir}
-                document={doc}
-                scene={scene}
-                selectedLayerId={effectiveSelection}
-                time={playhead}
-                opacityPreview={opacityPreview}
-                applyEdit={applyEdit}
-                onSelect={selectLayer}
-                cameraMode={cameraMode}
-                cameraPreview={cameraPreview}
-                onPickPoint={
-                  canvasPick === undefined
-                    ? undefined
-                    : (point) => {
-                        canvasPick.onPick(point);
-                        setCanvasPick(undefined);
-                      }
-                }
-              />
-              <Timeline
-                projectDir={opened.projectDir}
-                document={doc}
-                scene={scene}
-                selectedLayerId={effectiveSelection}
-                cameraMode={cameraMode}
-                playhead={playhead}
-                onPlayhead={setPlayhead}
-                applyEdit={applyEdit}
-                onSelectLayer={(layerId) => {
-                  // A layer diamond takes the canvas back from the camera.
-                  setCameraMode(false);
-                  setCameraPreview(undefined);
-                  setCanvasPick(undefined);
-                  selectLayer(layerId);
-                }}
-                onEnterCameraMode={() => {
-                  if (!cameraMode) toggleCameraMode();
-                }}
-                selectedClipId={selectedClip?.id}
-                onSelectClip={selectClip}
-              />
-            </div>
+              <div className="tl-dock" style={{ height: dockHeight }}>
+                <Timeline
+                  projectDir={opened.projectDir}
+                  document={doc}
+                  scene={scene}
+                  selectedLayerId={effectiveSelection}
+                  cameraMode={cameraMode}
+                  playhead={playhead}
+                  onPlayhead={setPlayhead}
+                  applyEdit={applyEdit}
+                  onSelectLayer={(layerId) => {
+                    // A layer diamond takes the canvas back from the camera.
+                    setCameraMode(false);
+                    setCameraPreview(undefined);
+                    setCanvasPick(undefined);
+                    selectLayer(layerId);
+                  }}
+                  onEnterCameraMode={() => {
+                    if (!cameraMode) toggleCameraMode();
+                  }}
+                  selectedClipId={selectedClip?.id}
+                  onSelectClip={selectClip}
+                />
+              </div>
+            </>
           )}
-          {scene !== undefined &&
-            (cameraMode ? (
-              <CameraPanel
-                document={doc}
-                scene={scene}
-                playhead={playhead}
-                applyEdit={applyEdit}
-                onCameraPreview={setCameraPreview}
-                onClose={toggleCameraMode}
-              />
-            ) : selectedClip !== undefined ? (
-              <ClipPanel
-                document={doc}
-                scene={scene}
-                clip={selectedClip}
-                applyEdit={applyEdit}
-                onClose={() => setSelectedClipId(undefined)}
-              />
-            ) : (
-              <LayersPanel
-                document={doc}
-                scene={scene}
-                applyEdit={applyEdit}
-                selectedLayerId={effectiveSelection}
-                playhead={playhead}
-                onSelect={selectLayer}
-                onOpacityPreview={setOpacityPreview}
-                requestCanvasPick={(onPick) => setCanvasPick({ onPick })}
-                canvasPicking={canvasPick !== undefined}
-              />
-            ))}
         </div>
       )}
       {import.meta.env.DEV && (

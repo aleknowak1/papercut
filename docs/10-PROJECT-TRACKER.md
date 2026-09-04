@@ -1,7 +1,7 @@
 # DOC-10 — Project Tracker
 
 **Status:** Active
-**Last updated:** 2026-09-04 (Phase 6 Complete — verified by Alek by hand, CL-0063)
+**Last updated:** 2026-09-04 (Phase 6 Complete, CL-0063; Phase 6b full-width timeline layout, CL-0064)
 **Purpose:** The one page to read when returning to the project. Where we are, what is done, what is next, and what is waiting on Alek. Updated with every change-log entry (DOC-04).
 
 ---
@@ -26,6 +26,7 @@ Steps 5–6 done (CL-0060): **sounds onto the timeline, and clip editing.** One 
 Step 7 done (CL-0061): **the preview has sound.** On play, previewSchedule's entries are scheduled through Web Audio (one source + gain per clip: trim as the source offset, volume and fades as the gain envelope) from the playhead — the same translation of the document the export mixer renders and the same session decode cache the waveforms use, so what plays is what exports by construction. Pause, the scene end, and any edit silence it at once; scrubbing is silent. Live-verified with 5 scripted assertions; the ear test is Alek's.
 Step 9 done (CL-0062): M-1.3 written as the full interface tour and M-5.5's clip controls added; a StrictMode save-consistency impurity the final sweep caught is fixed (saving now happens from the committed document, never inside a state updater); the closing sweep ran the exact hands-on flow live — drop, trim, fade, play with sound, drag a diamond, reopen — 6 of 6.
 **Phase 6 — Timeline and audio: COMPLETE (CL-0055–CL-0062; verified by Alek, CL-0063 on 2026-09-04):** the full §5 try-out — both roads onto the timeline (an overlapping clip took its own lane), clip body/edge/fade drags each one Ctrl+Z with Escape writing nothing, the Sound clip panel, play with sound (beeps on flashes, pause silencing at once, silent scrubbing), keyframe diamond drags with the Escape cancel and the occupied-frame refusal, and reopening with everything kept. All worked.
+**Phase 6b — the full-width timeline (CL-0064):** the one usability change from Alek's try-out. The timeline now spans the whole window width beneath all three columns (the tracks get the whole width), with a draggable horizontal divider setting its height — UI state like zoom, not saved, never an undo step. Layout/CSS only: Timeline.tsx and sceneStage untouched, the 14 snapshots unchanged; live-verified with 34 scripted assertions including the earlier timeline assertions re-run. M-1.3 retold.
 **Next action:** Phase 7 (Scenes and transitions) is planned in the Cowork session per DOC-11 §4, as Phases 5 and 6 were.
 
 ### 1b. Hand-off notes (now historical — the work below was completed by Fable in CL-0031..33, built to these decisions)

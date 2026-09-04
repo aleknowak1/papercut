@@ -541,8 +541,48 @@ button {
 
 /* ---- Editor layout: tabs · scene canvas · Layers (Phase 4) ---- */
 
+/* The editor area (Phase 6b): the three columns on top, then a draggable
+   divider, then the timeline dock spanning the full window width. */
+.editor-area {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .editor-columns {
   align-items: stretch;
+}
+
+.editor-area .editor-columns {
+  /* The columns take whatever the timeline dock leaves them, and never
+     collapse entirely under a tall timeline. */
+  flex: 1 1 0;
+  min-height: 200px;
+}
+
+.tl-divider {
+  flex: none;
+  height: 6px;
+  margin: 4px 0;
+  cursor: ns-resize;
+  touch-action: none;
+  border-top: 1px solid var(--panel-edge);
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.tl-divider:hover,
+.tl-divider:active {
+  border-color: var(--accent);
+}
+
+.tl-dock {
+  /* Height comes from the divider drag (inline style) — UI state like
+     zoom and scroll, clamped in App.tsx so the columns keep room. */
+  flex: none;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .left-column {
@@ -740,9 +780,16 @@ button {
   border: 1px solid var(--panel-edge);
   background: var(--panel);
   min-width: 0;
+  /* Fills the dock (Phase 6b): the header and ruler keep their height,
+     the rows and lanes share whatever the divider leaves them. */
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .tl-header {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -804,10 +851,15 @@ button {
   position: relative;
   min-width: 0;
   overflow: hidden;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .tl-ruler {
   position: relative;
+  flex: none;
   height: 18px;
   border-bottom: 1px solid var(--panel-edge);
   cursor: ew-resize;
@@ -828,8 +880,12 @@ button {
 }
 
 .tl-rows {
-  /* Room for the camera row and six layer rows; more rows scroll. */
-  max-height: 170px;
+  /* Takes the height the divider grants (Phase 6b — was a fixed
+     seven-row maximum before the dock); rows past it scroll. On a short
+     dock the rows give way before the lanes do; the camera row (24px)
+     always stays visible. */
+  flex: 0 4 auto;
+  min-height: 24px;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -898,6 +954,15 @@ button {
 }
 
 /* ---- Audio lanes (M-5.5) ---- */
+
+.tl-lanes {
+  /* Sits under the rows; when the dock is short, extra lanes scroll.
+     The hint row (20px) always stays visible. */
+  flex: 0 1 auto;
+  min-height: 20px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
 
 .tl-lane {
   height: 34px; /* AUDIO_ROW_HEIGHT_PX */

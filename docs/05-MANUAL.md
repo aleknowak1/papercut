@@ -1,7 +1,7 @@
 # DOC-05 — User Manual
 
 **Status:** In progress (sections are filled in as each feature ships; a section is not written until its feature exists)
-**Last updated:** 2026-09-04 (M-1.3 the full interface tour; M-5.5 clip controls — Phase 6 timeline complete)
+**Last updated:** 2026-09-04 (M-1.3 retold for the Phase 6b layout: the timeline spans the full window width with a height divider)
 
 Sections are numbered M-N.N and referenced from DOC-01 and DOC-04. Every feature listed in DOC-01 §5.1 must have a section here before v1.0 ships.
 
@@ -41,7 +41,8 @@ The app's version number is shown in the bottom-right corner.
 ### M-1.3 A tour of the interface
 
 Open a project and the editor fills the window: three columns, with the
-timeline running under the middle one. Everything you do here is one undo
+timeline running the full width of the window beneath all three, so the
+tracks get the whole width. Everything you do here is one undo
 step — the masthead's **Undo / Redo** buttons (**Ctrl+Z**, **Ctrl+Y**)
 walk back through imports, edits and drags alike — and the project saves
 itself moments after every change.
@@ -81,7 +82,10 @@ every layer beneath it in Layers-panel order, keyframes shown as amber
 waveform blocks (M-5.5). Zoom with **Ctrl+wheel** or the slider, slide
 the view with the wheel (or **Shift+wheel**), and during play the view
 follows the playhead. Playing is a preview with sound; it never changes
-your project.
+your project. Between the columns and the timeline runs a thin
+horizontal **divider** — drag it up or down to decide how much of the
+window the timeline gets (both sides keep a workable minimum). Like
+zoom and scroll, the height is not saved and is never an undo step.
 
 - M-1.4 Your first 10-second video (walkthrough)
 
