@@ -52,6 +52,13 @@ export interface SceneCanvasProps {
   readonly opacityPreview?: number;
   readonly applyEdit: ApplyEdit;
   readonly onSelect: (layerId: string | undefined) => void;
+  /**
+   * When set, the canvas is in "pick a spot" mode (Walk's destination):
+   * the next click is reported as a world point — through the camera, so
+   * it means the same place at any pan or zoom — and nothing is selected
+   * or dragged. Escape (handled by the project view) disarms it.
+   */
+  readonly onPickPoint?: (point: Point) => void;
 }
 
 interface LoadedTexture {
@@ -441,10 +448,16 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
     const cp = toCanvasPoint(event);
     if (fitNow === undefined) return;
     if (cp === undefined) {
-      onSelect(undefined);
+      if (props.onPickPoint === undefined) onSelect(undefined);
       return;
     }
     const worldP = toWorldPoint(canvasToReference(cp, fitNow));
+
+    // Pick mode: this click IS the answer — nothing selected, no drag.
+    if (props.onPickPoint !== undefined) {
+      props.onPickPoint(worldP);
+      return;
+    }
 
     // A corner handle of the selected layer starts a resize.
     if (selectedLayerId !== undefined) {
@@ -570,7 +583,7 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
   return (
     <div
       ref={wrapRef}
-      className="scene-canvas-wrap"
+      className={`scene-canvas-wrap${props.onPickPoint !== undefined ? ' scene-canvas-picking' : ''}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

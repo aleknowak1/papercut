@@ -17,6 +17,8 @@ import type { EasingType, Keyframe, ProjectDocument, Scene } from '../../../shar
 import { addCharacterToScene, addPropToScene, cutoutLabel } from '../../../shared/scene/addToScene';
 import { keyframeAtPlayhead } from '../../../shared/animation/keyframes';
 import { formatTime } from '../../../shared/animation/time';
+import type { Point } from '../../../shared/scene/geometry';
+import { MotionPresets } from './MotionPresets';
 
 type ApplyEdit = (edit: (current: ProjectDocument) => ProjectDocument) => void;
 
@@ -30,6 +32,10 @@ export interface LayersPanelProps {
   readonly onSelect: (layerId: string | undefined) => void;
   /** Live opacity slider preview (0..1), cleared when it commits. */
   readonly onOpacityPreview: (opacity: number | undefined) => void;
+  /** Arms "the next canvas click lands here" (Walk's destination). */
+  readonly requestCanvasPick: (onPick: (point: Point) => void) => void;
+  /** True while a canvas pick is armed. */
+  readonly canvasPicking: boolean;
 }
 
 /**
@@ -77,8 +83,17 @@ function NumberField({
 }
 
 export function LayersPanel(props: LayersPanelProps): JSX.Element {
-  const { document: doc, scene, applyEdit, selectedLayerId, playhead, onSelect, onOpacityPreview } =
-    props;
+  const {
+    document: doc,
+    scene,
+    applyEdit,
+    selectedLayerId,
+    playhead,
+    onSelect,
+    onOpacityPreview,
+    requestCanvasPick,
+    canvasPicking
+  } = props;
   const characters = doc.characters.filter((c) => c.poses.length > 0);
   const cutouts = doc.assets.filter((a) => a.type === 'cutout');
   const [chosenCharacter, setChosenCharacter] = useState('');
@@ -412,6 +427,16 @@ export function LayersPanel(props: LayersPanelProps): JSX.Element {
               Delete keyframe
             </button>
           </div>
+          <MotionPresets
+            key={selected.id}
+            document={doc}
+            scene={scene}
+            layer={selected}
+            playhead={playhead}
+            applyEdit={applyEdit}
+            requestCanvasPick={requestCanvasPick}
+            canvasPicking={canvasPicking}
+          />
         </div>
       )}
     </section>

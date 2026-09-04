@@ -179,6 +179,12 @@ function ProjectView({
   // canvas draws the scene at this time and every edit writes the keyframe
   // at it (shared/animation/keyframes.ts).
   const [playhead, setPlayhead] = useState(0);
+  // Armed by the Motion panel's "Pick on canvas" (Walk's destination): the
+  // next canvas click is reported here instead of selecting anything.
+  // UI state like selection; Escape disarms it.
+  const [canvasPick, setCanvasPick] = useState<
+    { readonly onPick: (point: { x: number; y: number }) => void } | undefined
+  >(undefined);
   const doc = history.present;
   const editingAsset = editingMaskOf !== undefined
     ? doc.assets.find((a) => a.id === editingMaskOf)
@@ -270,6 +276,10 @@ function ProjectView({
       const target = event.target as HTMLElement | null;
       const tag = target?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (event.key === 'Escape' && canvasPick !== undefined) {
+        setCanvasPick(undefined);
+        return;
+      }
       const layer = selectedLayer;
       const currentScene = scene;
       if (layer === undefined || currentScene === undefined) return;
@@ -305,7 +315,7 @@ function ProjectView({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [editingMaskOf, selectedLayer, scene, playhead, applyEdit]);
+  }, [editingMaskOf, selectedLayer, scene, playhead, applyEdit, canvasPick]);
 
   return (
     <div className="opened project-view">
@@ -387,6 +397,14 @@ function ProjectView({
                 opacityPreview={opacityPreview}
                 applyEdit={applyEdit}
                 onSelect={setSelectedLayerId}
+                onPickPoint={
+                  canvasPick === undefined
+                    ? undefined
+                    : (point) => {
+                        canvasPick.onPick(point);
+                        setCanvasPick(undefined);
+                      }
+                }
               />
               <TimeStrip
                 document={doc}
@@ -407,6 +425,8 @@ function ProjectView({
               playhead={playhead}
               onSelect={setSelectedLayerId}
               onOpacityPreview={setOpacityPreview}
+              requestCanvasPick={(onPick) => setCanvasPick({ onPick })}
+              canvasPicking={canvasPick !== undefined}
             />
           )}
         </div>

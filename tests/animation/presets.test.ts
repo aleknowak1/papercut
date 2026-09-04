@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   bobKeyframes,
+  buildPresetKeyframes,
   popKeyframes,
   shakeKeyframes,
   walkKeyframes
@@ -106,6 +107,57 @@ describe('pop', () => {
   it('is never shorter than two frames', () => {
     const made = popKeyframes(still, { startTime: 0, durationSeconds: 0, fps: FPS });
     expect(made.map((k) => k.time)).toEqual([0, 1 / 30, 2 / 30]);
+  });
+});
+
+describe('buildPresetKeyframes (the preset panel’s one door)', () => {
+  it('maps each preset name to exactly the preset function’s keyframes', () => {
+    const base = { startTime: 0, durationSeconds: 1.2, amount: 20, fps: FPS } as const;
+    expect(buildPresetKeyframes(still, { ...base, preset: 'bob' })).toEqual(
+      bobKeyframes(still, { startTime: 0, endTime: 1.2, fps: FPS, amount: 20 })
+    );
+    expect(buildPresetKeyframes(still, { ...base, preset: 'shake' })).toEqual(
+      shakeKeyframes(still, { startTime: 0, endTime: 1.2, fps: FPS, amount: 20 })
+    );
+    expect(
+      buildPresetKeyframes(still, { ...base, preset: 'walk', destination: { x: 800, y: 500 } })
+    ).toEqual(
+      walkKeyframes(still, {
+        startTime: 0,
+        endTime: 1.2,
+        fps: FPS,
+        destination: { x: 800, y: 500 },
+        bobAmount: 20
+      })
+    );
+    expect(buildPresetKeyframes(still, { ...base, preset: 'pop', durationSeconds: 0.4 })).toEqual(
+      popKeyframes(still, { startTime: 0, durationSeconds: 0.4, fps: FPS })
+    );
+  });
+
+  it('snaps a mid-frame start and end onto the frame grid', () => {
+    const made = buildPresetKeyframes(still, {
+      preset: 'bob',
+      startTime: 0.301, // not a frame time at 30 fps
+      durationSeconds: 0.6, // end 0.901 s, which snaps to frame 27 = 0.9 s
+      amount: 20,
+      fps: FPS
+    });
+    expect(made.map((k) => k.time)).toEqual([0.3, 0.6, 0.9]);
+  });
+
+  it('nonsense fields produce an empty list, and applyKeyframes then changes nothing', () => {
+    const base = { startTime: 0, amount: 20, fps: FPS } as const;
+    expect(buildPresetKeyframes(still, { ...base, preset: 'walk', durationSeconds: 1 })).toEqual(
+      [] // walk without a destination
+    );
+    expect(buildPresetKeyframes(still, { ...base, preset: 'bob', durationSeconds: 0 })).toEqual([]);
+    expect(buildPresetKeyframes(still, { ...base, preset: 'bob', durationSeconds: -2 })).toEqual([]);
+    expect(
+      buildPresetKeyframes(still, { preset: 'shake', startTime: 0, durationSeconds: 1, amount: Number.NaN, fps: FPS })
+    ).toEqual([]);
+    const base2 = sampleProject();
+    expect(applyKeyframes(base2, base2.scenes[0]!.id, 'l1', [])).toBe(base2);
   });
 });
 

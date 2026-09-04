@@ -184,3 +184,55 @@ export function presetRange(
 ): { startTime: number; endTime: number } {
   return { startTime: snapToFrame(playhead, fps), endTime: snapToFrame(endTime, fps) };
 }
+
+export type PresetName = 'bob' | 'walk' | 'shake' | 'pop';
+
+export interface PresetRequest {
+  readonly preset: PresetName;
+  /** Usually the playhead; snapped to a frame here. */
+  readonly startTime: number;
+  readonly durationSeconds: number;
+  /** Reference pixels: bob/shake offset, walk's hop height; pop ignores it. */
+  readonly amount: number;
+  /** Walk only: where the layer's centre ends up. */
+  readonly destination?: { readonly x: number; readonly y: number };
+  readonly fps: number;
+}
+
+/**
+ * The one door the preset panel goes through: the chosen preset and its
+ * plain fields become the keyframe list applyKeyframes bakes in as one
+ * undo step. Nonsense fields (no duration, no walk destination) produce
+ * an empty list, which applyKeyframes turns into "no edit at all".
+ */
+export function buildPresetKeyframes(layer: Layer, request: PresetRequest): Keyframe[] {
+  const { fps, preset, amount } = request;
+  if (!(request.durationSeconds > 0) || !Number.isFinite(amount)) return [];
+  const { startTime, endTime } = presetRange(
+    request.startTime,
+    request.startTime + request.durationSeconds,
+    fps
+  );
+  switch (preset) {
+    case 'bob':
+      return bobKeyframes(layer, { startTime, endTime, fps, amount });
+    case 'shake':
+      return shakeKeyframes(layer, { startTime, endTime, fps, amount });
+    case 'walk':
+      return request.destination === undefined
+        ? []
+        : walkKeyframes(layer, {
+            startTime,
+            endTime,
+            fps,
+            destination: request.destination,
+            bobAmount: amount
+          });
+    case 'pop':
+      return popKeyframes(layer, {
+        startTime,
+        durationSeconds: request.durationSeconds,
+        fps
+      });
+  }
+}

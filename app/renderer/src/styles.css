@@ -610,6 +610,12 @@ button {
   overflow: hidden;
 }
 
+/* "Pick a spot" mode (Walk's destination): the next click is an answer. */
+.scene-canvas-picking {
+  cursor: crosshair;
+  border-color: var(--accent);
+}
+
 .scene-canvas {
   display: block;
 }
@@ -796,6 +802,20 @@ button {
 
 .inspector-field input {
   width: 6ch;
+}
+
+/* ---- Motion presets (M-4.4) ---- */
+
+.motion-presets {
+  border-top: 1px dashed var(--panel-edge);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.motion-destination {
+  align-items: center;
 }
 
 /* ---- Mask editor (M-2.4) ---- */

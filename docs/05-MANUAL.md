@@ -332,8 +332,50 @@ Set the playhead on a keyframe (use « »), pick an easing, and play. The
 start and end of the move stay exactly where the keyframes put them —
 easing only changes the speed along the way.
 
-- M-4.4 Motion presets: bob, walk, shake, pop
-- M-4.5 Swapping poses on the timeline
+### M-4.4 Motion presets: bob, walk, shake, pop
+
+Presets are shortcuts, not magic: each one writes ordinary keyframes for
+you, the same kind you make by hand. Select a layer and find **Motion**
+at the bottom of the right panel:
+
+- **Bob** — floats gently up and down. Good for idling, breathing,
+  bobbing on water.
+- **Walk** — travels to a spot you pick, with a little hop each step,
+  facing the way it walks (walking left flips the picture).
+- **Shake** — rapid side-to-side jitter. Laughter, shivering, panic.
+- **Pop** — appears from nothing with a small overshoot. Entrances.
+
+Pick a preset, check the two plain fields — **Length** (how long it
+runs, starting at the playhead; it defaults to the rest of the scene,
+except Pop's quick 0.4 s) and **Amount** (how far it moves, in scene
+pixels) — and press **Apply**. For Walk, first press **Pick on canvas**
+and click where the layer should end up; the crosshair cursor shows the
+canvas is waiting for that click (Escape changes your mind).
+
+A preset **rides on top of whatever motion the layer already has**: a
+square drifting right that you give a Bob keeps drifting right, now
+bobbing as it goes. Keyframes the preset makes are added to the layer's
+existing ones (only one sitting at exactly the same time is replaced).
+
+After Apply they are just keyframes — look at the tick marks on the time
+strip. Edit any of them by hand, or press **Ctrl+Z once** to remove the
+whole preset in one step. Applying a preset twice stacks the second on
+top of the first, which is rarely what you want — undo first if you are
+experimenting.
+
+### M-4.5 Swapping poses on the timeline
+
+A character's poses (M-2.5) can change mid-scene: put the playhead where
+the change should happen, select the character's layer, and choose a
+pose in the **Pose** dropdown of the right panel. That writes the pose
+onto the keyframe at the playhead (making one there if needed, like any
+other edit).
+
+A pose is not a blend — the picture switches exactly at that keyframe
+and **holds until the next keyframe that names a pose**. Two quick
+swaps back and forth make a simple talking or waving loop. Delete the
+keyframe and the swap goes with it.
+
 - M-4.6 Camera pan and zoom
 
 ## M-5 Voices and sound
