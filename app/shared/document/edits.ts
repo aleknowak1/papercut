@@ -300,16 +300,34 @@ export function applyKeyframes(
   );
 }
 
+/**
+ * Removes a layer's keyframe at exactly this time. The LAST keyframe
+ * cannot be deleted — a layer always stands somewhere — and the rule
+ * lives here, not just on the panel's button, because the agent
+ * (ADR-011) will one day call this edit directly. Removing nothing (no
+ * keyframe at that time, or the last one) returns the SAME document, so
+ * no empty undo step is recorded.
+ */
 export function removeKeyframe(
   doc: ProjectDocument,
   sceneId: string,
   layerId: string,
   time: number
 ): ProjectDocument {
+  const layer = doc.scenes
+    .find((s) => s.id === sceneId)
+    ?.layers.find((l) => l.id === layerId);
+  if (
+    layer === undefined ||
+    layer.keyframes.length <= 1 ||
+    !layer.keyframes.some((k) => k.time === time)
+  ) {
+    return doc;
+  }
   return replaceScene(doc, sceneId, (scene) =>
-    replaceLayer(scene, layerId, (layer) => ({
-      ...layer,
-      keyframes: layer.keyframes.filter((k) => k.time !== time)
+    replaceLayer(scene, layerId, (l) => ({
+      ...l,
+      keyframes: l.keyframes.filter((k) => k.time !== time)
     }))
   );
 }
@@ -333,14 +351,21 @@ export function setCameraKeyframe(
   });
 }
 
+/**
+ * Removes the camera keyframe at exactly this time. Unlike layers, the
+ * last one MAY go — no camera keyframes just means the whole frame shows.
+ * Removing nothing returns the same document (no empty undo step).
+ */
 export function removeCameraKeyframe(
   doc: ProjectDocument,
   sceneId: string,
   time: number
 ): ProjectDocument {
-  return replaceScene(doc, sceneId, (scene) => ({
-    ...scene,
-    cameraKeyframes: scene.cameraKeyframes.filter((k) => k.time !== time)
+  const scene = doc.scenes.find((s) => s.id === sceneId);
+  if (scene === undefined || !scene.cameraKeyframes.some((k) => k.time === time)) return doc;
+  return replaceScene(doc, sceneId, (s) => ({
+    ...s,
+    cameraKeyframes: s.cameraKeyframes.filter((k) => k.time !== time)
   }));
 }
 

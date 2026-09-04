@@ -540,11 +540,21 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
         event.preventDefault();
         event.stopPropagation();
         endCameraDrag(false);
+      } else if (wheelRef.current !== undefined) {
+        // A wheel zoom still waiting to commit: Escape cancels it — the
+        // next Escape then leaves camera mode as usual.
+        event.preventDefault();
+        event.stopPropagation();
+        window.clearTimeout(wheelRef.current.timer);
+        wheelRef.current = undefined;
+        stageRef.current?.sceneStage.setCameraPreview(undefined);
+        stageRef.current?.sceneStage.update(timeRef.current);
+        render();
       }
     };
     window.addEventListener('keydown', onKey, { capture: true });
     return () => window.removeEventListener('keydown', onKey, { capture: true });
-  }, [endDrag, endCameraDrag]);
+  }, [endDrag, endCameraDrag, render]);
 
   // Camera mode: the wheel zooms, ticks accumulated into ONE edit shortly
   // after the last one. Attached by hand so preventDefault is honoured

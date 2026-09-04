@@ -201,7 +201,10 @@ describe('camera keyframe edits', () => {
     // Removing leaves the other untouched; unknown times change nothing.
     const removed = removeCameraKeyframe(next, scene.id, 1);
     expect(removed.scenes[1]!.cameraKeyframes.map((c) => c.time)).toEqual([2]);
-    expect(removeCameraKeyframe(removed, scene.id, 99)).toEqual(removed);
+    // Removing a time with no keyframe returns the SAME document — no
+    // empty undo step. The LAST camera keyframe may go (whole frame shows).
+    expect(removeCameraKeyframe(removed, scene.id, 99)).toBe(removed);
+    expect(removeCameraKeyframe(removed, scene.id, 2).scenes[1]!.cameraKeyframes).toEqual([]);
   });
 
   it('each edit is one undo step back to the exact starting document', () => {

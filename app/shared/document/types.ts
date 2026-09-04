@@ -9,6 +9,14 @@ export type ProjectFormat = '9:16' | '16:9' | '1:1';
 
 export type EasingType = 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
 
+/** The four curves as a list, for validating loaded files (decision c). */
+export const EASING_TYPES: readonly EasingType[] = [
+  'linear',
+  'ease-in',
+  'ease-out',
+  'ease-in-out'
+];
+
 export type TransitionType =
   | 'cut'
   | 'crossfade'

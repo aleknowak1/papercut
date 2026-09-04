@@ -13,6 +13,7 @@
 import 'pixi.js/unsafe-eval';
 import { Container, Graphics, Text, Texture, WebGLRenderer } from 'pixi.js';
 import type { ProjectDocument, Scene } from '../../../shared/document/types';
+import { frameOf, secondsOf } from '../../../shared/animation/time';
 import { REFERENCE_SIZE } from '../../../shared/scene/geometry';
 import { createSceneStage } from '../scene/sceneStage';
 
@@ -97,11 +98,11 @@ export async function createSceneFrameSource(
     stage.addChild(overlay);
   }
 
-  const flashFrameStarts = options.flashTimes.map((t) => Math.round(t * fps));
+  const flashFrameStarts = options.flashTimes.map((t) => frameOf(t, fps));
 
   return {
     drawFrame(frameIndex: number): HTMLCanvasElement | OffscreenCanvas {
-      const time = frameIndex / fps;
+      const time = secondsOf(frameIndex, fps);
       sceneStage.update(time);
 
       flash.visible = flashFrameStarts.some(

@@ -12,7 +12,7 @@ import {
   prevKeyframeTime
 } from '../../app/shared/animation/keyframes';
 import { secondsOf, snapToFrame } from '../../app/shared/animation/time';
-import { setKeyframe } from '../../app/shared/document/edits';
+import { removeKeyframe, setKeyframe } from '../../app/shared/document/edits';
 import type { EasingType, Keyframe, Layer } from '../../app/shared/document/types';
 import { validateProjectDocument } from '../../app/shared/document/validate';
 import { sampleProject } from '../helpers/sampleProject';
@@ -79,6 +79,81 @@ describe('prev/next keyframe for the time strip', () => {
   it('answers undefined past the ends', () => {
     expect(prevKeyframeTime(layer, 0)).toBeUndefined();
     expect(nextKeyframeTime(layer, 4)).toBeUndefined();
+  });
+});
+
+describe('removeKeyframe guards (the rule lives in the edit, not the button)', () => {
+  function docWithKeyframes(keyframes: Keyframe[]) {
+    const doc = sampleProject();
+    const scene = doc.scenes[0]!;
+    const layer = scene.layers[0]!;
+    return {
+      doc: { ...doc, scenes: [{ ...scene, layers: [{ ...layer, keyframes }] }] },
+      sceneId: scene.id,
+      layerId: layer.id
+    };
+  }
+
+  it('removes exactly the keyframe at that time', () => {
+    const { doc, sceneId, layerId } = docWithKeyframes([keyframe(0, 0), keyframe(2, 100)]);
+    const edited = removeKeyframe(doc, sceneId, layerId, 2);
+    expect(edited.scenes[0]!.layers[0]!.keyframes.map((k) => k.time)).toEqual([0]);
+  });
+
+  it('refuses to delete the LAST keyframe — the same document comes back', () => {
+    const { doc, sceneId, layerId } = docWithKeyframes([keyframe(0, 0)]);
+    expect(removeKeyframe(doc, sceneId, layerId, 0)).toBe(doc);
+  });
+
+  it('removing a time with no keyframe changes nothing (and records no undo step)', () => {
+    const { doc, sceneId, layerId } = docWithKeyframes([keyframe(0, 0), keyframe(2, 100)]);
+    expect(removeKeyframe(doc, sceneId, layerId, 1)).toBe(doc);
+  });
+});
+
+describe('validation refuses what would break the renderer (reviewer findings)', () => {
+  function parsed(doc: unknown): unknown {
+    return JSON.parse(JSON.stringify(doc));
+  }
+
+  it('an unknown easing fails at load with the four curves named', () => {
+    const doc = sampleProject();
+    const scene = doc.scenes[0]!;
+    const layer = scene.layers[0]!;
+    const damaged = parsed({
+      ...doc,
+      scenes: [
+        {
+          ...scene,
+          layers: [{ ...layer, keyframes: [{ ...keyframe(0, 0), easing: 'bounce' }] }]
+        }
+      ]
+    });
+    expect(() => validateProjectDocument(damaged)).toThrow(/easing.*linear/);
+  });
+
+  it('keyframes out of time order fail at load instead of misrendering', () => {
+    const doc = sampleProject();
+    const scene = doc.scenes[0]!;
+    const layer = scene.layers[0]!;
+    const damaged = parsed({
+      ...doc,
+      scenes: [
+        { ...scene, layers: [{ ...layer, keyframes: [keyframe(2, 100), keyframe(0, 0)] }] }
+      ]
+    });
+    expect(() => validateProjectDocument(damaged)).toThrow(/keyframes\[1\]\.time/);
+  });
+
+  it('camera keyframes out of time order fail the same way', () => {
+    const doc = sampleProject();
+    const scene = doc.scenes[0]!;
+    const cameraKeyframes = [
+      { time: 3, x: 960, y: 540, zoom: 2, easing: 'linear' },
+      { time: 1, x: 960, y: 540, zoom: 1, easing: 'linear' }
+    ];
+    const damaged = parsed({ ...doc, scenes: [{ ...scene, cameraKeyframes }] });
+    expect(() => validateProjectDocument(damaged)).toThrow(/cameraKeyframes\[1\]\.time/);
   });
 });
 

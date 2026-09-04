@@ -2,7 +2,10 @@
 // canvas shows this stage on screen; the export frame source renders the
 // very same stage off-screen — so what the user sees is what exports
 // (ADR-006/013). Editor-only decoration (selection outlines, handles)
-// must never live in here.
+// must never live in here. The ONE sanctioned editor input besides time
+// is setCameraPreview below — not decoration but a posing input, clamped
+// like the document's own camera and inert unless the editor calls it;
+// nothing else editor-specific may be added to this file.
 //
 // The stage works entirely in REFERENCE pixels (1920×1080 / 1080×1920 /
 // 1080×1080, shared/scene/geometry.ts); the consumer scales the container

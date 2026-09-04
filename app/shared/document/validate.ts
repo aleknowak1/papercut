@@ -2,7 +2,7 @@
 // edited by hand, half-written by a crash, or from a future version must
 // produce a clear error, never a broken editor.
 
-import { PROJECT_FORMATS, type ProjectDocument } from './types';
+import { EASING_TYPES, PROJECT_FORMATS, type ProjectDocument } from './types';
 
 class ValidationError extends Error {}
 
@@ -34,6 +34,30 @@ function checkArray(value: unknown, path: string): asserts value is unknown[] {
   if (!Array.isArray(value)) fail(path, 'a list');
 }
 
+/** Only the four curves exist (Phase 5 decision c); anything else would
+    crash the renderer mid-scene instead of failing here with a name. */
+function checkEasing(value: unknown, path: string): void {
+  if (!EASING_TYPES.includes(value as never)) {
+    fail(path, `one of ${EASING_TYPES.map((e) => `"${e}"`).join(', ')}`);
+  }
+}
+
+/**
+ * Keyframe times must come strictly in order — the samplers walk the list
+ * assuming it is sorted, and would misrender a shuffled hand-edited file
+ * instead of refusing it.
+ */
+function checkTimesAscending(items: readonly unknown[], path: string): void {
+  let last = Number.NEGATIVE_INFINITY;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const time = isRecord(item) ? item['time'] : undefined;
+    if (typeof time !== 'number') continue; // the per-item check names this
+    if (time <= last) fail(`${path}[${i}].time`, 'later than the keyframe before it');
+    last = time;
+  }
+}
+
 function checkKeyframe(value: unknown, path: string): void {
   if (!isRecord(value)) fail(path, 'a keyframe');
   checkNumber(value['time'], `${path}.time`);
@@ -43,7 +67,7 @@ function checkKeyframe(value: unknown, path: string): void {
   checkNumber(value['rotation'], `${path}.rotation`);
   if (typeof value['flipX'] !== 'boolean') fail(`${path}.flipX`, 'true or false');
   checkNumber(value['opacity'], `${path}.opacity`);
-  checkString(value['easing'], `${path}.easing`);
+  checkEasing(value['easing'], `${path}.easing`);
   checkOptionalString(value['poseId'], `${path}.poseId`);
 }
 
@@ -53,7 +77,7 @@ function checkCameraKeyframe(value: unknown, path: string): void {
   checkNumber(value['x'], `${path}.x`);
   checkNumber(value['y'], `${path}.y`);
   checkNumber(value['zoom'], `${path}.zoom`);
-  checkString(value['easing'], `${path}.easing`);
+  checkEasing(value['easing'], `${path}.easing`);
 }
 
 function checkLayer(value: unknown, path: string): void {
@@ -67,6 +91,7 @@ function checkLayer(value: unknown, path: string): void {
   }
   checkArray(value['keyframes'], `${path}.keyframes`);
   value['keyframes'].forEach((k, i) => checkKeyframe(k, `${path}.keyframes[${i}]`));
+  checkTimesAscending(value['keyframes'], `${path}.keyframes`);
   checkOptionalBoolean(value['hidden'], `${path}.hidden`);
   checkOptionalBoolean(value['locked'], `${path}.locked`);
 }
@@ -106,6 +131,7 @@ function checkScene(value: unknown, path: string): void {
   value['cameraKeyframes'].forEach((k, i) =>
     checkCameraKeyframe(k, `${path}.cameraKeyframes[${i}]`)
   );
+  checkTimesAscending(value['cameraKeyframes'], `${path}.cameraKeyframes`);
   checkArray(value['layers'], `${path}.layers`);
   value['layers'].forEach((l, i) => checkLayer(l, `${path}.layers[${i}]`));
   checkArray(value['audioClips'], `${path}.audioClips`);
