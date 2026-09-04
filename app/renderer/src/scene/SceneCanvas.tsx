@@ -38,6 +38,7 @@ import {
   referenceSize,
   referenceToLayerPixel,
   resizeScale,
+  rotationFromDrag,
   type CanvasFit,
   type Point
 } from '../../../shared/scene/geometry';
@@ -105,18 +106,25 @@ function alphaAt(loaded: LoadedTexture, pixel: Point): number {
 
 const HANDLE_PX = 7; // drawn size of a corner resize handle, screen pixels
 const HANDLE_GRAB_PX = 9; // how close a pointer-down counts as grabbing one
+const ROTATE_OFFSET_PX = 18; // the rotate handle floats this far above the box
+const ROTATE_HANDLE_R = 5; // its drawn radius, screen pixels
 
 interface DragState {
-  readonly mode: 'move' | 'resize';
+  readonly mode: 'move' | 'resize' | 'rotate';
   readonly layerId: string;
   readonly startKeyframe: Keyframe;
   /** Pointer-down position in reference pixels. */
   readonly startRef: Point;
+  /** Rotate only: the layer's centre and the grab point, in canvas pixels
+      (angles survive the uniform canvas/camera scaling). */
+  readonly centerCanvas?: Point;
+  readonly startCanvas?: Point;
   moved: boolean;
   /** The sprite's live values, committed on release. */
   x: number;
   y: number;
   scale: number;
+  rotation: number;
 }
 
 export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
@@ -325,6 +333,16 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
         .fill(0xe8a33d)
         .stroke({ color: 0x1a1408, width: 1, pixelLine: true });
     }
+    // The rotate handle: a small circle on a stem above the box (M-4.2).
+    const hx = b.x + b.width / 2;
+    stage.overlay
+      .moveTo(hx, b.y)
+      .lineTo(hx, b.y - ROTATE_OFFSET_PX + ROTATE_HANDLE_R)
+      .stroke({ color: 0xe8a33d, width: 1, pixelLine: true });
+    stage.overlay
+      .circle(hx, b.y - ROTATE_OFFSET_PX, ROTATE_HANDLE_R)
+      .fill(0xe8a33d)
+      .stroke({ color: 0x1a1408, width: 1, pixelLine: true });
   }, []);
 
   const render = useCallback((): void => {
@@ -449,7 +467,8 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
           ...drag.startKeyframe,
           x: drag.x,
           y: drag.y,
-          scale: drag.scale
+          scale: drag.scale,
+          rotation: drag.rotation
         };
         applyEdit((current) => setKeyframe(current, scene.id, drag.layerId, keyframe));
       } else {
@@ -459,6 +478,7 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
           const k = drag.startKeyframe;
           sprite.position.set(k.x, k.y);
           sprite.scale.set(k.scale * (k.flipX ? -1 : 1), k.scale);
+          sprite.rotation = (k.rotation * Math.PI) / 180;
           drawOverlay();
           render();
         }
@@ -620,6 +640,29 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
       const zero = layer !== undefined ? keyframeAtPlayhead(layer, time) : undefined;
       if (sprite !== undefined && sprite.visible && zero !== undefined) {
         const b = sprite.getBounds();
+        // The rotate handle above the box (M-4.2) comes first — it sits
+        // outside the box, so it can never shadow a corner.
+        const handle = { x: b.x + b.width / 2, y: b.y - ROTATE_OFFSET_PX };
+        if (
+          Math.abs(cp.x - handle.x) <= HANDLE_GRAB_PX &&
+          Math.abs(cp.y - handle.y) <= HANDLE_GRAB_PX
+        ) {
+          dragRef.current = {
+            mode: 'rotate',
+            layerId: selectedLayerId,
+            startKeyframe: zero,
+            startRef: worldP,
+            centerCanvas: { x: b.x + b.width / 2, y: b.y + b.height / 2 },
+            startCanvas: cp,
+            moved: false,
+            x: zero.x,
+            y: zero.y,
+            scale: zero.scale,
+            rotation: zero.rotation
+          };
+          event.currentTarget.setPointerCapture(event.pointerId);
+          return;
+        }
         const corners = [
           [b.x, b.y],
           [b.x + b.width, b.y],
@@ -639,7 +682,8 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
             moved: false,
             x: zero.x,
             y: zero.y,
-            scale: zero.scale
+            scale: zero.scale,
+            rotation: zero.rotation
           };
           event.currentTarget.setPointerCapture(event.pointerId);
           return;
@@ -662,7 +706,8 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
       moved: false,
       x: zero.x,
       y: zero.y,
-      scale: zero.scale
+      scale: zero.scale,
+      rotation: zero.rotation
     };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
@@ -721,14 +766,24 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
       drag.x = k.x + (worldP.x - drag.startRef.x);
       drag.y = k.y + (worldP.y - drag.startRef.y);
       sprite.position.set(drag.x, drag.y);
-    } else {
+    } else if (drag.mode === 'resize') {
       drag.scale = resizeScale(k.scale, { x: k.x, y: k.y }, drag.startRef, worldP);
       sprite.scale.set(drag.scale * (k.flipX ? -1 : 1), drag.scale);
+    } else if (drag.centerCanvas !== undefined && drag.startCanvas !== undefined) {
+      // Rotate: swing around the layer's centre, in canvas pixels.
+      drag.rotation = rotationFromDrag(
+        drag.centerCanvas,
+        drag.startCanvas,
+        { x: event.clientX - rect.left, y: event.clientY - rect.top },
+        k.rotation
+      );
+      sprite.rotation = (drag.rotation * Math.PI) / 180;
     }
     if (
       Math.abs(drag.x - k.x) >= 0.5 ||
       Math.abs(drag.y - k.y) >= 0.5 ||
-      Math.abs(drag.scale - k.scale) >= 0.001
+      Math.abs(drag.scale - k.scale) >= 0.001 ||
+      drag.rotation !== k.rotation
     ) {
       drag.moved = true;
     }

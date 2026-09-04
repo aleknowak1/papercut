@@ -12,8 +12,37 @@ import {
   referenceSize,
   referenceToCanvas,
   referenceToLayerPixel,
-  resizeScale
+  resizeScale,
+  rotationFromDrag
 } from '../../app/shared/scene/geometry';
+
+describe('rotation from dragging the rotate handle', () => {
+  const center = { x: 100, y: 100 };
+  const above = { x: 100, y: 50 }; // where the handle starts, above the box
+
+  it('a quarter swing clockwise adds 90°', () => {
+    // From straight above to the right of the centre (y grows downward).
+    expect(rotationFromDrag(center, above, { x: 150, y: 100 }, 0)).toBe(90);
+  });
+
+  it('a quarter swing the other way subtracts 90°', () => {
+    expect(rotationFromDrag(center, above, { x: 50, y: 100 }, 0)).toBe(-90);
+  });
+
+  it('rides on the layer’s starting rotation', () => {
+    expect(rotationFromDrag(center, above, { x: 150, y: 100 }, 30)).toBe(120);
+  });
+
+  it('wraps past ±180 instead of counting up forever', () => {
+    // 90° clockwise on top of 135° = 225°, shown as -135°.
+    expect(rotationFromDrag(center, above, { x: 150, y: 100 }, 135)).toBe(-135);
+  });
+
+  it('no swing means no change, at any starting rotation', () => {
+    expect(rotationFromDrag(center, above, above, 0)).toBe(0);
+    expect(rotationFromDrag(center, above, above, -47.5)).toBe(-47.5);
+  });
+});
 
 describe('reference space', () => {
   it('matches the Phase 2 export sizes per format', () => {

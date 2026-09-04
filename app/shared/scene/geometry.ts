@@ -154,6 +154,26 @@ export function referenceToLayerPixel(
 }
 
 /**
+ * Rotation from dragging the rotate handle (M-4.2): the layer's starting
+ * rotation plus how far the pointer has swung around the layer's centre,
+ * in degrees, wrapped to -180..180 and rounded to 0.1° (what the Turn
+ * field shows). Angles survive uniform scaling, so this works directly in
+ * canvas pixels at any window size or camera zoom.
+ */
+export function rotationFromDrag(
+  center: Point,
+  startPoint: Point,
+  currentPoint: Point,
+  startRotation: number
+): number {
+  const startAngle = Math.atan2(startPoint.y - center.y, startPoint.x - center.x);
+  const currentAngle = Math.atan2(currentPoint.y - center.y, currentPoint.x - center.x);
+  const rotated = startRotation + ((currentAngle - startAngle) * 180) / Math.PI;
+  const wrapped = ((((rotated + 180) % 360) + 360) % 360) - 180;
+  return Math.round(wrapped * 10) / 10;
+}
+
+/**
  * Uniform resize by dragging a corner: the layer's new scale is its
  * starting scale times how much farther from the layer's centre the
  * pointer now is, clamped to sane bounds.

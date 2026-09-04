@@ -303,8 +303,10 @@ makes a keyframe there):
 
 - **X / Y** — where the layer's centre stands, in scene pixels.
 - **Size** — its size, as a percentage.
-- **Turn** — rotation in degrees (positive turns clockwise). An
-  on-canvas rotate handle is coming with the rest of Phase 5.
+- **Turn** — rotation in degrees (positive turns clockwise). On the
+  canvas, grab the small **round handle on the stem above the selection
+  box** and swing it around the layer — the whole drag is one undo step,
+  and Escape mid-drag cancels it, like moving and resizing.
 - **Opacity** — the slider previews live and writes one undo step when
   you let go.
 - **Flip** — mirrors the layer left-to-right. A flip does not blend
