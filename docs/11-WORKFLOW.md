@@ -1,7 +1,7 @@
 # DOC-11 — Development Workflow
 
 **Status:** Active
-**Last updated:** 2026-09-03 (Appendix F: Phase 5 kickoff prompt and Alek's decisions a–k)
+**Last updated:** 2026-09-04 (Appendix G: Phase 6 kickoff prompt and Alek's decisions a–n)
 **Purpose:** How Alek and Claude build PAPERCUT day to day. Tools, session rhythm, roles, and the standing files that keep every session on track.
 
 ---
@@ -783,3 +783,240 @@ i. First-time snapshot references are written automatically and listed
 j. Model: Fable for the foundations, Opus for the contained feature work,
    at the boundary in step 10; Alek may keep Fable throughout.
 k. A scene Duration field (1-120 s) lives on the time strip.
+
+## Appendix G — Phase 6 kickoff prompt (paste into Claude Code)
+
+Model: Fable for the foundations (verification record, document fields and edits, the pure timeline module, previewSchedule, the mixer and decoder, the export change, all checks, M-5.5's mixing rules), then Opus for the timeline UI, its interactions, preview playback wiring and M-1.3 (DOC-10 §2 lists Opus for the phase; Alek chose the Phase 5 split). Plan first — the timeline is the editing surface every later phase (voices, sound library, agent) puts things on, and the audio path becomes the one export uses. Alek approved decisions a–m (addendum below) in the planning session; the prompt hands them over so they are not re-asked. No reviewer agent for this phase (DOC-11 §6 lists it for Phases 1, 5, 10 and 12).
+
+```
+You are working in the PAPERCUT repository at:
+C:\Users\Alek\Documents\Claude Code Projects\papercut
+GitHub remote (origin): https://github.com/aleknowak1/papercut.git
+
+Read CLAUDE.md in the repository root first. Then read, in this order:
+docs/10-PROJECT-TRACKER.md (where we are), docs/02-DECISIONS.md (ADR-001,
+ADR-006, ADR-013 and ADR-015 in particular), docs/03-ARCHITECTURE.md
+(sections 1, 2, 3, 4.3 and 5), docs/01-PRODUCT-SPEC.md (section 5.1, the
+Sound and Timeline rows), docs/04-CHANGELOG.md CL-0042 to CL-0053 (what
+Phase 5 actually built and how its sessions were run), docs/11-WORKFLOW.md
+(Appendix F and its addendum show how Phase 5 was run; Appendix G is this
+prompt and its addendum holds the decisions already made), docs/05-MANUAL.md
+(M-4 as written; the M-1.3 and M-5.5 headings you will fill in), and the
+code Phase 6 builds on: app/shared/document/types.ts (AudioClip, Keyframe,
+CameraKeyframe), app/shared/document/edits.ts and validate.ts,
+app/shared/animation/ (time.ts, keyframes.ts, camera.ts — the
+frame-snapping and keyframe-at-playhead rules), app/shared/export/
+audioMix.ts and wav.ts (the mixer: mono, 48 kHz WAV only today),
+app/renderer/src/export/exportProject.ts (how clips reach the mixer),
+app/renderer/src/assets/importAudio.ts (decoding through Chromium),
+app/renderer/src/scene/TimeStrip.tsx (the strip the timeline replaces),
+app/renderer/src/scene/LayersPanel.tsx and App.tsx (the editor layout and
+playhead state), app/shared/scene/addToScene.ts (the Phase 4b "every road
+in" pattern), tests/fixtures/audioFixtures.ts (the code-generated WAV and
+M4A), and app/renderer/src/dev/checkRunner.ts with scripts/check-export.mjs.
+
+Phases 0-5 are Complete. Alek verified the Phase 5 feature half by hand on
+2026-09-04: the four motion presets applied and undone (Walk's destination
+clicked on the canvas), camera mode with wheel zoom and drag pan at two
+playhead positions gliding between them on play, and the rotate handle
+with Escape mid-swing writing nothing. All worked. THIS IS NOT YET IN THE
+CHANGE LOG. Your first commit, before any Phase 6 work: record it as the
+next CL entry in docs/04-CHANGELOG.md (area "Verification", as CL-0048
+did), remove the Phase 5 try-out row from DOC-10 §5, note the verification
+in DOC-10 §1, and push.
+
+The app today: Home screen; project document with undo/redo and
+auto-save; Assets and Characters tabs (image and audio import; the ♪ rows
+have Play/Stop); automatic cutouts; the mask editor; the three-column
+editor with the PixiJS scene canvas drawn by sceneStage (the same code
+the export renders through); Layers panel with the keyframe inspector,
+motion presets and camera panel; the time strip under the canvas
+(play/pause, frame-snapped scrubber with keyframe ticks, frame stepping,
+keyframe jumps, Duration). Keyframes exist for layers and the camera.
+Audio clips exist in the document (start, volume, fades) but nothing in
+the UI creates one, preview is silent, and the export mixer accepts only
+48 kHz WAV — an imported MP3, M4A or OGG clip would make export throw.
+
+We are starting Phase 6: Timeline and audio (DOC-10 §2 row 6; DOC-01 §5.1
+Timeline and Sound rows):
+
+1. The pure timeline module, app/shared/timeline/: time <-> pixel mapping
+   for a zoom level and scroll offset, the snap function (decision d:
+   whole frames always; when within a screen-pixel tolerance, the
+   playhead, other keyframes of the same track, clip edges and whole
+   seconds — returns what it snapped to so the UI can show it), lane
+   packing for overlapping clips (decision g), and previewSchedule(scene,
+   fromTime, assetDurations): which clips sound from time t, each with its
+   source offset, length and gain envelope after trim, volume and fades.
+   previewSchedule feeds BOTH the Web Audio preview and the export mixer,
+   so what Alek hears is what exports. All arithmetic, all under vitest.
+
+2. Audio clips in the document (decision f). AudioClip gains two OPTIONAL
+   fields: trimStartSeconds (how far into the sound the clip begins,
+   default 0) and durationSeconds (how much of it plays, default: the rest
+   of the sound). Existing project.json files load unchanged (the existing
+   check proves it); validate.ts refuses nonsense values in plain language
+   as it does for keyframes since CL-0052. Update DOC-03 §3 in the same
+   commit. New edits through the one-undo-step path: moveAudioClip (start
+   time, never below 0), trimAudioClip (start and length, never outside
+   the sound's real extent — the edit takes the source duration), set
+   volume / fade in / fade out, and moveKeyframe(layer, fromTime, toTime)
+   plus moveCameraKeyframe, which refuse a destination frame that already
+   holds a keyframe (the drag stops beside it, decision c). Every time
+   passes through animation/time.ts so equality stays exact.
+
+3. The mixer and the decoder (decision j). Export decodes EVERY clip
+   through Chromium's decoder (OfflineAudioContext at 48 kHz, mono, the
+   way importAudio.ts already does) instead of parseWav, so MP3, M4A, OGG
+   and any sample rate export correctly; parseWav stays for the fixtures
+   and tests. audioMix.ts takes trim from previewSchedule. Export stays
+   mono; open OQ-024 in DOC-07 for stereo at Phase 9 (real export) — it
+   touches the encoder config and verifyMp4.
+
+4. The timeline (decisions a, b, c, d, e, g). It REPLACES the time strip:
+   a panel under the canvas spanning the middle column, drawn with
+   React/SVG (PixiJS stays reserved for the picture; nothing in sceneStage
+   changes, so the 14 snapshots stay untouched). Header row: the strip's
+   transport moved over (play/pause, frame step, prev/next keyframe,
+   readout, Duration) plus the Snap toggle and a zoom slider. Then a ruler
+   with the draggable playhead (scrub). Then the tracks, top to bottom: one
+   Camera row, one row PER LAYER in Layers-panel order (front-most at the
+   top; the background has no row), each showing its keyframes as
+   diamonds, then the audio lanes. Clicking a diamond selects that layer
+   (or camera mode) and moves the playhead to it, so the existing inspector
+   edits that keyframe. Dragging a diamond moves the keyframe in time — one
+   undo step on release, Escape cancels, occupied frames refused. Zoom by
+   Ctrl+wheel and the slider from "whole scene fits" to 200 px per second;
+   horizontal scroll by wheel / Shift+wheel; the view follows the playhead
+   during play. With many layers the tracks scroll vertically at a fixed
+   row height; a row is drawn from its own layer's keyframes only, memoised,
+   so redraws stay cheap (DOC-03 §5: scrubbing responsive with 20 layers).
+   Delete the TimeStrip component once the timeline carries everything it
+   did (no two components doing one job).
+
+5. Sounds onto the timeline (decision h), the Phase 4b way: an "Add to
+   timeline" button on every ♪ row in the Assets tab (the clip lands at the
+   playhead) and drag-and-drop from the row onto the audio lanes (it lands
+   at the drop time), both through one shared module as addToScene.ts is.
+   A clip is a block with the sound's name and a waveform drawn from
+   decoded peaks held in memory for the session (decision k — nothing
+   written to cache/). Overlapping clips pack into separate lanes
+   automatically.
+
+6. Editing a clip (decision h): drag the body to move; drag either edge to
+   trim; small fade handles at the top corners set the fade lengths;
+   select a clip and the right panel shows Start, Volume, Fade in, Fade
+   out and Delete. Each interaction previews live and commits ONCE on
+   release (one undo step), Escape cancels. A clip running past the scene
+   end is drawn hatched from that point and is simply cut at export (the
+   mixer already drops samples past the end). Selection of clips is UI
+   state, like layer selection.
+
+7. Hearing it (decision i): on play, the clips previewSchedule returns are
+   scheduled through Web Audio (AudioBufferSourceNode + GainNode per clip:
+   trim as the source offset and duration, volume and fades as the gain
+   envelope) from the playhead; pause and the scene end stop sound at
+   once; scrubbing is silent. Each sound is decoded once per session and
+   cached in memory by asset id + file. Muting is not a feature yet; the
+   Play/Stop button on the ♪ row stays as it is.
+
+8. Checks (ADR-015), all part of `npm run check`: timeline mapping and
+   snapping as arithmetic (including "snapped to what"); lane packing;
+   previewSchedule at known times with trim, fades and overlap; the mixer
+   with trim sample-for-sample; moveKeyframe / moveCameraKeyframe /
+   clip edits round-trip save/reopen and undo; the occupied-frame refusal;
+   older project.json files load unchanged; bad trim values refused. The
+   export check gains a trimmed clip and an M4A clip (the code-generated
+   AAC fixture from tests/fixtures/audioFixtures.ts) whose beeps must
+   still land on their flashes within the existing drift limit — that
+   proves the decoder path end to end. Snapshots must stay 14/14 unchanged.
+   The production-build scan keeps proving no fixture code ships. Nothing
+   downloaded. Tell me in the plan what `npm run check` will cost
+   afterwards (about 90 s now; keep it around two minutes).
+
+9. Manual (decision m): M-1.3 "A tour of the interface" written now as the
+   full tour (home screen, the three columns, the canvas, the right panel,
+   the timeline and its transport), and M-5.5 for placing, trimming,
+   fading and mixing audio — both in the voice of M-3/M-4. M-1.4 waits for
+   voices (Phase 11). DOC-10 §2/§3/§4 rows updated in the same commits.
+
+10. Hand-off from Fable to Opus (decision l). You (Fable) do the
+    verification commit and steps 1, 2, 3 and 8's foundations (the pure
+    tests, the mixer/decoder tests, the extended export check), plus
+    M-5.5's mixing rules — the foundations. Steps 4, 5, 6, 7 and M-1.3 are
+    contained feature work for Opus. When the foundations are usable and
+    green, commit, push, and end the session with a written hand-off in
+    DOC-10 §1 "Next action" plus a one-line prompt for the Opus session in
+    the DOC-11 §4 step 2 form ("Read CLAUDE.md and DOC-10, then continue
+    Phase 6: <task>"). Make the boundary clear in the plan; I may move it.
+    Build alone, one feature at a time (the timeline and the clip editing
+    share one component, so there is no clean boundary for two agents).
+
+Do not write code yet (after the verification commit). First produce a
+plan for my approval: the module layout, the exact timeline layout and
+header controls, how the time strip's state and keyboard handling move
+into the timeline, how previewSchedule feeds both Web Audio and the mixer,
+how the decoder replaces parseWav in export without touching the check's
+fixtures, the decisions you are making within the ADRs, what exactly is
+out of scope, and any questions for me. Decisions a-m below are already
+made; do not re-ask them.
+
+Out of scope for Phase 6: dialogue and TTS lines, the talking indicator
+and attachedToLayerId behaviour (Phase 11), the sound library (13),
+transitions and more than one scene on the timeline (7 — the timeline
+shows the current scene), text (8), the export screen and stereo (9,
+OQ-024), multi-select and copy/paste of keyframes or clips, ripple
+editing, audio recording, waveform files on disk, per-property tracks,
+and mute/solo. No paid AI calls (DOC-09). No new npm dependencies without
+a DOC-08 row first. Every check cleans up tests/output/ on success. Update
+docs/04-CHANGELOG.md, docs/10-PROJECT-TRACKER.md, docs/03-ARCHITECTURE.md
+(§3 for the clip fields), docs/07-OPEN-QUESTIONS.md (OQ-024) and
+docs/05-MANUAL.md in the same commit as the code, commit and push after
+each usable step, live-verify each feature in the running app as the
+Phase 4 and 5 sessions did, and end each session with the report
+described in CLAUDE.md (what changed, which checks pass, exactly what I
+should open and try — for the Opus session: drop a sound on the timeline,
+trim it, fade it, play it, and drag a keyframe diamond — and what is
+next). This kickoff prompt is already archived as docs/11-WORKFLOW.md
+Appendix G (CL-0053); do not add it again.
+```
+
+### Appendix G addendum — Alek's Phase 6 decisions (given with the kickoff; apply, do not re-ask)
+
+a. The timeline replaces the time strip; the strip's transport controls
+   move into the timeline's header row. One component, not two.
+b. The timeline is drawn with React/SVG, not PixiJS. PixiJS stays
+   reserved for the scene picture; sceneStage does not change.
+c. Keyframe diamonds are draggable in time on the timeline: one undo step
+   on release, Escape cancels, a destination frame that already holds a
+   keyframe is refused (the drag stops beside it).
+d. Snap is on by default: whole frames always; within about six screen
+   pixels also the playhead, other keyframes of the same track, clip
+   edges and whole seconds. A Snap toggle turns the extras off.
+e. Zoom by Ctrl+wheel and a slider, from "whole scene fits" to 200 px per
+   second; horizontal scroll; the view follows the playhead during play.
+f. AudioClip gains optional trimStartSeconds (default 0) and
+   durationSeconds (default: the rest of the sound). Old files load
+   unchanged. DOC-03 §3 updated with the change.
+g. Overlapping clips pack into separate lanes automatically; nothing
+   hides behind anything.
+h. Sounds reach the timeline by an "Add to timeline" button on every ♪
+   row (lands at the playhead) and by drag-and-drop onto the lanes (lands
+   at the drop time), as Phase 4b did for the scene. Clips are edited by
+   dragging body, edges and fade handles, plus Start / Volume / Fade in /
+   Fade out / Delete fields in the right panel; one undo step each.
+i. Preview audio plays through Web Audio during play with trim, volume
+   and fades; pause stops it at once; scrubbing is silent.
+j. Export decodes every clip through Chromium's decoder at 48 kHz mono
+   (MP3, M4A, OGG and any sample rate now export correctly); export stays
+   mono; stereo is OQ-024 for Phase 9.
+k. Waveform peaks are computed from the decoded sound and held in memory
+   for the session; nothing is written to cache/.
+l. Model: Fable for the foundations, Opus for the timeline UI, at the
+   boundary in step 10; Alek may move it.
+m. M-1.3 is written now as the full interface tour; M-5.5 covers audio
+   clips.
+n. (From Alek's question) Every layer — each character and each prop —
+   has its own row on the timeline in Layers-panel order; the camera has
+   one row above them; the background has none. A row shows whole
+   keyframes as diamonds, not per-property sub-rows.
