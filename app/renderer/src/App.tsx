@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import type { OpenedProject } from '../../shared/ipc';
 import type { ProjectDocument } from '../../shared/document/types';
-import { removeLayer, setKeyframe } from '../../shared/document/edits';
+import { removeAudioClip, removeLayer, setKeyframe } from '../../shared/document/edits';
+import { addSoundToTimeline } from '../../shared/timeline/addToTimeline';
 import { keyframeAtPlayhead } from '../../shared/animation/keyframes';
 import { snapToFrame } from '../../shared/animation/time';
 import {
@@ -20,6 +21,7 @@ import { HomeScreen } from './HomeScreen';
 import { LayersPanel } from './scene/LayersPanel';
 import { SceneCanvas } from './scene/SceneCanvas';
 import { SceneToolbar } from './scene/SceneToolbar';
+import { ClipPanel } from './timeline/ClipPanel';
 import { Timeline } from './timeline/Timeline';
 
 // Everything under app/renderer/src/dev/ (and tests/fixtures) is loaded
@@ -173,8 +175,11 @@ function ProjectView({
   const [saveError, setSaveError] = useState<string | undefined>(undefined);
   const [editingMaskOf, setEditingMaskOf] = useState<string | undefined>(undefined);
   const [leftTab, setLeftTab] = useState<'assets' | 'characters'>('assets');
-  // Selection is UI state only — never saved, never an undo step.
+  // Selection is UI state only — never saved, never an undo step. A layer
+  // and a sound clip are never selected at once: the right panel shows
+  // the one that is.
   const [selectedLayerId, setSelectedLayerId] = useState<string | undefined>(undefined);
+  const [selectedClipId, setSelectedClipId] = useState<string | undefined>(undefined);
   const [opacityPreview, setOpacityPreview] = useState<number | undefined>(undefined);
   // The playhead (seconds, frame-snapped) — UI state like selection: the
   // canvas draws the scene at this time and every edit writes the keyframe
@@ -199,12 +204,30 @@ function ProjectView({
     : undefined;
   // The editor shows the first scene until multiple scenes arrive (Phase 7).
   const scene = doc.scenes[0];
-  // A selection whose layer was removed (or undone away) simply ends.
+  // A selection whose layer or clip was removed (or undone away) simply ends.
   const selectedLayer =
     selectedLayerId !== undefined
       ? scene?.layers.find((l) => l.id === selectedLayerId)
       : undefined;
   const effectiveSelection = selectedLayer?.id;
+  const selectedClip =
+    selectedClipId !== undefined
+      ? scene?.audioClips.find((c) => c.id === selectedClipId)
+      : undefined;
+
+  // Selecting a layer ends any clip selection and vice versa.
+  const selectLayer = useCallback((layerId: string | undefined): void => {
+    setSelectedLayerId(layerId);
+    if (layerId !== undefined) setSelectedClipId(undefined);
+  }, []);
+  const selectClip = useCallback((clipId: string | undefined): void => {
+    setSelectedClipId(clipId);
+    if (clipId !== undefined) {
+      setSelectedLayerId(undefined);
+      setCameraMode(false);
+      setCameraPreview(undefined);
+    }
+  }, []);
 
   // When a scene gets shorter, the playhead stays inside it.
   const sceneDuration = scene?.durationSeconds ?? 0;
@@ -293,6 +316,21 @@ function ProjectView({
         setCameraPreview(undefined);
         return;
       }
+      // A selected sound clip: Escape deselects, Delete removes the clip.
+      if (selectedClip !== undefined && scene !== undefined) {
+        if (event.key === 'Escape') {
+          setSelectedClipId(undefined);
+          return;
+        }
+        if (event.key === 'Delete') {
+          event.preventDefault();
+          const clipId = selectedClip.id;
+          const sceneId = scene.id;
+          setSelectedClipId(undefined);
+          applyEdit((current) => removeAudioClip(current, sceneId, clipId));
+          return;
+        }
+      }
       const layer = selectedLayer;
       const currentScene = scene;
       if (layer === undefined || currentScene === undefined) return;
@@ -328,11 +366,14 @@ function ProjectView({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [editingMaskOf, selectedLayer, scene, playhead, applyEdit, canvasPick, cameraMode]);
+  }, [editingMaskOf, selectedLayer, selectedClip, scene, playhead, applyEdit, canvasPick, cameraMode]);
 
   const toggleCameraMode = useCallback((): void => {
     setCameraMode((was) => {
-      if (!was) setSelectedLayerId(undefined); // the camera has the canvas now
+      if (!was) {
+        setSelectedLayerId(undefined); // the camera has the canvas now
+        setSelectedClipId(undefined);
+      }
       return !was;
     });
     setCameraPreview(undefined);
@@ -395,7 +436,23 @@ function ProjectView({
                 scene={scene}
                 applyEdit={applyEdit}
                 onEditMask={setEditingMaskOf}
-                onLayerAdded={setSelectedLayerId}
+                onLayerAdded={selectLayer}
+                onAddSoundToTimeline={
+                  scene === undefined
+                    ? undefined
+                    : (assetId) => {
+                        // The clip lands at the playhead (decision h) and
+                        // is selected so its numbers are right there.
+                        const sceneId = scene.id;
+                        let clipId: string | undefined;
+                        applyEdit((current) => {
+                          const added = addSoundToTimeline(current, sceneId, assetId, playhead);
+                          clipId = added?.clipId;
+                          return added?.doc ?? current;
+                        });
+                        if (clipId !== undefined) selectClip(clipId);
+                      }
+                }
               />
             ) : (
               <CharactersPanel
@@ -403,7 +460,7 @@ function ProjectView({
                 document={doc}
                 scene={scene}
                 applyEdit={applyEdit}
-                onLayerAdded={setSelectedLayerId}
+                onLayerAdded={selectLayer}
               />
             )}
           </div>
@@ -424,7 +481,7 @@ function ProjectView({
                 time={playhead}
                 opacityPreview={opacityPreview}
                 applyEdit={applyEdit}
-                onSelect={setSelectedLayerId}
+                onSelect={selectLayer}
                 cameraMode={cameraMode}
                 cameraPreview={cameraPreview}
                 onPickPoint={
@@ -437,6 +494,7 @@ function ProjectView({
                 }
               />
               <Timeline
+                projectDir={opened.projectDir}
                 document={doc}
                 scene={scene}
                 selectedLayerId={effectiveSelection}
@@ -449,11 +507,13 @@ function ProjectView({
                   setCameraMode(false);
                   setCameraPreview(undefined);
                   setCanvasPick(undefined);
-                  setSelectedLayerId(layerId);
+                  selectLayer(layerId);
                 }}
                 onEnterCameraMode={() => {
                   if (!cameraMode) toggleCameraMode();
                 }}
+                selectedClipId={selectedClip?.id}
+                onSelectClip={selectClip}
               />
             </div>
           )}
@@ -467,6 +527,14 @@ function ProjectView({
                 onCameraPreview={setCameraPreview}
                 onClose={toggleCameraMode}
               />
+            ) : selectedClip !== undefined ? (
+              <ClipPanel
+                document={doc}
+                scene={scene}
+                clip={selectedClip}
+                applyEdit={applyEdit}
+                onClose={() => setSelectedClipId(undefined)}
+              />
             ) : (
               <LayersPanel
                 document={doc}
@@ -474,7 +542,7 @@ function ProjectView({
                 applyEdit={applyEdit}
                 selectedLayerId={effectiveSelection}
                 playhead={playhead}
-                onSelect={setSelectedLayerId}
+                onSelect={selectLayer}
                 onOpacityPreview={setOpacityPreview}
                 requestCanvasPick={(onPick) => setCanvasPick({ onPick })}
                 canvasPicking={canvasPick !== undefined}

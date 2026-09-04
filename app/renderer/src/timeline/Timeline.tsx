@@ -53,6 +53,7 @@ import {
 } from '../../../shared/timeline/mapping';
 import { snapDraggedTime, type SnapTarget } from '../../../shared/timeline/snap';
 import type { ProjectDocument, Scene } from '../../../shared/document/types';
+import { AudioLanes } from './AudioLanes';
 
 type ApplyEdit = (edit: (current: ProjectDocument) => ProjectDocument) => void;
 
@@ -67,6 +68,7 @@ export const TRACK_LABEL_PX = 96;
 const DRAG_THRESHOLD_PX = 3;
 
 export interface TimelineProps {
+  readonly projectDir: string;
   readonly document: ProjectDocument;
   readonly scene: Scene;
   readonly selectedLayerId?: string;
@@ -80,6 +82,9 @@ export interface TimelineProps {
   readonly onSelectLayer: (layerId: string) => void;
   /** Clicking a camera diamond enters camera mode (and deselects the layer). */
   readonly onEnterCameraMode: () => void;
+  /** The selected sound clip (UI state owned by the project view). */
+  readonly selectedClipId?: string;
+  readonly onSelectClip: (clipId: string | undefined) => void;
 }
 
 /** What a drag in progress looks like, for the ghost and the snap note. */
@@ -192,6 +197,7 @@ const TrackRow = memo(function TrackRow({
 
 export function Timeline(props: TimelineProps): JSX.Element {
   const {
+    projectDir,
     document: doc,
     scene,
     selectedLayerId,
@@ -200,7 +206,9 @@ export function Timeline(props: TimelineProps): JSX.Element {
     onPlayhead,
     applyEdit,
     onSelectLayer,
-    onEnterCameraMode
+    onEnterCameraMode,
+    selectedClipId,
+    onSelectClip
   } = props;
   const fps = doc.fps;
   const duration = scene.durationSeconds;
@@ -215,6 +223,8 @@ export function Timeline(props: TimelineProps): JSX.Element {
   const [zoomRaw, setZoomRaw] = useState<number | undefined>(undefined);
   const [scrollRaw, setScrollRaw] = useState(0);
   const [drag, setDrag] = useState<DiamondDrag | undefined>(undefined);
+  // What a live CLIP drag snapped to, reported by the audio lanes.
+  const [laneSnapTarget, setLaneSnapTarget] = useState<SnapTarget | undefined>(undefined);
   // The width of the track area, measured whenever the panel resizes.
   const [trackWidthPx, setTrackWidthPx] = useState(0);
   const bodyRef = useRef<HTMLDivElement | null>(null);
@@ -277,6 +287,8 @@ export function Timeline(props: TimelineProps): JSX.Element {
   useEffect(() => {
     setPlaying(false);
   }, [doc]);
+
+  const pauseOnly = useCallback((): void => setPlaying(false), []);
 
   const pauseAndGo = useCallback(
     (seconds: number): void => {
@@ -449,7 +461,8 @@ export function Timeline(props: TimelineProps): JSX.Element {
     ).filter((t) => t !== drag.fromTime);
     const snapped = snapDraggedTime(raw, fps, zoom, snapOn, {
       playhead,
-      keyframeTimes: trackTimes
+      keyframeTimes: trackTimes,
+      clipEdges: clipEdgeTimes
     });
     const occupied = trackTimes.some((t) => t === snapToFrame(snapped.time, fps));
     setDrag({
@@ -516,9 +529,27 @@ export function Timeline(props: TimelineProps): JSX.Element {
   // (the document's layers[0] is at the back); the camera row above all.
   const layerRows = [...scene.layers].reverse();
 
-  const snapNote =
+  // Sound-clip edges are magnets for every drag (decision d): each clip's
+  // start and end (its played slice) plus the scene's own end.
+  const clipEdgeTimes: number[] = [duration];
+  for (const clip of scene.audioClips) {
+    const source = clip.source;
+    if (source.kind !== 'asset') continue;
+    const sourceSeconds = doc.assets.find((a) => a.id === source.assetId)?.metadata
+      .durationSeconds;
+    if (sourceSeconds === undefined || !(sourceSeconds > 0)) continue;
+    const trim = Math.min(Math.max(clip.trimStartSeconds ?? 0, 0), sourceSeconds);
+    const play = Math.min(clip.durationSeconds ?? sourceSeconds - trim, sourceSeconds - trim);
+    if (play > 0) clipEdgeTimes.push(clip.startSeconds, clip.startSeconds + play);
+  }
+
+  const snapTarget =
     drag !== undefined && drag.moved && drag.snappedTo !== 'frame'
-      ? `snapped to ${SNAP_TARGET_NAMES[drag.snappedTo]}`
+      ? drag.snappedTo
+      : laneSnapTarget;
+  const snapNote =
+    snapTarget !== undefined && snapTarget !== 'frame'
+      ? `snapped to ${SNAP_TARGET_NAMES[snapTarget]}`
       : undefined;
 
   return (
@@ -671,6 +702,21 @@ export function Timeline(props: TimelineProps): JSX.Element {
             />
           ))}
         </div>
+        <AudioLanes
+          projectDir={projectDir}
+          document={doc}
+          scene={scene}
+          zoom={zoom}
+          scrollSec={scrollSec}
+          trackWidthPx={trackWidthPx}
+          snapOn={snapOn}
+          playhead={playhead}
+          selectedClipId={selectedClipId}
+          onSelectClip={onSelectClip}
+          applyEdit={applyEdit}
+          onPause={pauseOnly}
+          onSnapNote={setLaneSnapTarget}
+        />
         {playheadVisible && (
           <div
             className="tl-playhead"

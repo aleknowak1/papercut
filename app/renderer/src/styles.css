@@ -897,6 +897,87 @@ button {
   pointer-events: none;
 }
 
+/* ---- Audio lanes (M-5.5) ---- */
+
+.tl-lane {
+  height: 34px; /* AUDIO_ROW_HEIGHT_PX */
+  border-top: 1px solid var(--panel-edge);
+  border-bottom: none;
+}
+
+.tl-lane-hint {
+  height: 20px;
+}
+
+.tl-lane-hint-text {
+  color: var(--ink-dim);
+  font-size: 10px;
+  padding-left: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tl-clip-body {
+  fill: color-mix(in srgb, var(--accent) 16%, var(--panel));
+  stroke: var(--panel-edge);
+  stroke-width: 1;
+  cursor: grab;
+}
+
+.tl-clip-selected .tl-clip-body {
+  stroke: var(--accent);
+}
+
+.tl-clip-inner {
+  pointer-events: none;
+}
+
+.tl-clip-wave {
+  stroke: var(--accent);
+  stroke-width: 1;
+  opacity: 0.55;
+  fill: none;
+}
+
+.tl-clip-overhang {
+  opacity: 0.7;
+}
+
+.tl-hatch-line {
+  stroke: var(--ink-dim);
+  stroke-width: 1;
+}
+
+.tl-clip-fade {
+  stroke: var(--ink);
+  stroke-width: 1;
+  opacity: 0.6;
+  fill: none;
+}
+
+.tl-clip-name {
+  fill: var(--ink);
+  font-size: 10px;
+  font-family: inherit;
+}
+
+.tl-clip-grip {
+  fill: transparent;
+  cursor: ew-resize;
+}
+
+.tl-clip-fade-handle {
+  fill: var(--panel);
+  stroke: var(--ink-dim);
+  stroke-width: 1;
+  cursor: ew-resize;
+}
+
+.tl-clip-selected .tl-clip-fade-handle {
+  stroke: var(--accent);
+}
+
 /* ---- Layer inspector (M-4.2) ---- */
 
 .inspector-grid {

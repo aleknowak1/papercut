@@ -11,6 +11,7 @@ import type { SegmentationJobUpdate } from '../../../shared/segmentation/types';
 import { addAsset, setSceneBackground } from '../../../shared/document/edits';
 import { addPropToScene } from '../../../shared/scene/addToScene';
 import { SCENE_DRAG_TYPE, type SceneDragData } from '../scene/sceneDrag';
+import { AUDIO_DRAG_TYPE } from '../timeline/audioDrag';
 import { Thumbnail } from './Thumbnail';
 import { formatDuration, importOneAudio, isAudioPath } from './importAudio';
 import { importOneImage, workingCopyRgba, type ImportRole } from './importImages';
@@ -71,7 +72,8 @@ export function AssetsPanel({
   scene,
   applyEdit,
   onEditMask,
-  onLayerAdded
+  onLayerAdded,
+  onAddSoundToTimeline
 }: {
   projectDir: string;
   document: ProjectDocument;
@@ -80,6 +82,8 @@ export function AssetsPanel({
   applyEdit: ApplyEdit;
   onEditMask?: (assetId: string) => void;
   onLayerAdded?: (layerId: string) => void;
+  /** Puts this sound on the timeline at the playhead (Phase 6, M-5.5). */
+  onAddSoundToTimeline?: (assetId: string) => void;
 }): JSX.Element {
   const [messages, setMessages] = useState<readonly string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -298,9 +302,20 @@ export function AssetsPanel({
               <li
                 key={asset.id}
                 className="asset-row"
-                draggable={dragData !== undefined}
-                title={dragData !== undefined ? 'Drag onto the scene canvas' : undefined}
+                draggable={dragData !== undefined || asset.type === 'audio'}
+                title={
+                  dragData !== undefined
+                    ? 'Drag onto the scene canvas'
+                    : asset.type === 'audio'
+                      ? "Drag onto the timeline's sound lanes"
+                      : undefined
+                }
                 onDragStart={(event) => {
+                  if (asset.type === 'audio') {
+                    event.dataTransfer.setData(AUDIO_DRAG_TYPE, asset.id);
+                    event.dataTransfer.effectAllowed = 'copy';
+                    return;
+                  }
                   if (dragData === undefined) return;
                   event.dataTransfer.setData(SCENE_DRAG_TYPE, JSON.stringify(dragData));
                   event.dataTransfer.effectAllowed = 'copy';
@@ -336,6 +351,16 @@ export function AssetsPanel({
                   </button>
                 )}
                 {asset.type === 'audio' && <PlayButton projectDir={projectDir} asset={asset} />}
+                {asset.type === 'audio' && onAddSoundToTimeline !== undefined && (
+                  <button
+                    type="button"
+                    className="btn asset-cancel"
+                    title="Put this sound on the timeline at the playhead (or drag the row onto the sound lanes)"
+                    onClick={() => onAddSoundToTimeline(asset.id)}
+                  >
+                    Add to timeline
+                  </button>
+                )}
                 {asset.type === 'image' && asset.metadata.role === 'background' && scene !== undefined && (
                   <button
                     type="button"
