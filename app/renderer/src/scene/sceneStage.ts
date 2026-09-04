@@ -11,7 +11,12 @@
 
 import { Container, Sprite, Texture } from 'pixi.js';
 import type { ProjectDocument, Scene } from '../../../shared/document/types';
-import { cameraTransform, sampleCamera } from '../../../shared/animation/camera';
+import {
+  cameraTransform,
+  clampCamera,
+  sampleCamera,
+  type CameraSample
+} from '../../../shared/animation/camera';
 import { sampleLayer } from '../../../shared/animation/interpolate';
 import { backgroundPlacement, referenceSize } from '../../../shared/scene/geometry';
 
@@ -20,6 +25,13 @@ export interface SceneStage {
   readonly container: Container;
   /** Poses everything for time t (seconds). Call before each render. */
   update(time: number): void;
+  /**
+   * Editor-only: while set (and clamped here too), update() shows THIS
+   * camera instead of sampling the document — the live preview under a
+   * camera pan/zoom before its one edit commits. Export and the snapshot
+   * check never touch it, so with no preview nothing changes.
+   */
+  setCameraPreview(sample: CameraSample | undefined): void;
   /** The sprite showing a layer, for the editor's selection and dragging. */
   getLayerSprite(layerId: string): Sprite | undefined;
   /** Destroys the stage's own objects; textures belong to the caller. */
@@ -108,11 +120,16 @@ export function createSceneStage(options: SceneStageOptions): SceneStage {
 
   const layerById = new Map(scene.layers.map((l) => [l.id, l]));
   const spriteByLayer = new Map(entries.map((e) => [e.layerId, e.sprite]));
+  let cameraPreview: CameraSample | undefined;
 
   return {
     container,
     update(time: number): void {
-      const camera = cameraTransform(sampleCamera(scene, time, frame), frame);
+      const sample =
+        cameraPreview !== undefined
+          ? clampCamera(cameraPreview, frame)
+          : sampleCamera(scene, time, frame);
+      const camera = cameraTransform(sample, frame);
       world.scale.set(camera.scale);
       world.position.set(camera.x, camera.y);
       for (const entry of entries) {
@@ -134,6 +151,9 @@ export function createSceneStage(options: SceneStageOptions): SceneStage {
         entry.sprite.rotation = (sample.rotation * Math.PI) / 180; // degrees in the document
         entry.sprite.alpha = sample.opacity;
       }
+    },
+    setCameraPreview(sample: CameraSample | undefined): void {
+      cameraPreview = sample;
     },
     getLayerSprite(layerId: string): Sprite | undefined {
       return spriteByLayer.get(layerId);

@@ -9,9 +9,11 @@ import {
   cameraTransform,
   clampCamera,
   defaultCamera,
+  panCamera,
   sampleCamera,
   viewToWorld,
-  worldToView
+  worldToView,
+  zoomCamera
 } from '../../app/shared/animation/camera';
 import { removeCameraKeyframe, setCameraKeyframe } from '../../app/shared/document/edits';
 import { applyEdit, createHistory, undo } from '../../app/shared/document/history';
@@ -36,6 +38,56 @@ function cameraScene(cameraKeyframes: CameraKeyframe[]): Scene {
 }
 
 const centred = { x: 960, y: 540 };
+
+describe('pan and zoom steps (the camera authoring UI’s arithmetic)', () => {
+  it('a pan drag moves the centre against the drag, scaled by the zoom', () => {
+    const start = { x: 960, y: 540, zoom: 2 };
+    // Dragging the picture 100 right / 50 down: the camera looks 50/25 left/up.
+    expect(panCamera(start, { x: 100, y: 50 }, FRAME)).toEqual({ x: 910, y: 515, zoom: 2 });
+  });
+
+  it('a pan can never leave the frame', () => {
+    const start = { x: 960, y: 540, zoom: 2 };
+    // At zoom 2 the centre may travel x 480..1440, y 270..810.
+    expect(panCamera(start, { x: 99999, y: 99999 }, FRAME)).toEqual({ x: 480, y: 270, zoom: 2 });
+    expect(panCamera(start, { x: -99999, y: -99999 }, FRAME)).toEqual({
+      x: 1440,
+      y: 810,
+      zoom: 2
+    });
+  });
+
+  it('at zoom 1 a pan does nothing — the whole frame is already shown', () => {
+    expect(panCamera({ x: 960, y: 540, zoom: 1 }, { x: 300, y: 200 }, FRAME)).toEqual({
+      x: 960,
+      y: 540,
+      zoom: 1
+    });
+  });
+
+  it('a zoom step multiplies the zoom and keeps the centre where it can', () => {
+    expect(zoomCamera({ x: 960, y: 540, zoom: 2 }, 1.5, FRAME)).toEqual({
+      x: 960,
+      y: 540,
+      zoom: 3
+    });
+  });
+
+  it('zooming out near an edge slides the view back inside the frame', () => {
+    // At zoom 4 the centre may sit at x 240; at zoom 2 it must be ≥ 480.
+    expect(zoomCamera({ x: 240, y: 135, zoom: 4 }, 0.5, FRAME)).toEqual({
+      x: 480,
+      y: 270,
+      zoom: 2
+    });
+    // Zooming below 1 lands exactly on the whole centred frame.
+    expect(zoomCamera({ x: 960, y: 540, zoom: 1.1 }, 0.5, FRAME)).toEqual({
+      x: 960,
+      y: 540,
+      zoom: 1
+    });
+  });
+});
 
 describe('camera sampling and clamping', () => {
   it('no camera keyframes means centred at zoom 1', () => {

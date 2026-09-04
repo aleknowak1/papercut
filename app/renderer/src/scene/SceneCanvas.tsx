@@ -17,11 +17,19 @@
 import 'pixi.js/unsafe-eval';
 import { Container, Graphics, Texture, WebGLRenderer } from 'pixi.js';
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
-import { setKeyframe, setSceneBackground } from '../../../shared/document/edits';
+import { setCameraKeyframe, setKeyframe, setSceneBackground } from '../../../shared/document/edits';
 import type { Keyframe, ProjectDocument, Scene } from '../../../shared/document/types';
 import { addCharacterToScene, addPropToScene } from '../../../shared/scene/addToScene';
 import { readSceneDragData, SCENE_DRAG_TYPE } from './sceneDrag';
-import { sampleCamera, viewToWorld } from '../../../shared/animation/camera';
+import {
+  cameraKeyframeAtPlayhead,
+  clampCamera,
+  panCamera,
+  sampleCamera,
+  viewToWorld,
+  zoomCamera,
+  type CameraSample
+} from '../../../shared/animation/camera';
 import { sampleLayer } from '../../../shared/animation/interpolate';
 import { keyframeAtPlayhead } from '../../../shared/animation/keyframes';
 import {
@@ -34,6 +42,7 @@ import {
   type Point
 } from '../../../shared/scene/geometry';
 import { createSceneStage, sceneImageAssetIds, type SceneStage } from './sceneStage';
+import { MAX_UI_ZOOM } from './CameraPanel';
 
 type ApplyEdit = (edit: (current: ProjectDocument) => ProjectDocument) => void;
 
@@ -59,6 +68,14 @@ export interface SceneCanvasProps {
    * or dragged. Escape (handled by the project view) disarms it.
    */
   readonly onPickPoint?: (point: Point) => void;
+  /**
+   * Camera mode (M-4.6): dragging pans and the wheel zooms — each gesture
+   * ONE camera-keyframe edit at the playhead, previewed live through the
+   * stage's camera preview. Layer picking and dragging are off.
+   */
+  readonly cameraMode?: boolean;
+  /** The camera panel's live zoom-slider preview (cleared on commit). */
+  readonly cameraPreview?: CameraSample;
 }
 
 interface LoadedTexture {
@@ -126,6 +143,19 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
     { root: Container; sceneStage: SceneStage; overlay: Graphics } | undefined
   >(undefined);
   const dragRef = useRef<DragState | undefined>(undefined);
+  // A camera pan in progress (camera mode): a live preview through the
+  // stage's camera preview until its ONE edit commits on release.
+  const cameraDragRef = useRef<
+    | {
+        readonly startView: Point;
+        readonly startSample: CameraSample;
+        sample: CameraSample;
+        moved: boolean;
+      }
+    | undefined
+  >(undefined);
+  // Wheel zoom accumulates ticks into ONE edit after a short pause.
+  const wheelRef = useRef<{ sample: CameraSample; timer: number } | undefined>(undefined);
 
   // One renderer with its own canvas element for this component's lifetime.
   useEffect(() => {
@@ -319,6 +349,7 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
       stageRef.current = undefined;
     }
     dragRef.current = undefined; // a rebuild ends any drag in progress
+    cameraDragRef.current = undefined;
 
     const root = new Container();
     const textureById = new Map<string, Texture>();
@@ -343,7 +374,13 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
   useEffect(() => {
     const stage = stageRef.current;
     if (renderer === undefined || stage === undefined) return;
-    if (dragRef.current === undefined) {
+    if (
+      dragRef.current === undefined &&
+      cameraDragRef.current === undefined &&
+      wheelRef.current === undefined
+    ) {
+      // The camera panel's zoom-slider preview (undefined = the document).
+      stage.sceneStage.setCameraPreview(props.cameraPreview);
       stage.sceneStage.update(time); // poses everything, resets any preview
       if (selectedLayerId !== undefined && opacityPreview !== undefined) {
         const sprite = stage.sceneStage.getLayerSprite(selectedLayerId);
@@ -352,7 +389,7 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
     }
     drawOverlay();
     render();
-  }, [renderer, selectedLayerId, time, opacityPreview, textureVersion, doc, scene, drawOverlay, render]);
+  }, [renderer, selectedLayerId, time, opacityPreview, props.cameraPreview, textureVersion, doc, scene, drawOverlay, render]);
 
   /** Pointer position in canvas pixels, or undefined outside the canvas. */
   const toCanvasPoint = (event: React.PointerEvent): Point | undefined => {
@@ -430,17 +467,112 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
     [applyEdit, scene.id, drawOverlay, render]
   );
 
+  /**
+   * ONE camera edit for a whole pan or wheel gesture: the camera keyframe
+   * at the playhead — seeded like a layer keyframe when none sits exactly
+   * here — with the previewed values, clamped (decision g).
+   */
+  const commitCamera = useCallback(
+    (sample: CameraSample): void => {
+      const frame = referenceSize(doc.format);
+      const clamped = clampCamera(sample, frame);
+      applyEdit((current) => {
+        const currentScene = current.scenes.find((s) => s.id === scene.id);
+        if (currentScene === undefined) return current;
+        const seed = cameraKeyframeAtPlayhead(currentScene, timeRef.current, frame);
+        return setCameraKeyframe(current, currentScene.id, {
+          ...seed,
+          x: clamped.x,
+          y: clamped.y,
+          zoom: clamped.zoom
+        });
+      });
+    },
+    [applyEdit, scene.id, doc.format]
+  );
+
+  const endCameraDrag = useCallback(
+    (commit: boolean): void => {
+      const drag = cameraDragRef.current;
+      cameraDragRef.current = undefined;
+      if (drag === undefined) return;
+      stageRef.current?.sceneStage.setCameraPreview(undefined);
+      if (commit && drag.moved) {
+        commitCamera(drag.sample); // the document change redraws the stage
+      } else {
+        // Cancelled (Escape) or never moved: back to the document's camera.
+        stageRef.current?.sceneStage.update(timeRef.current);
+        render();
+      }
+    },
+    [commitCamera, render]
+  );
+
   // Escape cancels a drag in progress (and never reaches other listeners).
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape' || dragRef.current === undefined) return;
-      event.preventDefault();
-      event.stopPropagation();
-      endDrag(false);
+      if (event.key !== 'Escape') return;
+      if (dragRef.current !== undefined) {
+        event.preventDefault();
+        event.stopPropagation();
+        endDrag(false);
+      } else if (cameraDragRef.current !== undefined) {
+        event.preventDefault();
+        event.stopPropagation();
+        endCameraDrag(false);
+      }
     };
     window.addEventListener('keydown', onKey, { capture: true });
     return () => window.removeEventListener('keydown', onKey, { capture: true });
-  }, [endDrag]);
+  }, [endDrag, endCameraDrag]);
+
+  // Camera mode: the wheel zooms, ticks accumulated into ONE edit shortly
+  // after the last one. Attached by hand so preventDefault is honoured
+  // (React's own wheel listeners are passive).
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (wrap === null || props.cameraMode !== true) return;
+    const onWheel = (event: WheelEvent): void => {
+      event.preventDefault();
+      if (dragRef.current !== undefined || cameraDragRef.current !== undefined) return;
+      const stage = stageRef.current;
+      if (stage === undefined) return;
+      const frame = referenceSize(doc.format);
+      const from = wheelRef.current?.sample ?? sampleCamera(scene, timeRef.current, frame);
+      const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
+      const wanted = zoomCamera(from, factor, frame);
+      const sample =
+        wanted.zoom > MAX_UI_ZOOM ? clampCamera({ ...wanted, zoom: MAX_UI_ZOOM }, frame) : wanted;
+      // Already at a limit (zoom 1 or the cap) and nothing pending: no edit.
+      if (
+        wheelRef.current === undefined &&
+        sample.x === from.x &&
+        sample.y === from.y &&
+        sample.zoom === from.zoom
+      ) {
+        return;
+      }
+      if (wheelRef.current !== undefined) window.clearTimeout(wheelRef.current.timer);
+      const timer = window.setTimeout(() => {
+        wheelRef.current = undefined;
+        stageRef.current?.sceneStage.setCameraPreview(undefined);
+        commitCamera(sample);
+      }, 350);
+      wheelRef.current = { sample, timer };
+      stage.sceneStage.setCameraPreview(sample);
+      stage.sceneStage.update(timeRef.current);
+      render();
+    };
+    wrap.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      wrap.removeEventListener('wheel', onWheel);
+      if (wheelRef.current !== undefined) {
+        window.clearTimeout(wheelRef.current.timer);
+        wheelRef.current = undefined;
+        stageRef.current?.sceneStage.setCameraPreview(undefined);
+      }
+    };
+  }, [props.cameraMode, doc.format, scene, commitCamera, render]);
 
   const onPointerDown = (event: React.PointerEvent): void => {
     if (event.button !== 0) return;
@@ -456,6 +588,28 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
     // Pick mode: this click IS the answer — nothing selected, no drag.
     if (props.onPickPoint !== undefined) {
       props.onPickPoint(worldP);
+      return;
+    }
+
+    // Camera mode: this drag pans the camera; layers are never touched.
+    if (props.cameraMode === true) {
+      const frame = referenceSize(doc.format);
+      let startSample = sampleCamera(scene, time, frame);
+      let moved = false;
+      // A wheel zoom still waiting to commit folds into this gesture.
+      if (wheelRef.current !== undefined) {
+        window.clearTimeout(wheelRef.current.timer);
+        startSample = wheelRef.current.sample;
+        wheelRef.current = undefined;
+        moved = true;
+      }
+      cameraDragRef.current = {
+        startView: canvasToReference(cp, fitNow),
+        startSample,
+        sample: startSample,
+        moved
+      };
+      event.currentTarget.setPointerCapture(event.pointerId);
       return;
     }
 
@@ -514,6 +668,42 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
   };
 
   const onPointerMove = (event: React.PointerEvent): void => {
+    // A camera pan in progress: preview the panned camera, commit later.
+    const cameraDrag = cameraDragRef.current;
+    if (cameraDrag !== undefined) {
+      const fitCam = fitRef.current;
+      const canvas = canvasElRef.current;
+      if (fitCam === undefined || canvas === null) return;
+      const rect = canvas.getBoundingClientRect();
+      const view = canvasToReference(
+        { x: event.clientX - rect.left, y: event.clientY - rect.top },
+        fitCam
+      );
+      const frame = referenceSize(doc.format);
+      const sample = panCamera(
+        cameraDrag.startSample,
+        { x: view.x - cameraDrag.startView.x, y: view.y - cameraDrag.startView.y },
+        frame
+      );
+      cameraDrag.sample = sample;
+      // Only a pan that actually changes the camera commits an edit — at
+      // zoom 1 the clamp holds the view still, so dragging writes nothing.
+      if (
+        sample.x !== cameraDrag.startSample.x ||
+        sample.y !== cameraDrag.startSample.y ||
+        sample.zoom !== cameraDrag.startSample.zoom
+      ) {
+        cameraDrag.moved = true;
+      }
+      const stage = stageRef.current;
+      if (stage !== undefined) {
+        stage.sceneStage.setCameraPreview(sample);
+        stage.sceneStage.update(timeRef.current);
+        render();
+      }
+      return;
+    }
+
     const drag = dragRef.current;
     const fitNow = fitRef.current;
     if (drag === undefined || fitNow === undefined) return;
@@ -546,7 +736,10 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
     render();
   };
 
-  const onPointerUp = (): void => endDrag(true);
+  const onPointerUp = (): void => {
+    if (cameraDragRef.current !== undefined) endCameraDrag(true);
+    else endDrag(true);
+  };
 
   // Dropping a panel row onto the canvas: a background photo becomes the
   // scene's background; a cutout or character becomes a layer centred at
@@ -583,11 +776,14 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
   return (
     <div
       ref={wrapRef}
-      className={`scene-canvas-wrap${props.onPickPoint !== undefined ? ' scene-canvas-picking' : ''}`}
+      className={`scene-canvas-wrap${props.onPickPoint !== undefined ? ' scene-canvas-picking' : ''}${props.cameraMode === true ? ' scene-canvas-camera' : ''}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      onPointerCancel={() => endDrag(false)}
+      onPointerCancel={() => {
+        endDrag(false);
+        endCameraDrag(false);
+      }}
       onDragOver={(event) => {
         if (event.dataTransfer.types.includes(SCENE_DRAG_TYPE)) {
           event.preventDefault();

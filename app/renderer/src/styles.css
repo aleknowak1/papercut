@@ -616,6 +616,17 @@ button {
   border-color: var(--accent);
 }
 
+/* Camera mode (M-4.6): dragging pans, the wheel zooms. */
+.scene-canvas-camera {
+  cursor: grab;
+  border-color: var(--accent);
+}
+
+.scene-camera-toggle[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .scene-canvas {
   display: block;
 }

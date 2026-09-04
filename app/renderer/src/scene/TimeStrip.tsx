@@ -10,7 +10,6 @@
 // selection. Any scrub or document edit pauses playback.
 
 import { useEffect, useRef, useState, type JSX } from 'react';
-import { nextKeyframeTime, prevKeyframeTime } from '../../../shared/animation/keyframes';
 import { formatTime, frameOf, secondsOf, snapToFrame } from '../../../shared/animation/time';
 import { setSceneDuration } from '../../../shared/document/edits';
 import type { Layer, ProjectDocument, Scene } from '../../../shared/document/types';
@@ -24,6 +23,8 @@ export interface TimeStripProps {
   readonly document: ProjectDocument;
   readonly scene: Scene;
   readonly selectedLayer?: Layer;
+  /** Camera mode: ticks and «» follow the scene's camera keyframes. */
+  readonly cameraMode?: boolean;
   /** The playhead in seconds, frame-snapped; the strip only emits snapped values. */
   readonly playhead: number;
   readonly onPlayhead: (seconds: number) => void;
@@ -103,8 +104,15 @@ export function TimeStrip(props: TimeStripProps): JSX.Element {
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  const prevTime = selectedLayer !== undefined ? prevKeyframeTime(selectedLayer, playhead) : undefined;
-  const nextTime = selectedLayer !== undefined ? nextKeyframeTime(selectedLayer, playhead) : undefined;
+  // Whose keyframes the ticks and «» jumps follow: the scene's camera in
+  // camera mode, the selected layer otherwise. Both lists are kept sorted.
+  const keyframeTimes =
+    props.cameraMode === true
+      ? scene.cameraKeyframes.map((k) => k.time)
+      : (selectedLayer?.keyframes.map((k) => k.time) ?? []);
+  let prevTime: number | undefined;
+  for (const t of keyframeTimes) if (t < playhead) prevTime = t;
+  const nextTime = keyframeTimes.find((t) => t > playhead);
 
   const commitDuration = (): void => {
     if (durationText === undefined) return;
@@ -119,11 +127,10 @@ export function TimeStrip(props: TimeStripProps): JSX.Element {
     applyEdit((current) => setSceneDuration(current, scene.id, next));
   };
 
-  // Tick marks where the selected layer's keyframes sit (within the scene).
-  const ticks =
-    selectedLayer?.keyframes
-      .filter((k) => k.time >= 0 && k.time <= duration)
-      .map((k) => ({ time: k.time, left: duration > 0 ? (k.time / duration) * 100 : 0 })) ?? [];
+  // Tick marks where those keyframes sit (within the scene).
+  const ticks = keyframeTimes
+    .filter((t) => t >= 0 && t <= duration)
+    .map((t) => ({ time: t, left: duration > 0 ? (t / duration) * 100 : 0 }));
 
   return (
     <div className="time-strip">
@@ -181,7 +188,11 @@ export function TimeStrip(props: TimeStripProps): JSX.Element {
         type="button"
         className="btn"
         disabled={prevTime === undefined}
-        title="Jump to the selected layer's previous keyframe"
+        title={
+          props.cameraMode === true
+            ? 'Jump to the previous camera keyframe'
+            : "Jump to the selected layer's previous keyframe"
+        }
         onClick={() => prevTime !== undefined && pauseAndGo(prevTime)}
       >
         «
@@ -190,7 +201,11 @@ export function TimeStrip(props: TimeStripProps): JSX.Element {
         type="button"
         className="btn"
         disabled={nextTime === undefined}
-        title="Jump to the selected layer's next keyframe"
+        title={
+          props.cameraMode === true
+            ? 'Jump to the next camera keyframe'
+            : "Jump to the selected layer's next keyframe"
+        }
         onClick={() => nextTime !== undefined && pauseAndGo(nextTime)}
       >
         »

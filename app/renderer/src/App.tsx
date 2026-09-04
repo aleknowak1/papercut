@@ -13,6 +13,7 @@ import {
   undo
 } from '../../shared/document/history';
 import { AssetsPanel } from './assets/AssetsPanel';
+import { CameraPanel } from './scene/CameraPanel';
 import { CharactersPanel } from './assets/CharactersPanel';
 import { MaskEditor } from './assets/MaskEditor';
 import { HomeScreen } from './HomeScreen';
@@ -185,6 +186,13 @@ function ProjectView({
   const [canvasPick, setCanvasPick] = useState<
     { readonly onPick: (point: { x: number; y: number }) => void } | undefined
   >(undefined);
+  // Camera mode (M-4.6): the canvas pans/zooms the camera and the right
+  // panel shows the camera inspector. UI state like selection; Escape or
+  // the toolbar button leaves it.
+  const [cameraMode, setCameraMode] = useState(false);
+  const [cameraPreview, setCameraPreview] = useState<
+    { x: number; y: number; zoom: number } | undefined
+  >(undefined);
   const doc = history.present;
   const editingAsset = editingMaskOf !== undefined
     ? doc.assets.find((a) => a.id === editingMaskOf)
@@ -280,6 +288,11 @@ function ProjectView({
         setCanvasPick(undefined);
         return;
       }
+      if (event.key === 'Escape' && cameraMode) {
+        setCameraMode(false);
+        setCameraPreview(undefined);
+        return;
+      }
       const layer = selectedLayer;
       const currentScene = scene;
       if (layer === undefined || currentScene === undefined) return;
@@ -315,7 +328,16 @@ function ProjectView({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [editingMaskOf, selectedLayer, scene, playhead, applyEdit, canvasPick]);
+  }, [editingMaskOf, selectedLayer, scene, playhead, applyEdit, canvasPick, cameraMode]);
+
+  const toggleCameraMode = useCallback((): void => {
+    setCameraMode((was) => {
+      if (!was) setSelectedLayerId(undefined); // the camera has the canvas now
+      return !was;
+    });
+    setCameraPreview(undefined);
+    setCanvasPick(undefined);
+  }, []);
 
   return (
     <div className="opened project-view">
@@ -387,7 +409,13 @@ function ProjectView({
           </div>
           {scene !== undefined && (
             <div className="canvas-column">
-              <SceneToolbar document={doc} scene={scene} applyEdit={applyEdit} />
+              <SceneToolbar
+                document={doc}
+                scene={scene}
+                applyEdit={applyEdit}
+                cameraMode={cameraMode}
+                onToggleCameraMode={toggleCameraMode}
+              />
               <SceneCanvas
                 projectDir={opened.projectDir}
                 document={doc}
@@ -397,6 +425,8 @@ function ProjectView({
                 opacityPreview={opacityPreview}
                 applyEdit={applyEdit}
                 onSelect={setSelectedLayerId}
+                cameraMode={cameraMode}
+                cameraPreview={cameraPreview}
                 onPickPoint={
                   canvasPick === undefined
                     ? undefined
@@ -410,25 +440,36 @@ function ProjectView({
                 document={doc}
                 scene={scene}
                 selectedLayer={selectedLayer}
+                cameraMode={cameraMode}
                 playhead={playhead}
                 onPlayhead={setPlayhead}
                 applyEdit={applyEdit}
               />
             </div>
           )}
-          {scene !== undefined && (
-            <LayersPanel
-              document={doc}
-              scene={scene}
-              applyEdit={applyEdit}
-              selectedLayerId={effectiveSelection}
-              playhead={playhead}
-              onSelect={setSelectedLayerId}
-              onOpacityPreview={setOpacityPreview}
-              requestCanvasPick={(onPick) => setCanvasPick({ onPick })}
-              canvasPicking={canvasPick !== undefined}
-            />
-          )}
+          {scene !== undefined &&
+            (cameraMode ? (
+              <CameraPanel
+                document={doc}
+                scene={scene}
+                playhead={playhead}
+                applyEdit={applyEdit}
+                onCameraPreview={setCameraPreview}
+                onClose={toggleCameraMode}
+              />
+            ) : (
+              <LayersPanel
+                document={doc}
+                scene={scene}
+                applyEdit={applyEdit}
+                selectedLayerId={effectiveSelection}
+                playhead={playhead}
+                onSelect={setSelectedLayerId}
+                onOpacityPreview={setOpacityPreview}
+                requestCanvasPick={(onPick) => setCanvasPick({ onPick })}
+                canvasPicking={canvasPick !== undefined}
+              />
+            ))}
         </div>
       )}
       {import.meta.env.DEV && (

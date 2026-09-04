@@ -19,6 +19,7 @@ import { keyframeAtPlayhead } from '../../../shared/animation/keyframes';
 import { formatTime } from '../../../shared/animation/time';
 import type { Point } from '../../../shared/scene/geometry';
 import { MotionPresets } from './MotionPresets';
+import { NumberField } from './NumberField';
 
 type ApplyEdit = (edit: (current: ProjectDocument) => ProjectDocument) => void;
 
@@ -36,50 +37,6 @@ export interface LayersPanelProps {
   readonly requestCanvasPick: (onPick: (point: Point) => void) => void;
   /** True while a canvas pick is armed. */
   readonly canvasPicking: boolean;
-}
-
-/**
- * A small number field that commits once on Enter or blur (one undo step),
- * and snaps back on Escape or nonsense input.
- */
-function NumberField({
-  label,
-  value,
-  suffix,
-  onCommit
-}: {
-  readonly label: string;
-  /** The document's value, already rounded for display. */
-  readonly value: number;
-  readonly suffix?: string;
-  readonly onCommit: (value: number) => void;
-}): JSX.Element {
-  const [text, setText] = useState<string | undefined>(undefined);
-  const commit = (): void => {
-    if (text === undefined) return;
-    setText(undefined);
-    const parsed = Number(text);
-    if (!Number.isFinite(parsed) || parsed === value) return;
-    onCommit(parsed);
-  };
-  return (
-    <label className="mask-tool inspector-field">
-      {label}
-      <input
-        type="text"
-        inputMode="decimal"
-        aria-label={label}
-        value={text ?? String(value)}
-        onChange={(event) => setText(event.target.value)}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') commit();
-          if (event.key === 'Escape') setText(undefined);
-        }}
-      />
-      {suffix}
-    </label>
-  );
 }
 
 export function LayersPanel(props: LayersPanelProps): JSX.Element {

@@ -99,6 +99,36 @@ export function cameraKeyframeAtPlayhead(
   };
 }
 
+/**
+ * The camera after a pan drag: the world under the cursor follows the
+ * cursor, so the centre moves AGAINST the drag, scaled by the zoom (a
+ * drag of d view pixels is d/zoom world pixels). Clamped like every
+ * camera value.
+ */
+export function panCamera(
+  start: CameraSample,
+  viewDelta: Point,
+  frame: Size
+): CameraSample {
+  return clampCamera(
+    {
+      x: start.x - viewDelta.x / start.zoom,
+      y: start.y - viewDelta.y / start.zoom,
+      zoom: start.zoom
+    },
+    frame
+  );
+}
+
+/**
+ * The camera after a zoom step (wheel or slider): the zoom multiplied by
+ * the factor, the centre kept and then clamped — so zooming out near an
+ * edge slides the view back inside the frame, never past it.
+ */
+export function zoomCamera(sample: CameraSample, factor: number, frame: Size): CameraSample {
+  return clampCamera({ x: sample.x, y: sample.y, zoom: sample.zoom * factor }, frame);
+}
+
 export interface CameraTransform {
   /** Scale for the world container, and where its origin goes. */
   readonly scale: number;

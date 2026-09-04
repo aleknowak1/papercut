@@ -376,7 +376,34 @@ and **holds until the next keyframe that names a pose**. Two quick
 swaps back and forth make a simple talking or waving loop. Delete the
 keyframe and the swap goes with it.
 
-- M-4.6 Camera pan and zoom
+### M-4.6 Camera pan and zoom
+
+The camera is how the viewer looks at your scene: zoom in on a face,
+drift across a room, pull back for a reveal. Press **Camera** on the
+toolbar (the button above the canvas) to enter camera mode — the right
+panel becomes the camera inspector, and the canvas now moves the camera
+instead of the layers:
+
+- **Drag** the canvas to pan — the picture follows your hand.
+- **Roll the wheel** (or use the Zoom slider or field) to zoom.
+  Zoom 1 shows the whole frame; the slider goes up to 10×.
+- **X / Y / Zoom** fields in the panel take exact numbers.
+
+The camera keeps the frame full: it cannot zoom out past 1× or pan
+beyond the edges of the scene, so a camera move never shows black bars.
+At 1× there is nowhere to pan — zoom in first.
+
+Camera moves are keyframes, exactly like layer motion: every change
+writes the **camera keyframe at the playhead** (the tick marks and « »
+now follow the camera's keyframes). To make a move: set the playhead,
+frame your opening shot, move the playhead later, frame the next shot,
+press ▶. The **Easing** dropdown shapes the move leaving each keyframe,
+and **Delete camera keyframe** removes the one under the playhead —
+delete them all and the camera goes back to showing the whole frame.
+
+Each drag, wheel burst, or field change is one undo step. **Done** or
+**Escape** returns the canvas to the layers. What you see is what
+exports: the camera is applied in the same drawing code the export uses.
 
 ## M-5 Voices and sound
 - M-5.1 Giving a character a voice

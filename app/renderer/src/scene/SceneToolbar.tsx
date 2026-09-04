@@ -11,11 +11,16 @@ type ApplyEdit = (edit: (current: ProjectDocument) => ProjectDocument) => void;
 export function SceneToolbar({
   document: doc,
   scene,
-  applyEdit
+  applyEdit,
+  cameraMode,
+  onToggleCameraMode
 }: {
   document: ProjectDocument;
   scene: Scene;
   applyEdit: ApplyEdit;
+  /** Camera mode (M-4.6): the canvas pans/zooms the camera while on. */
+  cameraMode: boolean;
+  onToggleCameraMode: () => void;
 }): JSX.Element {
   const images = doc.assets.filter((a) => a.type === 'image');
   const fit: BackgroundFit = scene.backgroundFit ?? 'cover';
@@ -51,6 +56,19 @@ export function SceneToolbar({
           </select>
         </label>
       )}
+      <button
+        type="button"
+        className="btn scene-camera-toggle"
+        aria-pressed={cameraMode}
+        title={
+          cameraMode
+            ? 'Leave camera mode (Escape)'
+            : 'Camera mode: drag the canvas to pan, roll the wheel to zoom — each change writes the camera keyframe at the playhead'
+        }
+        onClick={onToggleCameraMode}
+      >
+        Camera
+      </button>
       {scene.backgroundAssetId !== undefined && (
         <span className="mask-tool">
           Fit
