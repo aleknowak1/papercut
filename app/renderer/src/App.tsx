@@ -29,6 +29,7 @@ import { LayersPanel } from './scene/LayersPanel';
 import { SceneCanvas } from './scene/SceneCanvas';
 import { SceneToolbar } from './scene/SceneToolbar';
 import { ClipPanel } from './timeline/ClipPanel';
+import { SceneStrip } from './timeline/SceneStrip';
 import { Timeline } from './timeline/Timeline';
 
 // Everything under app/renderer/src/dev/ (and tests/fixtures) is loaded
@@ -38,8 +39,12 @@ import { Timeline } from './timeline/Timeline';
 
 // The timeline dock (Phase 6b): the timeline spans the full window width
 // beneath all three columns, and the divider above it drags its height.
-const TIMELINE_DEFAULT_HEIGHT_PX = 260;
-const TIMELINE_MIN_HEIGHT_PX = 160;
+// Phase 7: the scene strip lives inside the dock, above the timeline's
+// header, and takes ~36 px of it — both heights grew by that much so the
+// timeline's camera row and Sound hint stay visible at the minimum
+// (Alek's note 2; still UI state, not saved, never an undo step).
+const TIMELINE_DEFAULT_HEIGHT_PX = 296;
+const TIMELINE_MIN_HEIGHT_PX = 196;
 /** The least height the three columns keep while the divider drags. */
 const COLUMNS_MIN_HEIGHT_PX = 220;
 
@@ -196,6 +201,9 @@ function ProjectView({
   // the one that is.
   const [selectedLayerId, setSelectedLayerId] = useState<string | undefined>(undefined);
   const [selectedClipId, setSelectedClipId] = useState<string | undefined>(undefined);
+  // The selected scene's id (Phase 7, decision c) — undefined until a
+  // card is clicked; the derived `scene` below falls back to the first.
+  const [selectedSceneId, setSelectedSceneId] = useState<string | undefined>(undefined);
   const [opacityPreview, setOpacityPreview] = useState<number | undefined>(undefined);
   // The playhead (seconds, frame-snapped) — UI state like selection: the
   // canvas draws the scene at this time and every edit writes the keyframe
@@ -259,8 +267,13 @@ function ProjectView({
   const editingAsset = editingMaskOf !== undefined
     ? doc.assets.find((a) => a.id === editingMaskOf)
     : undefined;
-  // The editor shows the first scene until multiple scenes arrive (Phase 7).
-  const scene = doc.scenes[0];
+  // The selected scene (Phase 7, decision c) — UI state like layer
+  // selection: not saved, not an undo step. If undo removes the selected
+  // scene, selection falls back to the first scene.
+  const scene =
+    (selectedSceneId !== undefined
+      ? doc.scenes.find((s) => s.id === selectedSceneId)
+      : undefined) ?? doc.scenes[0];
   // A selection whose layer or clip was removed (or undone away) simply ends.
   const selectedLayer =
     selectedLayerId !== undefined
@@ -421,6 +434,20 @@ function ProjectView({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [editingMaskOf, selectedLayer, selectedClip, scene, playhead, applyEdit, canvasPick, cameraMode]);
+
+  // Selecting a scene switches the WHOLE editor to it (decision c): the
+  // canvas, the panels, the toolbar, every add-target and the timeline
+  // follow the derived `scene`; the playhead resets to 0, layer and clip
+  // selection clear, camera mode and a pending canvas pick end.
+  const selectScene = useCallback((sceneId: string): void => {
+    setSelectedSceneId(sceneId);
+    setPlayhead(0);
+    setSelectedLayerId(undefined);
+    setSelectedClipId(undefined);
+    setCameraMode(false);
+    setCameraPreview(undefined);
+    setCanvasPick(undefined);
+  }, []);
 
   const toggleCameraMode = useCallback((): void => {
     setCameraMode((was) => {
@@ -596,6 +623,16 @@ function ProjectView({
                 onPointerCancel={onDividerUp}
               />
               <div className="tl-dock" style={{ height: dockHeight }}>
+                <SceneStrip
+                  document={doc}
+                  selectedSceneId={scene.id}
+                  applyEdit={applyEdit}
+                  onSelectScene={selectScene}
+                  onEditTransition={() => {
+                    // The Transition panel arrives with the next step; the
+                    // arrows already show each transition in their tooltip.
+                  }}
+                />
                 <Timeline
                   projectDir={opened.projectDir}
                   document={doc}
