@@ -1,7 +1,7 @@
 # DOC-10 — Project Tracker
 
 **Status:** Active
-**Last updated:** 2026-09-05 (Phase 7 step 1 — CL-0067)
+**Last updated:** 2026-09-05 (Phase 7 step 2 — CL-0068)
 **Purpose:** The one page to read when returning to the project. Where we are, what is done, what is next, and what is waiting on Alek. Updated with every change-log entry (DOC-04).
 
 ---
@@ -29,6 +29,7 @@ Step 9 done (CL-0062): M-1.3 written as the full interface tour and M-5.5's clip
 **Phase 6b — the full-width timeline (CL-0064):** the one usability change from Alek's try-out. The timeline now spans the whole window width beneath all three columns (the tracks get the whole width), with a draggable horizontal divider setting its height — UI state like zoom, not saved, never an undo step. Layout/CSS only: Timeline.tsx and sceneStage untouched, the 14 snapshots unchanged; live-verified with 34 scripted assertions including the earlier timeline assertions re-run. M-1.3 retold.
 **Verified by Alek (CL-0066, on 2026-09-04):** the Phase 6b layout tried by hand — the timeline spans the window, the divider resizes it, the canvas still fits. Accepted.
 **Phase 7 — Scenes and transitions: IN PROGRESS (plan approved by Alek 2026-09-05, with two adjustments: transition lengths clamp first then snap DOWN to a whole frame; the canvas must provably rebuild when a neighbouring scene's textures finish loading).** Fable foundations under way. Step 1 done (CL-0067): Scene's optional transitionOutSeconds (older files load unchanged), TRANSITION_TYPES, plain-language validation for unknown types and nonsense lengths, and the one-undo-step scene-list edits — insertScene, duplicateScene (fresh ids, attached clips follow their layer), reorderScene, removeScene refusing the last scene, setSceneTransitionLength through the ONE shared clamp (0.1–3 s, half the shorter neighbour, then floor to a whole frame) in the new projectTime.ts. 24 new tests. Nothing user-visible yet.
+Step 2 done (CL-0068): the pure timing model — projectTime.ts in full (effective transition lengths, global starts under the overlap model, the total, global ↔ local both ways, which scene(s) show with the transition's progress; at most two scenes ever show), transition.ts (every type's exact numbers per frame: crossfade linear, ease-in-out slide pushes, 2.5× zooms with linear fades, the left-to-right wipe edge), and projectSchedule.ts (every scene's previewSchedule shifted by its global start — the one translation export and preview will consume; clips still cut at their own scene's end; both scenes audible in an overlap, no automatic fades). 42 new tests including the worked example. Nothing user-visible yet.
 **Next action:** Phase 7 continues from the DOC-11 Appendix H kickoff prompt (CL-0065; decisions a–r in its addendum): Fable builds the remaining foundations (the overlap timing model and transition arithmetic in full, projectStage, export over every scene, the two-scene export check, nine new snapshots) and hands the scene strip, Transition panel, switching and play-through to Opus.
 
 ### 1b. Hand-off notes (now historical — the work below was completed by Fable in CL-0031..33, built to these decisions)
