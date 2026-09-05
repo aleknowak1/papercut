@@ -1,7 +1,7 @@
 # DOC-10 — Project Tracker
 
 **Status:** Active
-**Last updated:** 2026-09-05 (Phase 7 UI step 3, play-through — CL-0076)
+**Last updated:** 2026-09-05 (Phase 7 Usable pending Alek's try-out — CL-0077)
 **Purpose:** The one page to read when returning to the project. Where we are, what is done, what is next, and what is waiting on Alek. Updated with every change-log entry (DOC-04).
 
 ---
@@ -37,7 +37,8 @@ Step 8 done (CL-0071): the two-scene export check — 13.500 s and 405 frames to
 UI step 1 done (CL-0074): **the scene strip is usable** — cards with number/name/duration, transition arrows, "+ Scene" (inserts after the selected scene), Duplicate/◀ ▶/rename/✕ (last scene refused; delete selects the next neighbour), the total at the right, and scene selection switching the whole editor as UI state (decision c); the dock grew by the strip's 36 px so the timeline keeps its CL-0064 minimum room. Live-verified with 13 scripted assertions.
 UI step 2 done (CL-0075): **the Transition panel** (Type with Cut first, Length hidden for Cut with the clamped "runs as" line, a hint per type, Done/Escape, one undo step per change) and the ruler's amber transition-in/out windows from effectiveTransitionSeconds. Live-verified with 10 scripted assertions.
 UI step 3 done (CL-0076): **play flows across scenes** — the whole run's sound scheduled ONCE from projectSchedule at the global playhead, the current scene switching at each boundary as pure UI state (incoming playhead at the overlap length), stopping at the last scene's end; play at the very end restarts the CURRENT scene (Alek's note 1); scrubbing stays local and silent. Live-verified with 7 scripted assertions.
-**Next action — the Phase 7 hand-off (Fable → Opus, decision q; Alek may run it on Fable as in Phases 5–6):** the foundations stand green and proven — the document edits, projectTime (the overlap model; the ONE clamp), transition.ts (every type's numbers), projectSchedule (the one audio translation), projectStage (the canvas and export both draw through it), export over every scene, the two-scene export check (13.5 s / 405 frames / the 11.0 s beep / the brightness probe) and 23 snapshots. The next session builds the UI half from DOC-11 Appendix H steps 5–7 and the rest of 9, decisions a–d, k–m: the scene strip above the timeline header (cards, insert-after "+ Scene", Duplicate, rename, ◀ ▶, ✕ refusing the last scene, the total at the right — the edits all exist), scene selection as UI state switching canvas/panels/toolbar/add-targets/timeline (decision c exactly; selection falls back to the first scene if undo removes it), the Transition panel (Type with Cut first, Length hidden for Cut through setSceneTransitionLength, a hint per type from M-6.2, Done/Escape), the ruler's tinted transition-in/out windows (effectiveTransitionSeconds gives the lengths), and play-through (decision k: at scene A's end the current scene switches to B with B's playhead at the overlap length, sound scheduled ONCE from projectSchedule at the global playhead — the scene switch is UI state and must not tear the play run down; scrubbing stays silent and local; stop at the last scene's end). Use projectTime for every global↔local mapping — no timing arithmetic in the UI. Then M-6.1, M-1.3's one strip sentence, live verification as Phases 5–6, and the closing hands-on flow for Alek (add a second scene, put something in it, set a crossfade, play across the boundary, reorder, duplicate, delete, reopen). Session prompt: **"Read CLAUDE.md and DOC-10, then continue Phase 7: build the scene strip, the Transition panel, scene switching and play-through on the finished foundations (DOC-11 Appendix H steps 5–7 and 9, decisions a–d and k–m; the hand-off in DOC-10 §1)."**
+Close-out done (CL-0077): M-6.1 and M-1.3's strip sentence written; the closing sweep ran Alek's exact hands-on flow live through the real UI — add a scene, fill it, set a crossfade, play across, reorder, duplicate, delete, rename, reopen — 10 of 10. **Phase 7 is Usable pending Alek's hands-on try-out (§5).**
+**Next action:** Alek tries Phase 7 by hand (the §5 row — this pass also stands in for the foundations’ verification, CL-0073); once it passes, Phase 7 is recorded Complete and Phase 8 (Text and captions) is planned in the Cowork session per DOC-11 §4.
 
 ### 1b. Hand-off notes (now historical — the work below was completed by Fable in CL-0031..33, built to these decisions)
 
@@ -62,7 +63,7 @@ Phases run in this order; a phase does not start until the previous one is usabl
 | 4 | **Scene and layers** | Background, character/prop layers, ordering, opacity, lock/hide, placing and sizing on canvas | **Complete** (CL-0037–0041; verified by Alek by hand, CL-0043) | Fable |
 | 5 | **Animation** | Keyframes (position, scale, rotation, flip, opacity), easing, motion presets, pose swapping, camera pan/zoom, render snapshot checks | **Complete** (CL-0044–0052; reviewer audit run; verified by Alek, CL-0048 and CL-0054) | Fable throughout (Alek's choice, as Phases 3–4) |
 | 6 | **Timeline and audio** | Multi-track timeline, scrub/snap/zoom, audio clips (volume, fade, trim), imported sounds | **Complete** (CL-0055–0062; verified by Alek by hand, CL-0063) | Fable throughout (foundations CL-0055–0057, UI CL-0059–0062) |
-| 7 | **Scenes and transitions** | Multiple scenes, reorder, seven transition types | **Planned** (DOC-11 Appendix H, CL-0065) | Fable foundations, then Opus UI (Alek may run both on Fable, as Phases 5–6) |
+| 7 | **Scenes and transitions** | Multiple scenes, reorder, seven transition types | **Usable** (CL-0067–CL-0077; M-6 written; Alek's try-out in §5) | Fable throughout (both halves; Alek's choice, as Phases 5–6) |
 | 8 | **Text and captions** | Titles/captions, OFL fonts, fade/pop animation | Not started | Opus |
 | 9 | **Real export** | Platform presets, 720p/1080p, 30/60 fps, optional "AI-generated" label, progress and reveal-in-folder | Not started | Opus |
 | 10 | **Company server** | Accounts, subscription via merchant of record, usage caps, `/tts` and `/agent` proxies, hosting chosen (OQ-011, OQ-018) | Not started | Fable |
@@ -97,8 +98,8 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 | Camera pan and zoom | 5 | ☑ (CL-0044/45 engine + render; CL-0050 authoring UI, live-verified with 19 scripted assertions) | M-4.6 |
 | Multi-track timeline, scrub, snap, zoom | 6 | ☑ (CL-0059/60/62; live-verified incl. 60 fps scrubbing with 21 rows; M-1.3 written) | M-1.3 |
 | Audio clips: volume, fade, trim | 6 | ☑ (CL-0055/57 document+export; CL-0060 lanes, gestures, clip panel; CL-0061 preview; M-5.5 written, CL-0062) | M-5.5 |
-| Multiple scenes, reorder, duration | 7 | ☐ | M-6.1, M-6.3 |
-| Transitions: cut, crossfade, slide ×4, zoom in/out, wipe | 7 | ☐ | M-6.2 |
+| Multiple scenes, reorder, duration | 7 | ☑ (CL-0074/76; live-verified; M-6.1/M-6.3 written) | M-6.1, M-6.3 |
+| Transitions: cut, crossfade, slide ×4, zoom in/out, wipe | 7 | ☑ (CL-0068/69/71/75; 9 snapshot references; M-6.2 written) | M-6.2 |
 | Titles and captions with animation | 8 | ☐ | M-7.1, M-7.2 |
 | Export presets, resolution, frame rate | 9 | ☐ | M-8.1, M-8.2 |
 | Optional "AI-generated" label | 9 | ☐ | M-8.1, M-9.6 |
@@ -135,6 +136,7 @@ Run everything with one command: `npm run check` (315 tests + licenses + build s
 
 | Item | Needed by | Ref |
 |------|-----------|-----|
+| Try Phase 7 by hand (this pass also stands in for the foundations' verification, CL-0073): open a project, **+ Scene** and put something in the new scene (a background at least), click the arrow between the cards and set a **Crossfade**, select scene 1, put the playhead near its end, press **play and watch it flow across** (the editor follows; the sound never restarts), then **reorder** with ◀ ▶, **⧉ duplicate**, **✕ delete** (one Ctrl+Z each), rename a card, and **reopen** the project — everything kept. | Now (verifies Phase 7, CL-0067–CL-0077) | M-6.1–M-6.3 |
 | If you have a real iPhone photo (.heic): import it the same way — it should just appear (this laptop has the HEIF extension). That verifies the HEIC works-path; the missing-extension message is covered by checks. | Now (verifies CL-0029) | M-9.2 |
 | Create an OpenAI account, generate a key, set a small monthly hard cap, keep the key private | Phase 11 (not before) | DOC-09 §5 |
 | Choose merchant of record after Claude's comparison | Phase 10 | OQ-018 |

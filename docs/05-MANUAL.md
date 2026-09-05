@@ -1,7 +1,7 @@
 # DOC-05 — User Manual
 
 **Status:** In progress (sections are filled in as each feature ships; a section is not written until its feature exists)
-**Last updated:** 2026-09-04 (M-1.3 retold for the Phase 6b layout: the timeline spans the full window width with a height divider)
+**Last updated:** 2026-09-05 (M-6.1–M-6.3 written for Phase 7; M-1.3 gains the scene strip)
 
 Sections are numbered M-N.N and referenced from DOC-01 and DOC-04. Every feature listed in DOC-01 §5.1 must have a section here before v1.0 ships.
 
@@ -70,7 +70,10 @@ becomes the **Camera** panel (M-4.6), and with a sound clip selected it
 becomes the **Sound clip** panel (M-5.5). **Escape** steps back out of
 whichever is open.
 
-**Bottom — the timeline.** The header carries the transport: **▶**
+**Bottom — the timeline.** Along its top runs the **scene strip** (M-6.1):
+one card per scene in play order, the transition arrows between them, and
+the whole video's length at the right — click a card to work on that
+scene. The header carries the transport: **▶**
 play/pause (**Space**), one-frame steps **‹ ›** (the **,** and **.**
 keys), keyframe jumps **« »**, the time and frame readout, the **Snap**
 toggle, the zoom slider, and the scene **Duration**. Under it, the
@@ -536,7 +539,51 @@ they are computed by the same code, so what you hear is what you get:
   export screen.
 
 ## M-6 Scenes and transitions
-- M-6.1 Adding and reordering scenes
+
+### M-6.1 Adding and reordering scenes
+
+Your video is a row of scenes, and the **scene strip** — the row of cards
+along the top of the timeline — is where you manage them. Each card
+shows the scene's number in play order, its name, and its length; small
+arrows between the cards show how each scene hands over to the next
+(M-6.2), and the whole video's length sits at the strip's right end.
+
+**Working on a scene.** Click a card and the whole editor switches to
+that scene: the canvas, the Layers panel, the timeline, and every "Add
+to scene" and "Add to timeline" button now mean *this* scene. The
+playhead starts at 0:00 and anything you had selected is deselected.
+Which scene you are on is not saved and is never an undo step — like
+selection, it is just where you are looking.
+
+**The selected card's controls:**
+
+- **+ Scene** (at the strip's end) — a new empty scene right after the
+  selected one, five seconds long, ready to fill. You switch to it at
+  once.
+- **⧉ Duplicate** — a complete copy of the scene right after it:
+  background, layers, keyframes, camera moves, sound clips, transition,
+  everything. The copy is its own scene — changing it never touches the
+  original. This is also how you carry a character's layout from one
+  scene into the next.
+- **◀ ▶** — move the scene one place earlier or later in the video. The
+  scene takes everything with it, its transition included. One undo step
+  per press.
+- **Click the name** — rename in place. **Enter** confirms, **Escape**
+  cancels.
+- **Transition** (or the arrow after the card) — the transition into the
+  next scene (M-6.2). The last scene has neither: there is nothing after
+  it.
+- **✕ Delete** — removes the scene and everything in it (your photos and
+  sounds stay in Assets). You land on the neighbouring scene. A project
+  always keeps at least one scene, so the last card's ✕ is disabled —
+  and **Ctrl+Z** brings a deleted scene back whole.
+
+**Playing across scenes.** Press **▶** and the preview plays on through
+each transition to the end of the last scene, the editor following along
+scene by scene. Pressing play at the very end starts the scene you are
+on again — to watch the whole video, click scene 1's card and play from
+there. The amber bands at the ends of the timeline's ruler mark the
+frames a transition shares with the neighbouring scene (M-6.2).
 
 ### M-6.2 Transition types and when to use them
 
