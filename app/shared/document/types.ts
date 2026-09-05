@@ -28,6 +28,20 @@ export type TransitionType =
   | 'zoom-out'
   | 'wipe';
 
+/** The seven transitions (plus cut) as a list, for validating loaded
+    files — the same pattern as EASING_TYPES (Phase 7 decision f). */
+export const TRANSITION_TYPES: readonly TransitionType[] = [
+  'cut',
+  'crossfade',
+  'slide-left',
+  'slide-right',
+  'slide-up',
+  'slide-down',
+  'zoom-in',
+  'zoom-out',
+  'wipe'
+];
+
 export type AssetType = 'image' | 'cutout' | 'audio';
 
 /**
@@ -160,7 +174,16 @@ export interface Scene {
   readonly cameraKeyframes: readonly CameraKeyframe[];
   readonly layers: readonly Layer[];
   readonly audioClips: readonly AudioClip[];
+  /** The transition INTO the next scene. Absent means 'cut'. */
   readonly transitionOut?: TransitionType;
+  /**
+   * How long that transition runs, in seconds. Absent means 0.5 — older
+   * project files never carry this field. Consumers clamp it on use
+   * (timeline/projectTime.ts): 0.1–3 s, at most half the shorter of the
+   * two scenes it joins, then down to a whole frame. Kept but ignored on
+   * the last scene and when the transition is a cut.
+   */
+  readonly transitionOutSeconds?: number;
 }
 
 export interface ProjectDocument {

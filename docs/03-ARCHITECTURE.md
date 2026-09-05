@@ -73,7 +73,12 @@ project
   characters[]       → id, name, poses[] (each pose = a cutout asset), voice
   scenes[]           → id, name, duration, background asset, background fit
                         (cover, the default, or stretch), camera keyframes,
-                        layers[], audioClips[], transitionOut
+                        layers[], audioClips[], transitionOut (into the next
+                        scene; absent = cut) + its length in seconds (absent
+                        = 0.5; on use clamped to 0.1–3 s and half the shorter
+                        of the two scenes it joins, then down to a whole
+                        frame — scenes OVERLAP by that length, so the video's
+                        total is the durations minus the transitions)
     layers[]         → id, source (character+pose | prop | text), keyframes[],
                         hidden (not drawn anywhere, export included),
                         locked (still renders; refuses selection/dragging)

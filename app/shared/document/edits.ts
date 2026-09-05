@@ -6,6 +6,8 @@
 // history entry, not a duplicate.
 
 import { secondsOf, snapToFrame } from '../animation/time';
+import { clampTransitionLength } from '../timeline/projectTime';
+import { newId } from './create';
 import type {
   Asset,
   AudioClip,
@@ -159,7 +161,88 @@ export function addScene(doc: ProjectDocument, scene: Scene): ProjectDocument {
   return { ...doc, scenes: [...doc.scenes, scene] };
 }
 
+/**
+ * Inserts a scene right after another one — how "+ Scene" places its new
+ * scene beside the selected one (Phase 7 decision b). An unknown
+ * afterSceneId returns the SAME document, so no empty undo step.
+ */
+export function insertScene(
+  doc: ProjectDocument,
+  afterSceneId: string,
+  scene: Scene
+): ProjectDocument {
+  const at = doc.scenes.findIndex((s) => s.id === afterSceneId);
+  if (at < 0) return doc;
+  const scenes = [...doc.scenes];
+  scenes.splice(at + 1, 0, scene);
+  return { ...doc, scenes };
+}
+
+/**
+ * Copies a whole scene — layers, keyframes, camera, clips, background,
+ * transition — with fresh ids for the scene, its layers and its clips
+ * (keyframes carry no ids), inserted right after the original. A clip
+ * attached to one of the scene's own layers follows that layer's new id.
+ * `makeId` exists so tests can pass a deterministic id maker; the app
+ * uses the default. An unknown scene returns the SAME document.
+ */
+export function duplicateScene(
+  doc: ProjectDocument,
+  sceneId: string,
+  makeId: () => string = newId
+): ProjectDocument {
+  const at = doc.scenes.findIndex((s) => s.id === sceneId);
+  const scene = doc.scenes[at];
+  if (at < 0 || scene === undefined) return doc;
+  const newLayerIds = new Map(scene.layers.map((l) => [l.id, makeId()]));
+  const copy: Scene = {
+    ...scene,
+    id: makeId(),
+    name: `${scene.name} copy`,
+    layers: scene.layers.map((l) => ({ ...l, id: newLayerIds.get(l.id) ?? l.id })),
+    audioClips: scene.audioClips.map((c) => ({
+      ...c,
+      id: makeId(),
+      ...(c.attachedToLayerId !== undefined && newLayerIds.has(c.attachedToLayerId)
+        ? { attachedToLayerId: newLayerIds.get(c.attachedToLayerId) }
+        : {})
+    }))
+  };
+  const scenes = [...doc.scenes];
+  scenes.splice(at + 1, 0, copy);
+  return { ...doc, scenes };
+}
+
+/**
+ * Moves a scene one place earlier (-1) or later (+1) in play order — the
+ * strip's ◀ ▶ buttons, one undo step each. The scene takes its
+ * transitionOut with it (the transition lives on the scene). A move past
+ * either end, or of an unknown scene, returns the SAME document.
+ */
+export function reorderScene(
+  doc: ProjectDocument,
+  sceneId: string,
+  direction: -1 | 1
+): ProjectDocument {
+  const from = doc.scenes.findIndex((s) => s.id === sceneId);
+  if (from < 0) return doc;
+  const to = from + direction;
+  if (to < 0 || to >= doc.scenes.length) return doc;
+  const scenes = [...doc.scenes];
+  const [moved] = scenes.splice(from, 1);
+  if (moved === undefined) return doc;
+  scenes.splice(to, 0, moved);
+  return { ...doc, scenes };
+}
+
+/**
+ * Removes a scene — REFUSING the last one: a project always has a scene
+ * (Phase 7 decision b). The rule lives here, not just on the strip's ✕
+ * button, because the agent (ADR-011) will one day call this directly.
+ * Refusal, or an unknown scene, returns the SAME document.
+ */
 export function removeScene(doc: ProjectDocument, sceneId: string): ProjectDocument {
+  if (doc.scenes.length <= 1 || !doc.scenes.some((s) => s.id === sceneId)) return doc;
   return { ...doc, scenes: doc.scenes.filter((s) => s.id !== sceneId) };
 }
 
@@ -196,7 +279,37 @@ export function setSceneTransition(
   sceneId: string,
   transitionOut: TransitionType | undefined
 ): ProjectDocument {
+  const scene = doc.scenes.find((s) => s.id === sceneId);
+  if (scene === undefined || scene.transitionOut === transitionOut) return doc;
   return replaceScene(doc, sceneId, (s) => ({ ...s, transitionOut }));
+}
+
+/**
+ * Sets how long a scene's transition into the next scene runs. The wanted
+ * length is made legal by the ONE shared clamp (timeline/projectTime.ts):
+ * 0.1–3 s, at most half the shorter of the two scenes it joins, then
+ * snapped DOWN to a whole frame so every scene's global start lands on an
+ * exact frame. On the last scene only the 0.1–3 s clamp applies (the
+ * value is kept but ignored until a scene follows). A length that changes
+ * nothing, a nonsense number, or an unknown scene returns the SAME
+ * document — no empty undo step.
+ */
+export function setSceneTransitionLength(
+  doc: ProjectDocument,
+  sceneId: string,
+  seconds: number
+): ProjectDocument {
+  const at = doc.scenes.findIndex((s) => s.id === sceneId);
+  const scene = doc.scenes[at];
+  if (scene === undefined || !Number.isFinite(seconds)) return doc;
+  const next = clampTransitionLength(
+    seconds,
+    scene.durationSeconds,
+    doc.scenes[at + 1]?.durationSeconds,
+    doc.fps
+  );
+  if (!(next > 0) || next === scene.transitionOutSeconds) return doc;
+  return replaceScene(doc, sceneId, (s) => ({ ...s, transitionOutSeconds: next }));
 }
 
 // ---- layers ----

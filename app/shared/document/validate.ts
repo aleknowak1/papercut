@@ -2,7 +2,12 @@
 // edited by hand, half-written by a crash, or from a future version must
 // produce a clear error, never a broken editor.
 
-import { EASING_TYPES, PROJECT_FORMATS, type ProjectDocument } from './types';
+import {
+  EASING_TYPES,
+  PROJECT_FORMATS,
+  TRANSITION_TYPES,
+  type ProjectDocument
+} from './types';
 
 class ValidationError extends Error {}
 
@@ -149,7 +154,25 @@ function checkScene(value: unknown, path: string): void {
   value['layers'].forEach((l, i) => checkLayer(l, `${path}.layers[${i}]`));
   checkArray(value['audioClips'], `${path}.audioClips`);
   value['audioClips'].forEach((c, i) => checkAudioClip(c, `${path}.audioClips[${i}]`));
-  checkOptionalString(value['transitionOut'], `${path}.transitionOut`);
+  // Only the nine transition names exist (Phase 7 decision f); anything
+  // else would reach the renderer instead of failing here with a name.
+  const transition = value['transitionOut'];
+  if (transition !== undefined && !TRANSITION_TYPES.includes(transition as never)) {
+    fail(
+      `${path}.transitionOut`,
+      `one of ${TRANSITION_TYPES.map((t) => `"${t}"`).join(', ')}`
+    );
+  }
+  // The length must make sense when present; an over-long one is loaded
+  // and clamped on use, so editing a neighbour's duration can never make
+  // a saved file invalid.
+  const transitionLength = value['transitionOutSeconds'];
+  if (transitionLength !== undefined) {
+    checkNumber(transitionLength, `${path}.transitionOutSeconds`);
+    if ((transitionLength as number) <= 0) {
+      fail(`${path}.transitionOutSeconds`, 'more than zero seconds');
+    }
+  }
 }
 
 /**
