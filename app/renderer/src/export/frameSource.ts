@@ -2,8 +2,10 @@
 //
 // The encode pipeline only ever asks a FrameSource "draw frame N" — it does
 // not know or care how frames are drawn. Since Phase 4 the drawing itself
-// lives in the shared scene stage (scene/sceneStage.ts), the SAME code the
-// live scene canvas shows on screen — so what the user sees is what
+// lives in the shared scene renderer, and since Phase 7 in projectStage
+// (scene/projectStage.ts): the WHOLE project at a global time — every
+// scene, and two scenes blended during a transition — the SAME code the
+// live scene canvas shows on screen, so what the user sees is what
 // exports. This file only adds what export needs around it: an off-screen
 // renderer at the output resolution, and the dev/check-only debug overlay
 // (frame counter, timecode, beep flashes).
@@ -12,10 +14,10 @@
 // eval-based fast path for a safe one.
 import 'pixi.js/unsafe-eval';
 import { Container, Graphics, Text, Texture, WebGLRenderer } from 'pixi.js';
-import type { ProjectDocument, Scene } from '../../../shared/document/types';
+import type { ProjectDocument } from '../../../shared/document/types';
 import { frameOf, secondsOf } from '../../../shared/animation/time';
 import { REFERENCE_SIZE } from '../../../shared/scene/geometry';
-import { createSceneStage } from '../scene/sceneStage';
+import { createProjectStage } from '../scene/projectStage';
 
 export interface FrameSource {
   /** Draws frame `frameIndex` and returns the canvas holding the result. */
@@ -25,17 +27,17 @@ export interface FrameSource {
 
 export { REFERENCE_SIZE } from '../../../shared/scene/geometry';
 
-export interface SceneFrameSourceOptions {
+export interface ProjectFrameSourceOptions {
   readonly document: ProjectDocument;
-  readonly scene: Scene;
   readonly width: number;
   readonly height: number;
   readonly fps: number;
-  /** Decoded images for every image asset the scene uses, by asset id. */
+  /** Decoded images for every image asset ANY scene uses, by asset id. */
   readonly images: ReadonlyMap<string, ImageBitmap>;
   /** Burn a frame counter and timecode into every frame (dev/check only). */
   readonly debugOverlay: boolean;
-  /** Flash the whole frame white for flashFrames frames at each of these times. */
+  /** Flash the whole frame white for flashFrames frames at each of these
+      GLOBAL times. */
   readonly flashTimes: readonly number[];
   readonly flashFrames: number;
 }
@@ -48,10 +50,10 @@ function timecode(seconds: number): string {
   return `${pad(mins, 2)}:${pad(secs, 2)}.${pad(millis, 3)}`;
 }
 
-export async function createSceneFrameSource(
-  options: SceneFrameSourceOptions
+export async function createProjectFrameSource(
+  options: ProjectFrameSourceOptions
 ): Promise<FrameSource> {
-  const { width, height, fps, scene } = options;
+  const { width, height, fps } = options;
   const [refWidth] = REFERENCE_SIZE[options.document.format];
   const scale = width / refWidth;
 
@@ -68,14 +70,14 @@ export async function createSceneFrameSource(
 
   const stage = new Container();
 
-  // The shared scene picture, in reference pixels, scaled to the output.
+  // The shared project picture, in reference pixels, scaled to the output.
   const textures = new Map<string, Texture>();
   for (const [assetId, bitmap] of options.images) {
     textures.set(assetId, Texture.from(bitmap));
   }
-  const sceneStage = createSceneStage({ document: options.document, scene, textures });
-  sceneStage.container.scale.set(scale);
-  stage.addChild(sceneStage.container);
+  const projectStage = createProjectStage({ document: options.document, textures });
+  projectStage.container.scale.set(scale);
+  stage.addChild(projectStage.container);
 
   // Full-frame white flash, shown only during flash frames (checks only).
   const flash = new Graphics().rect(0, 0, width, height).fill(0xffffff);
@@ -103,7 +105,7 @@ export async function createSceneFrameSource(
   return {
     drawFrame(frameIndex: number): HTMLCanvasElement | OffscreenCanvas {
       const time = secondsOf(frameIndex, fps);
-      sceneStage.update(time);
+      projectStage.update(time);
 
       flash.visible = flashFrameStarts.some(
         (start) => frameIndex >= start && frameIndex < start + options.flashFrames
@@ -117,7 +119,7 @@ export async function createSceneFrameSource(
       return renderer.canvas;
     },
     destroy(): void {
-      sceneStage.destroy();
+      projectStage.destroy();
       for (const texture of textures.values()) texture.destroy(false);
       stage.destroy({ children: true });
       renderer.destroy();

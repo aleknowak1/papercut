@@ -1,7 +1,7 @@
 # DOC-10 — Project Tracker
 
 **Status:** Active
-**Last updated:** 2026-09-05 (Phase 7 step 3 — CL-0069)
+**Last updated:** 2026-09-05 (Phase 7 step 4 — CL-0070)
 **Purpose:** The one page to read when returning to the project. Where we are, what is done, what is next, and what is waiting on Alek. Updated with every change-log entry (DOC-04).
 
 ---
@@ -31,6 +31,7 @@ Step 9 done (CL-0062): M-1.3 written as the full interface tour and M-5.5's clip
 **Phase 7 — Scenes and transitions: IN PROGRESS (plan approved by Alek 2026-09-05, with two adjustments: transition lengths clamp first then snap DOWN to a whole frame; the canvas must provably rebuild when a neighbouring scene's textures finish loading).** Fable foundations under way. Step 1 done (CL-0067): Scene's optional transitionOutSeconds (older files load unchanged), TRANSITION_TYPES, plain-language validation for unknown types and nonsense lengths, and the one-undo-step scene-list edits — insertScene, duplicateScene (fresh ids, attached clips follow their layer), reorderScene, removeScene refusing the last scene, setSceneTransitionLength through the ONE shared clamp (0.1–3 s, half the shorter neighbour, then floor to a whole frame) in the new projectTime.ts. 24 new tests. Nothing user-visible yet.
 Step 2 done (CL-0068): the pure timing model — projectTime.ts in full (effective transition lengths, global starts under the overlap model, the total, global ↔ local both ways, which scene(s) show with the transition's progress; at most two scenes ever show), transition.ts (every type's exact numbers per frame: crossfade linear, ease-in-out slide pushes, 2.5× zooms with linear fades, the left-to-right wipe edge), and projectSchedule.ts (every scene's previewSchedule shifted by its global start — the one translation export and preview will consume; clips still cut at their own scene's end; both scenes audible in an overlap, no automatic fades). 42 new tests including the worked example. Nothing user-visible yet.
 Step 3 done (CL-0069): projectStage — one sceneStage per scene, one or two posed per global time with transition.ts's numbers applied from outside (sceneStage unchanged, the 14 snapshots untouched); the canvas draws through it at the global time of (current scene, local playhead), textures loaded for the current scene and both neighbours with the textureVersion rebuild guaranteeing a neighbour never stays drawn without its layers.
+Step 4 done (CL-0070): export renders every scene — frame count from projectTime's total, every scene's images and sounds loaded, audio mixed from projectSchedule through the unchanged mixer, frames drawn by projectStage at global time (frameSource now createProjectFrameSource); the export check re-ran green through the new path.
 **Next action:** Phase 7 continues from the DOC-11 Appendix H kickoff prompt (CL-0065; decisions a–r in its addendum): Fable builds the remaining foundations (the overlap timing model and transition arithmetic in full, projectStage, export over every scene, the two-scene export check, nine new snapshots) and hands the scene strip, Transition panel, switching and play-through to Opus.
 
 ### 1b. Hand-off notes (now historical — the work below was completed by Fable in CL-0031..33, built to these decisions)
