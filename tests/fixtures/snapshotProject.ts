@@ -22,12 +22,14 @@ import type {
   Layer,
   ProjectDocument,
   ProjectFormat,
-  Scene
+  Scene,
+  TransitionType
 } from '../../app/shared/document/types';
 import { pixelPng, type PixelRgba } from './png';
 
 const FPS = 30;
 const BG = 'snap-bg';
+const BG2 = 'snap-bg2';
 const SHAPE = 'snap-shape';
 const POSE_A_ASSET = 'snap-pose-a';
 const POSE_B_ASSET = 'snap-pose-b';
@@ -50,6 +52,18 @@ function gradientBackground(): Uint8Array {
     const r = Math.round(24 + (110 * x) / (w - 1));
     const g = Math.round(36 + (80 * y) / (h - 1));
     return [r, g, 96, 255];
+  });
+}
+
+/** Scene B's background (Phase 7): a clearly different ramp, so any part
+    of either scene showing through a transition is unmistakable. */
+function secondBackground(): Uint8Array {
+  const w = 480;
+  const h = 270;
+  return pixelPng(w, h, (x, y): PixelRgba => {
+    const r = Math.round(140 - (110 * x) / (w - 1));
+    const b = Math.round(70 + (120 * y) / (h - 1));
+    return [r, 46, b, 255];
   });
 }
 
@@ -88,6 +102,7 @@ function figure(body: PixelRgba, stripe: PixelRgba): Uint8Array {
 export function snapshotAssetBytes(): ReadonlyMap<string, Uint8Array> {
   return new Map([
     [BG, gradientBackground()],
+    [BG2, secondBackground()],
     [SHAPE, diamondShape()],
     [POSE_A_ASSET, figure([40, 90, 200, 255], [90, 140, 240, 255])],
     [POSE_B_ASSET, figure([40, 160, 80, 255], [110, 220, 140, 255])]
@@ -134,6 +149,7 @@ function buildDocument(
     fps: FPS,
     assets: [
       { id: BG, type: 'image', file: 'assets/images/bg.png', metadata: { width: 480, height: 270 } },
+      { id: BG2, type: 'image', file: 'assets/images/bg2.png', metadata: { width: 480, height: 270 } },
       { id: SHAPE, type: 'cutout', file: 'assets/cutouts/shape.png', metadata: { width: 200, height: 200 } },
       { id: POSE_A_ASSET, type: 'cutout', file: 'assets/cutouts/a.png', metadata: { width: 120, height: 240 } },
       { id: POSE_B_ASSET, type: 'cutout', file: 'assets/cutouts/b.png', metadata: { width: 120, height: 240 } }
@@ -278,5 +294,83 @@ export function snapshotMoments(): readonly SnapshotMoment[] {
       ]),
       time: 3
     }
+  ];
+}
+
+// ---- the Phase 7 transition moments, through the REAL projectStage ----
+
+/**
+ * Two clearly different scenes joined by the named transition: scene A is
+ * the fixture's usual look (gradient, diamond, standing figure), scene B
+ * has the other background ramp, the waving pose and the diamond small
+ * and turned — so at mid-transition every visible strip, fade or scaled
+ * copy is unmistakably one scene or the other. A 1 s transition on a 4 s
+ * scene A puts the overlap at 3–4 s (scene B starts globally at 3 s); a
+ * cut puts scene B's first frame at exactly 4 s.
+ */
+function buildTwoSceneDocument(transition: TransitionType): ProjectDocument {
+  const base = buildDocument('16:9', [
+    shapeLayer([kf(0, 600, 540)]),
+    characterLayer([kf(0, 1300, 700, { scale: 1.2, poseId: POSE_A })])
+  ]);
+  const sceneA: Scene = {
+    ...base.scenes[0]!,
+    transitionOut: transition,
+    ...(transition === 'cut' ? {} : { transitionOutSeconds: 1 })
+  };
+  const sceneB: Scene = {
+    id: 'snap-scene-b',
+    name: 'Snapshot scene B',
+    durationSeconds: 4,
+    backgroundAssetId: BG2,
+    cameraKeyframes: [],
+    layers: [
+      {
+        id: 'snap-layer-shape-b',
+        name: 'Diamond B',
+        source: { kind: 'prop', assetId: SHAPE },
+        keyframes: [kf(0, 1500, 300, { scale: 0.7, rotation: 45 })]
+      },
+      {
+        id: 'snap-layer-char-b',
+        name: 'Figure B',
+        source: { kind: 'character', characterId: CHARACTER },
+        keyframes: [kf(0, 700, 640, { scale: 1.4, poseId: POSE_B })]
+      }
+    ],
+    audioClips: []
+  };
+  return { ...base, scenes: [sceneA, sceneB] };
+}
+
+export interface ProjectSnapshotMoment {
+  readonly name: string;
+  readonly document: ProjectDocument;
+  /** The GLOBAL second the moment renders at, through projectStage. */
+  readonly globalTime: number;
+}
+
+/**
+ * The nine Phase 7 moments (decision o), in contact-sheet order: every
+ * transition type mid-progress (global 3.5 s = progress 0.5 of the 1 s
+ * overlap starting at 3 s), and the first frame after a cut (global 4 s,
+ * scene B's local 0).
+ */
+export function projectSnapshotMoments(): readonly ProjectSnapshotMoment[] {
+  const mid = (type: TransitionType): ProjectSnapshotMoment => ({
+    name: `transition-${type}`,
+    document: buildTwoSceneDocument(type),
+    globalTime: 3.5
+  });
+  return [
+    mid('crossfade'),
+    mid('slide-left'),
+    mid('slide-right'),
+    mid('slide-up'),
+    mid('slide-down'),
+    mid('zoom-in'),
+    mid('zoom-out'),
+    mid('wipe'),
+    { name: 'cut-first-frame', document: buildTwoSceneDocument('cut'), globalTime: 4 }
   ];
 }

@@ -7,8 +7,10 @@ import {
   EXPORT_TEST,
   allBeepTimes,
   applyExportTestContent,
-  exportTestAssetFiles
+  exportTestAssetFiles,
+  scene2StartSeconds
 } from '../fixtures/exportTestProject';
+import { projectDurationSeconds } from '../../app/shared/timeline/projectTime';
 import { solidPng } from '../fixtures/png';
 
 describe('export test project', () => {
@@ -27,11 +29,31 @@ describe('export test project', () => {
   });
 
   it('places one clip at each of the agreed beep times, trimmed clips included', () => {
-    const starts = doc.scenes[0]?.audioClips.map((c) => c.startSeconds).sort((a, b) => a - b);
-    expect(starts).toEqual(allBeepTimes());
+    // Scene 1 carries seven clips, scene 2 one; together, shifted by the
+    // scene starts, they are exactly the GLOBAL beep list the export
+    // check listens for.
+    const global = [
+      ...doc.scenes[0]!.audioClips.map((c) => c.startSeconds),
+      ...doc.scenes[1]!.audioClips.map((c) => scene2StartSeconds() + c.startSeconds)
+    ].sort((a, b) => a - b);
+    expect(global).toEqual(allBeepTimes());
     // Every beep must finish before the video ends.
     const lastBeep = allBeepTimes().pop() ?? 0;
-    expect(lastBeep + EXPORT_TEST.beepSeconds).toBeLessThanOrEqual(EXPORT_TEST.durationSeconds);
+    expect(lastBeep + EXPORT_TEST.beepSeconds).toBeLessThanOrEqual(EXPORT_TEST.totalSeconds);
+  });
+
+  it('the second scene and the crossfade give exactly the agreed total', () => {
+    const scene2 = doc.scenes[1];
+    expect(doc.scenes).toHaveLength(2);
+    expect(scene2?.durationSeconds).toBe(EXPORT_TEST.scene2.durationSeconds);
+    expect(scene2?.backgroundAssetId).toBeDefined();
+    expect(scene2?.backgroundAssetId).not.toBe(doc.scenes[0]?.backgroundAssetId);
+    expect(doc.scenes[0]?.transitionOut).toBe('crossfade');
+    expect(doc.scenes[0]?.transitionOutSeconds).toBe(EXPORT_TEST.scene2.transitionSeconds);
+    expect(projectDurationSeconds(doc)).toBe(EXPORT_TEST.totalSeconds);
+    // Loading the test content again must not grow the project.
+    const again = applyExportTestContent(doc);
+    expect(again.scenes).toHaveLength(2);
   });
 
   it('the trimmed clips carry exactly the agreed trim values', () => {

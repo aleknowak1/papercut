@@ -54,14 +54,19 @@ async function runOne(
   await window.papercut.writeProjectFile(opened.projectDir, outputFile, result.mp4);
   update(`${label}: verifying…`);
   const verification = await verifyExportedMp4(result.mp4, {
-    durationSeconds: EXPORT_TEST.durationSeconds,
+    // The whole two-scene video (Phase 7): 10 + 4 − 0.5 s of crossfade
+    // overlap — the duration and frame count prove the timing model.
+    durationSeconds: EXPORT_TEST.totalSeconds,
     width,
     height,
     fps: EXPORT_TEST.fps,
-    // The five plain beeps plus the two TRIMMED clips (WAV and M4A): each
-    // must land on its flash, proving the decoder-and-trim path end to end.
+    // The five plain beeps, the two TRIMMED clips (WAV and M4A), and
+    // scene 2's beep at its SHIFTED global time (11.0 s): each must land
+    // on its flash, proving decoder, trim and the overlap model end to end.
     beepTimes: allBeepTimes(),
-    maxDriftMs: MAX_DRIFT_MS
+    maxDriftMs: MAX_DRIFT_MS,
+    // Three flash-free frames proving the crossfade blends the pictures.
+    crossfadeProbe: EXPORT_TEST.crossfadeProbe
   });
   return {
     label,

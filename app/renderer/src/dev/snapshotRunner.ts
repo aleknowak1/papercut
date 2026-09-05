@@ -11,8 +11,10 @@ import { Texture, WebGLRenderer } from 'pixi.js';
 import type { SnapshotRunSummary } from '../../../shared/ipc';
 import { REFERENCE_SIZE } from '../../../shared/scene/geometry';
 import { createSceneStage } from '../scene/sceneStage';
+import { createProjectStage } from '../scene/projectStage';
 import {
   SNAPSHOT_SIZE,
+  projectSnapshotMoments,
   snapshotAssetBytes,
   snapshotMoments
 } from '../../../../tests/fixtures/snapshotProject';
@@ -52,6 +54,27 @@ export async function runSnapshots(update: (text: string) => void): Promise<Snap
     return renderer;
   };
 
+  /** Renders whatever a moment posed and hands it to the main process. */
+  const readAndCompare = async (
+    name: string,
+    renderer: WebGLRenderer,
+    width: number,
+    height: number
+  ): Promise<void> => {
+    // Read the frame back through a plain 2D canvas.
+    const scratch = new OffscreenCanvas(width, height);
+    const ctx = scratch.getContext('2d');
+    if (ctx === null) throw new Error('no 2d context for snapshot readback');
+    ctx.drawImage(renderer.canvas as HTMLCanvasElement, 0, 0);
+    const pixels = ctx.getImageData(0, 0, width, height).data;
+    await window.papercut.devCompareSnapshot(
+      name,
+      width,
+      height,
+      new Uint8Array(pixels.buffer as ArrayBuffer)
+    );
+  };
+
   try {
     for (const moment of snapshotMoments()) {
       update(`snapshot ${moment.name}…`);
@@ -67,19 +90,25 @@ export async function runSnapshots(update: (text: string) => void): Promise<Snap
       stage.update(moment.time);
       renderer.render(stage.container);
       stage.destroy();
+      await readAndCompare(moment.name, renderer, size.width, size.height);
+    }
 
-      // Read the frame back through a plain 2D canvas.
-      const scratch = new OffscreenCanvas(size.width, size.height);
-      const ctx = scratch.getContext('2d');
-      if (ctx === null) throw new Error('no 2d context for snapshot readback');
-      ctx.drawImage(renderer.canvas as HTMLCanvasElement, 0, 0);
-      const pixels = ctx.getImageData(0, 0, size.width, size.height).data;
-      await window.papercut.devCompareSnapshot(
-        moment.name,
-        size.width,
-        size.height,
-        new Uint8Array(pixels.buffer as ArrayBuffer)
-      );
+    // The Phase 7 transition moments render through the REAL projectStage
+    // — the very code the canvas and export compose two scenes with — at
+    // a GLOBAL time inside (or just past) the transition.
+    for (const moment of projectSnapshotMoments()) {
+      update(`snapshot ${moment.name}…`);
+      const size = SNAPSHOT_SIZE[moment.document.format];
+      if (size === undefined) throw new Error(`no snapshot size for ${moment.document.format}`);
+      const renderer = await rendererFor(size.width, size.height);
+      const [refWidth] = REFERENCE_SIZE[moment.document.format];
+
+      const stage = createProjectStage({ document: moment.document, textures });
+      stage.container.scale.set(size.width / refWidth);
+      stage.update(moment.globalTime);
+      renderer.render(stage.container);
+      stage.destroy();
+      await readAndCompare(moment.name, renderer, size.width, size.height);
     }
   } finally {
     for (const renderer of renderers.values()) renderer.destroy();

@@ -1,7 +1,7 @@
 # DOC-10 — Project Tracker
 
 **Status:** Active
-**Last updated:** 2026-09-05 (Phase 7 step 4 — CL-0070)
+**Last updated:** 2026-09-05 (Phase 7 step 8 — CL-0071)
 **Purpose:** The one page to read when returning to the project. Where we are, what is done, what is next, and what is waiting on Alek. Updated with every change-log entry (DOC-04).
 
 ---
@@ -32,6 +32,7 @@ Step 9 done (CL-0062): M-1.3 written as the full interface tour and M-5.5's clip
 Step 2 done (CL-0068): the pure timing model — projectTime.ts in full (effective transition lengths, global starts under the overlap model, the total, global ↔ local both ways, which scene(s) show with the transition's progress; at most two scenes ever show), transition.ts (every type's exact numbers per frame: crossfade linear, ease-in-out slide pushes, 2.5× zooms with linear fades, the left-to-right wipe edge), and projectSchedule.ts (every scene's previewSchedule shifted by its global start — the one translation export and preview will consume; clips still cut at their own scene's end; both scenes audible in an overlap, no automatic fades). 42 new tests including the worked example. Nothing user-visible yet.
 Step 3 done (CL-0069): projectStage — one sceneStage per scene, one or two posed per global time with transition.ts's numbers applied from outside (sceneStage unchanged, the 14 snapshots untouched); the canvas draws through it at the global time of (current scene, local playhead), textures loaded for the current scene and both neighbours with the textureVersion rebuild guaranteeing a neighbour never stays drawn without its layers.
 Step 4 done (CL-0070): export renders every scene — frame count from projectTime's total, every scene's images and sounds loaded, audio mixed from projectSchedule through the unchanged mixer, frames drawn by projectStage at global time (frameSource now createProjectFrameSource); the export check re-ran green through the new path.
+Step 8 done (CL-0071): the two-scene export check — 13.500 s and 405 frames to the frame, scene 2's beep at its shifted 11.0 s within 0.3 ms, the mid-crossfade brightness strictly between the two scenes (41.0 → 72.2 → 93.2) — the 23 render snapshots (nine transition moments through the real projectStage, references committed for Alek), "Load test content (dev)" giving the same two-scene project, and a live sweep showing the canvas blending the two scenes at 9.8 s exactly as the export does. **The Phase 7 Fable foundations are code-complete** (M-6.2/M-6.3 manual text remains, then the Opus hand-off).
 **Next action:** Phase 7 continues from the DOC-11 Appendix H kickoff prompt (CL-0065; decisions a–r in its addendum): Fable builds the remaining foundations (the overlap timing model and transition arithmetic in full, projectStage, export over every scene, the two-scene export check, nine new snapshots) and hands the scene strip, Transition panel, switching and play-through to Opus.
 
 ### 1b. Hand-off notes (now historical — the work below was completed by Fable in CL-0031..33, built to these decisions)
@@ -115,7 +116,8 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 | Scene and layers (edits round-trip; placement geometry as arithmetic) | ☑ | ✅ |
 | Animation engine (easing, eased interpolation, frame-exact time, keyframeAtPlayhead, presets, camera — all as arithmetic; camera edits round-trip) | ☑ | ✅ |
 | Timeline foundations (mapping/snap/lanes/previewSchedule as arithmetic; clip trim and keyframe-move edits round-trip; the mixer sample-for-sample) | ☑ | ✅ |
-| Render snapshots (14 moments through the real sceneStage vs approved references; `npm run snapshots:approve`) | ☑ | ✅ |
+| Scenes and transitions foundations (the overlap timing model, every transition type's numbers and projectSchedule as arithmetic; scene-list edits round-trip; the last-scene refusal; the transition-length clamp) | ☑ | ✅ |
+| Render snapshots (23 moments — 14 through the real sceneStage, 9 transition moments through the real projectStage — vs approved references; `npm run snapshots:approve`) | ☑ | ✅ |
 | Export | ☑ | ✅ |
 | Segmentation (real worker + model + coverage + pixels-untouched + memory) | ☑ | ✅ |
 | Production-build scan (no dev/fixture code ships; worker + models in place) | ☑ | ✅ |
@@ -123,7 +125,7 @@ Every v1.0 feature, its phase, and its state. `☐` not built · `◐` built, ch
 | License allow-list | ☑ | ✅ |
 | AI-spend guard | ☑ | ✅ |
 
-Run everything with one command: `npm run check` (255 tests + licenses + build scan + segmentation + export with the audio fixtures, the two trimmed clips and the 14 render snapshots; measured ≈70–90 seconds — the spread is the segmentation check's one real cutout varying with laptop load; the snapshots add only ~2 s because they ride in the export check's hidden window). When a snapshot fails, open tests/output/snapshots/contact-sheet.png (expected | actual | diff, differences in red); if the new look is right, `npm run snapshots:approve` and commit. `npm run check:segmentation:hd` exercises the HD model on demand. A green run leaves tests/output/ empty (the CL-0024 housekeeping rule, enforced by the tests themselves).
+Run everything with one command: `npm run check` (315 tests + licenses + build scan + segmentation + the two-scene export — 13.5 s of video, eight beeps, the trimmed clips, the crossfade brightness probe — and the 23 render snapshots; measured ≈85–115 seconds — the spread is the segmentation check's one real cutout varying with laptop load; the snapshots ride in the export check's hidden window). When a snapshot fails, open tests/output/snapshots/contact-sheet.png (expected | actual | diff, differences in red); if the new look is right, `npm run snapshots:approve` and commit. `npm run check:segmentation:hd` exercises the HD model on demand. A green run leaves tests/output/ empty (the CL-0024 housekeeping rule, enforced by the tests themselves).
 
 ## 5. Waiting on Alek
 

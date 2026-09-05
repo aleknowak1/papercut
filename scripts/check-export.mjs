@@ -77,6 +77,12 @@ function printRun(run) {
       `${v.fps.toFixed(2)} fps, ${v.frameCount} frames, audio ${v.audioDurationSeconds.toFixed(3)} s`
   );
   console.log(driftTable(v));
+  if (v.crossfadeBrightness !== undefined) {
+    const b = v.crossfadeBrightness;
+    console.log(
+      `  crossfade brightness: scene 1 ${b.before.toFixed(1)} → mid ${b.mid.toFixed(1)} → scene 2 ${b.after.toFixed(1)} (mid sits between: blend proven)`
+    );
+  }
   for (const problem of v.problems) console.log(`  PROBLEM: ${problem}`);
 }
 

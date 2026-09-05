@@ -34,6 +34,8 @@ export interface ExportVerification {
   readonly frameCount: number;
   readonly audioDurationSeconds: number;
   readonly beeps: readonly BeepMeasurement[];
+  /** Mean brightness (0-255) at the crossfade probe's three frames, when asked for. */
+  readonly crossfadeBrightness?: { readonly before: number; readonly mid: number; readonly after: number };
   readonly problems: readonly string[];
 }
 
@@ -45,6 +47,17 @@ export interface ExpectedExport {
   readonly beepTimes: readonly number[];
   /** Largest acceptable |audio - video| distance at a beep, in milliseconds. */
   readonly maxDriftMs: number;
+  /**
+   * Phase 7: three flash-free moments proving a crossfade on brightness
+   * alone — the mid frame's mean must sit STRICTLY between the two clean
+   * scenes' frames. Measured from the same decoded means the flash
+   * detector already computes, so it cannot disturb flash detection.
+   */
+  readonly crossfadeProbe?: {
+    readonly beforeSeconds: number;
+    readonly midSeconds: number;
+    readonly afterSeconds: number;
+  };
 }
 
 interface ParsedMp4 {
@@ -161,7 +174,14 @@ function meanBrightness(
   return sum / (pixels.length / 4);
 }
 
-async function decodeFlashTimes(parsed: ParsedMp4): Promise<number[]> {
+interface FrameBrightness {
+  readonly timeSeconds: number;
+  readonly mean: number;
+}
+
+async function decodeFlashTimes(
+  parsed: ParsedMp4
+): Promise<{ flashes: number[]; frames: FrameBrightness[] }> {
   const canvas = new OffscreenCanvas(96, 54);
   const context = canvas.getContext('2d', { willReadFrequently: true });
   if (context === null) throw new Error('Could not create a 2D canvas for frame analysis.');
@@ -215,7 +235,24 @@ async function decodeFlashTimes(parsed: ParsedMp4): Promise<number[]> {
       inFlash = false;
     }
   }
-  return flashes;
+  return { flashes, frames: bright };
+}
+
+/** The decoded frame nearest a time (within half a frame), for the probe. */
+function brightnessAt(
+  frames: readonly FrameBrightness[],
+  timeSeconds: number,
+  fps: number
+): number | undefined {
+  let best: FrameBrightness | undefined;
+  for (const frame of frames) {
+    if (best === undefined || Math.abs(frame.timeSeconds - timeSeconds) < Math.abs(best.timeSeconds - timeSeconds)) {
+      best = frame;
+    }
+  }
+  return best !== undefined && Math.abs(best.timeSeconds - timeSeconds) <= 0.5 / fps + 0.001
+    ? best.mean
+    : undefined;
 }
 
 async function decodeAudioOnsets(
@@ -301,7 +338,7 @@ export async function verifyExportedMp4(
   expected: ExpectedExport
 ): Promise<ExportVerification> {
   const parsed = await parseMp4(bytes);
-  const flashes = await decodeFlashTimes(parsed);
+  const { flashes, frames } = await decodeFlashTimes(parsed);
   const { onsets, pieces, peak } = await decodeAudioOnsets(parsed);
 
   const fps = parsed.video.frameCount / parsed.video.durationSeconds;
@@ -363,6 +400,30 @@ export async function verifyExportedMp4(
     return { nominalSeconds: nominal, audioOnsetSeconds: audioOnset, flashStartSeconds: flashStart, audioVsVideoMs, audioVsNominalMs };
   });
 
+  // The crossfade probe (Phase 7 decision n): the mid frame's mean must
+  // sit strictly between the two clean scenes' frames.
+  let crossfadeBrightness: ExportVerification['crossfadeBrightness'];
+  const probe = expected.crossfadeProbe;
+  if (probe !== undefined) {
+    const before = brightnessAt(frames, probe.beforeSeconds, expected.fps);
+    const mid = brightnessAt(frames, probe.midSeconds, expected.fps);
+    const after = brightnessAt(frames, probe.afterSeconds, expected.fps);
+    if (before === undefined || mid === undefined || after === undefined) {
+      problems.push('The crossfade probe could not find all three of its frames.');
+    } else {
+      crossfadeBrightness = { before, mid, after };
+      const lo = Math.min(before, after);
+      const hi = Math.max(before, after);
+      if (!(mid > lo && mid < hi)) {
+        problems.push(
+          `Mid-crossfade brightness ${mid.toFixed(1)} does not sit between the two scenes' ` +
+            `(${before.toFixed(1)} at ${probe.beforeSeconds} s, ${after.toFixed(1)} at ${probe.afterSeconds} s) — ` +
+            'the transition is not blending the pictures.'
+        );
+      }
+    }
+  }
+
   return {
     durationSeconds: parsed.video.durationSeconds,
     width: parsed.video.width,
@@ -371,6 +432,7 @@ export async function verifyExportedMp4(
     frameCount: parsed.video.frameCount,
     audioDurationSeconds: parsed.audio.durationSeconds,
     beeps,
+    ...(crossfadeBrightness !== undefined ? { crossfadeBrightness } : {}),
     problems
   };
 }

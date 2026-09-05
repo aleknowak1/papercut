@@ -24,7 +24,9 @@ import {
   renameScene,
   setKeyframe,
   setSceneBackground,
-  setSceneDuration
+  setSceneDuration,
+  setSceneTransition,
+  setSceneTransitionLength
 } from '../../app/shared/document/edits';
 import { newId } from '../../app/shared/document/create';
 import type { Keyframe, ProjectDocument } from '../../app/shared/document/types';
@@ -70,15 +72,49 @@ export const EXPORT_TEST = {
     duration: 0.2,
     hz: 550,
     sourceSeconds: 1
-  }
+  },
+  /**
+   * The SECOND scene (Phase 7 decision n): short, its own beep on its own
+   * flash at a known local time, a clearly brighter background — joined
+   * to scene 1 by a 0.5 s crossfade under the overlap model, so it starts
+   * globally at 10 − 0.5 = 9.5 s and its beep lands at 11.0 s. The
+   * background's mean luminance (≈93) sits far below the flash detector's
+   * 120 threshold, so flash detection is undisturbed.
+   */
+  scene2: {
+    durationSeconds: 4,
+    beepLocalSeconds: 1.5,
+    transitionSeconds: 0.5,
+    backgroundFile: 'assets/images/export-test-bg2.png',
+    background: [80, 95, 110, 255]
+  },
+  /** The whole video: 10 + 4 − 0.5 under the overlap model. */
+  totalSeconds: 13.5,
+  /**
+   * Three clean frames that prove the crossfade on brightness alone: one
+   * in scene 1 before the overlap, one mid-crossfade (progress 0.6, past
+   * the 9.5 s flash which ends at 9.6), one in scene 2 before its beep.
+   * The mid frame's mean must sit strictly between the other two.
+   */
+  crossfadeProbe: { beforeSeconds: 9.4, midSeconds: 9.8, afterSeconds: 10.5 }
 } as const;
 
-/** Every moment a beep should sound and a flash should show, sorted. */
+/** Scene 2's global start under the overlap model. */
+export function scene2StartSeconds(): number {
+  return EXPORT_TEST.durationSeconds - EXPORT_TEST.scene2.transitionSeconds;
+}
+
+/**
+ * Every moment a beep should sound and a flash should show, sorted, as
+ * GLOBAL times — scene 2's beep shifted by its scene's start (9.5 + 1.5
+ * = 11.0 s), the end-to-end proof of the overlap timing model's audio.
+ */
 export function allBeepTimes(): number[] {
   return [
     ...EXPORT_TEST.beepTimes,
     EXPORT_TEST.trimmedWav.clipStart,
-    EXPORT_TEST.trimmedM4a.clipStart
+    EXPORT_TEST.trimmedM4a.clipStart,
+    scene2StartSeconds() + EXPORT_TEST.scene2.beepLocalSeconds
   ].sort((a, b) => a - b);
 }
 
@@ -203,6 +239,10 @@ export function exportTestAssetFiles(): readonly { path: string; bytes: Uint8Arr
   return [
     // Tiny solid-colour images; the renderer stretches them to size.
     { path: EXPORT_TEST.backgroundFile, bytes: solidPng(64, 36, [28, 39, 51, 255]) },
+    {
+      path: EXPORT_TEST.scene2.backgroundFile,
+      bytes: solidPng(64, 36, [...EXPORT_TEST.scene2.background])
+    },
     { path: EXPORT_TEST.squareFile, bytes: solidPng(64, 64, [255, 140, 26, 255]) },
     { path: EXPORT_TEST.beepFile, bytes: beepWav() },
     { path: EXPORT_TEST.trimmedWav.file, bytes: trimmedWavBytes() }
@@ -216,6 +256,7 @@ export function exportTestAssetFiles(): readonly { path: string; bytes: Uint8Arr
  */
 export function applyExportTestContent(doc: ProjectDocument): ProjectDocument {
   const bgId = newId();
+  const bg2Id = newId();
   const squareId = newId();
   const beepId = newId();
   const trimmedWavId = newId();
@@ -227,6 +268,12 @@ export function applyExportTestContent(doc: ProjectDocument): ProjectDocument {
     id: bgId,
     type: 'image',
     file: EXPORT_TEST.backgroundFile,
+    metadata: { width: 64, height: 36 }
+  });
+  out = addAsset(out, {
+    id: bg2Id,
+    type: 'image',
+    file: EXPORT_TEST.scene2.backgroundFile,
     metadata: { width: 64, height: 36 }
   });
   out = addAsset(out, {
@@ -317,5 +364,33 @@ export function applyExportTestContent(doc: ProjectDocument): ProjectDocument {
       durationSeconds: spec.duration
     });
   }
+  // The SECOND scene (Phase 7 decision n): brighter background, its own
+  // beep at local 1.5 s, joined by a 0.5 s crossfade — so the export must
+  // run 13.5 s and land that beep at global 11.0 s. Reused by name so
+  // clicking "Load test content" again does not grow the project.
+  let scene2Id = out.scenes.find((s) => s.name === 'Export test 2')?.id;
+  if (scene2Id === undefined) {
+    scene2Id = newId();
+    out = addScene(out, {
+      id: scene2Id,
+      name: 'Export test 2',
+      durationSeconds: EXPORT_TEST.scene2.durationSeconds,
+      cameraKeyframes: [],
+      layers: [],
+      audioClips: []
+    });
+    out = addAudioClip(out, scene2Id, {
+      id: newId(),
+      source: { kind: 'asset', assetId: beepId },
+      startSeconds: EXPORT_TEST.scene2.beepLocalSeconds,
+      volume: 1,
+      fadeInSeconds: 0,
+      fadeOutSeconds: 0
+    });
+  }
+  out = setSceneDuration(out, scene2Id, EXPORT_TEST.scene2.durationSeconds);
+  out = setSceneBackground(out, scene2Id, bg2Id);
+  out = setSceneTransition(out, sceneId, 'crossfade');
+  out = setSceneTransitionLength(out, sceneId, EXPORT_TEST.scene2.transitionSeconds);
   return out;
 }
