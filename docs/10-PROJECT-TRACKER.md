@@ -1,7 +1,7 @@
 # DOC-10 — Project Tracker
 
 **Status:** Active
-**Last updated:** 2026-09-05 (Phase 7 Usable pending Alek's try-out — CL-0077)
+**Last updated:** 2026-09-05 (Alek declined the Phase 7 layout, CL-0079; Phase 7b under way from DOC-11 Appendix I)
 **Purpose:** The one page to read when returning to the project. Where we are, what is done, what is next, and what is waiting on Alek. Updated with every change-log entry (DOC-04).
 
 ---
@@ -38,7 +38,8 @@ UI step 1 done (CL-0074): **the scene strip is usable** — cards with number/na
 UI step 2 done (CL-0075): **the Transition panel** (Type with Cut first, Length hidden for Cut with the clamped "runs as" line, a hint per type, Done/Escape, one undo step per change) and the ruler's amber transition-in/out windows from effectiveTransitionSeconds. Live-verified with 10 scripted assertions.
 UI step 3 done (CL-0076): **play flows across scenes** — the whole run's sound scheduled ONCE from projectSchedule at the global playhead, the current scene switching at each boundary as pure UI state (incoming playhead at the overlap length), stopping at the last scene's end; play at the very end restarts the CURRENT scene (Alek's note 1); scrubbing stays local and silent. Live-verified with 7 scripted assertions.
 Close-out done (CL-0077): M-6.1 and M-1.3's strip sentence written; the closing sweep ran Alek's exact hands-on flow live through the real UI — add a scene, fill it, set a crossfade, play across, reorder, duplicate, delete, rename, reopen — 10 of 10. **Phase 7 is Usable pending Alek's hands-on try-out (§5).**
-**Next action:** Alek tries Phase 7 by hand (the §5 row — this pass also stands in for the foundations’ verification, CL-0073); once it passes, Phase 7 is recorded Complete and Phase 8 (Text and captions) is planned in the Cowork session per DOC-11 §4.
+**Layout declined by Alek (CL-0079, on 2026-09-05):** he looked at the finished Phase 7 layout and did not try it — the scene strip squeezed into the timeline dock, the Transition panel taking over the right column, and play switching the selected scene under him made one screen too complicated to understand. He asked for two separate screens instead: one for editing a single scene, one for stitching scenes into the movie. Phase 7's mechanics are not in question (the CL-0067–CL-0077 checks and scripted sweeps stand); its hands-on verification folds into the Phase 7b try-out (§5), and Phase 7 stays Usable until then.
+**Next action:** Phase 7b (the two-screen editor — Movie and Scene) is under way from the DOC-11 Appendix I kickoff prompt (CL-0078; decisions a–k in its addendum): Fable builds the Movie editor (cards with pictures, the transition arrows and panel, the whole-movie preview and play-through) and the cleaned-up Scene editor (no strip, no Transition panel, the neighbour hint, scene-only play) in two commits, ending with the closing sweep that runs Alek's exact try-out scripted.
 
 ### 1b. Hand-off notes (now historical — the work below was completed by Fable in CL-0031..33, built to these decisions)
 
@@ -136,7 +137,7 @@ Run everything with one command: `npm run check` (315 tests + licenses + build s
 
 | Item | Needed by | Ref |
 |------|-----------|-----|
-| Try Phase 7 by hand (this pass also stands in for the foundations' verification, CL-0073): open a project, **+ Scene** and put something in the new scene (a background at least), click the arrow between the cards and set a **Crossfade**, select scene 1, put the playhead near its end, press **play and watch it flow across** (the editor follows; the sound never restarts), then **reorder** with ◀ ▶, **⧉ duplicate**, **✕ delete** (one Ctrl+Z each), rename a card, and **reopen** the project — everything kept. | Now (verifies Phase 7, CL-0067–CL-0077) | M-6.1–M-6.3 |
+| The Phase 7 try-out waits for Phase 7b (CL-0079): Alek declined to try the one-screen layout, so the hands-on pass that verifies Phase 7 (CL-0067–CL-0077, and the foundations via CL-0073) runs on the two-screen editor once 7b is built — the exact flow will be spelled out in the 7b session report. | When Phase 7b is usable | M-6.1–M-6.3 |
 | If you have a real iPhone photo (.heic): import it the same way — it should just appear (this laptop has the HEIF extension). That verifies the HEIC works-path; the missing-extension message is covered by checks. | Now (verifies CL-0029) | M-9.2 |
 | Create an OpenAI account, generate a key, set a small monthly hard cap, keep the key private | Phase 11 (not before) | DOC-09 §5 |
 | Choose merchant of record after Claude's comparison | Phase 10 | OQ-018 |

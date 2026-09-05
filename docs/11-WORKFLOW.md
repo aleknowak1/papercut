@@ -1,7 +1,7 @@
 # DOC-11 — Development Workflow
 
 **Status:** Active
-**Last updated:** 2026-09-04 (Appendix H: Phase 7 kickoff prompt and Alek's decisions a–r)
+**Last updated:** 2026-09-05 (Appendix I: Phase 7b kickoff prompt and Alek's decisions a–k)
 **Purpose:** How Alek and Claude build PAPERCUT day to day. Tools, session rhythm, roles, and the standing files that keep every session on track.
 
 ---
@@ -1325,3 +1325,210 @@ r. Out of scope: drag-and-drop reorder; scene thumbnails; a project-wide
    directions other than left-to-right and transition easing controls;
    transitions within a scene or on layers; copying layers between scenes;
    text (8); the export screen, presets and stereo (9, OQ-024).
+
+## Appendix I — Phase 7b kickoff prompt (paste into Claude Code)
+
+Model: Fable, one session, two commits (the Movie editor, then the Scene editor cleanup and the manual). Phase 7b is a rearrangement of the finished Phase 7 into two screens — Alek's layout feedback, as Phase 6b was — not new mechanics: the document, the edits, the timing model, projectStage and export do not change (one optional poster field aside). Alek approved decisions a–k (addendum below) in the planning session; the prompt hands them over so they are not re-asked. No reviewer agent.
+
+```
+You are working in the PAPERCUT repository at:
+C:\Users\Alek\Documents\Claude Code Projects\papercut
+GitHub remote (origin): https://github.com/aleknowak1/papercut.git
+
+Read CLAUDE.md in the repository root first. Then read, in this order:
+docs/10-PROJECT-TRACKER.md (where we are), docs/02-DECISIONS.md (ADR-006,
+ADR-013 and ADR-015 in particular), docs/04-CHANGELOG.md CL-0064 to
+CL-0078 (Phase 6b's layout change and everything Phase 7 built),
+docs/11-WORKFLOW.md (Appendix H and its addendum show how Phase 7 was
+run and the decisions it was built to; Appendix I is this prompt and its
+addendum holds the Phase 7b decisions), docs/05-MANUAL.md (M-1.3, M-6.1,
+M-6.2 and M-6.3 as written — you will retell them), and the code Phase 7b
+rearranges: App.tsx (the masthead, the editor layout, the selectedSceneId
+state and its reset, the timeline dock and divider), app/renderer/src/
+timeline/SceneStrip.tsx and TransitionPanel.tsx (the components that move
+to the Movie editor), Timeline.tsx (the play loop with play-through and
+the tinted transition windows), previewPlayer.ts (the once-scheduled
+project-wide sound), app/renderer/src/scene/SceneCanvas.tsx and
+projectStage.ts (the canvas draws the project at global time), sceneStage.ts
+(the one-scene renderer — the card pictures come from it),
+app/shared/timeline/projectTime.ts, app/shared/document/types.ts, edits.ts
+and validate.ts, and styles.css.
+
+Phases 0-6 are Complete; Phase 7 is Usable (CL-0067–CL-0077). Alek looked
+at the Phase 7 layout on 2026-09-05 and DID NOT try it: with the scene
+strip squeezed into the timeline dock, the Transition panel taking over
+the right column and play switching the selected scene under him, he
+found the screen too complicated to understand, and asked for two
+separate screens instead — one for editing a single scene, one for
+stitching scenes into the movie. THIS IS NOT YET IN THE CHANGE LOG. Your
+first commit, before any Phase 7b work: record it as CL-0079 in
+docs/04-CHANGELOG.md (area "Verification", in the plain style of
+CL-0073: what he looked at, that the try-out was declined and why, that
+the hands-on verification of Phase 7 folds into the 7b try-out), note it
+in DOC-10 §1, replace the Phase 7 try-out row in DOC-10 §5 with a note
+that the try-out waits for 7b, and push. The working tree already holds
+uncommitted docs edits from the planning session (CL-0078: this prompt
+archived as DOC-11 Appendix I, DOC-10 "Next action" repointed) — include
+them in that same first commit, as CL-0053 and CL-0065 were handled. If
+an untracked "Claude outputs" folder sits in the repo root, leave it
+alone and tell Alek; it is not part of the project.
+
+We are doing Phase 7b: the two-screen editor (decisions a–k):
+
+1. Two tabs in the masthead (decision a): Movie and Scene — the Scene tab
+   shows the name of the scene it holds ("Scene: Airport"). Opening a
+   project lands on Movie with its first card selected and a clear
+   "Edit scene" button. Which screen is showing is UI state (not saved,
+   not an undo step).
+
+2. The Movie editor (decisions b, e, f). Top: a preview canvas of the
+   whole video drawn through projectStage at global time — transitions
+   exactly as they export (ADR-006/013). Under it the transport:
+   play/pause (Space), a scrub bar for the whole movie with the scene
+   boundaries marked, the time readout and the total length (from
+   projectTime; no arithmetic in the UI). Below: the row of cards in
+   play order — each the scene's picture (step 3), its name and length —
+   with the transition drawn as an arrow between cards. Click a card to
+   select it; the selected card carries Edit scene, Duplicate, ◀ ▶, ✕
+   (greyed for the last scene) and click-to-rename (Enter confirms,
+   Escape cancels); "+ Scene" at the end inserts after the selected card
+   and selects it. Click an arrow (or the selected card's Transition
+   button) and the right side of the screen shows the Transition panel —
+   the existing TransitionPanel moved here. Double-click a card, press
+   Enter, or press Edit scene to open it in the Scene editor. Playing the
+   whole movie lives HERE ONLY: the play-through and once-scheduled sound
+   from CL-0076, the card of the scene currently showing highlighted as
+   it runs, play starting from the scrub position (or the selected card's
+   start after a click on it), stopping at the end of the last scene.
+   Keys: Delete removes the selected scene (refused for the last one),
+   Ctrl+Z/Y as everywhere, Escape closes the Transition panel. Every
+   scene edit goes through the existing edits — one undo step each.
+
+3. Card pictures and the poster moment (decision c). A card shows the
+   scene ALONE — rendered through the real sceneStage (never projectStage:
+   transitions are never in the picture) at its poster moment, which is
+   the first frame unless the scene carries the new OPTIONAL field
+   posterSeconds. Pictures are rendered at card size, kept in memory for
+   the session and redrawn when the scene changes; nothing is written to
+   cache/ (Phase 6 decision k). Older project.json files load unchanged;
+   validate.ts refuses a nonsense posterSeconds in plain language; a new
+   edit setScenePoster (frame-snapped, clamped inside the scene) through
+   the one-undo-step path; DOC-03 §3 updated in the same commit. In the
+   Scene editor's toolbar a "Use this frame for the card" button sets it
+   from the playhead.
+
+4. The Scene editor (decision d). Today's editor with the strip removed
+   from the timeline dock (the dock's heights go back to what CL-0064 set,
+   the divider unchanged) and the Transition panel gone from it. Its
+   header carries the neighbour hint "← Scene 1 · [Scene 2] · Scene 3 →";
+   clicking an arrow jumps to that neighbour with the same reset as
+   selecting a card (playhead 0, layer/clip selection cleared, camera mode
+   ended). Play stops at the scene's end again — no play-through, no
+   scene switching in this screen; previewPlayer schedules this scene
+   only, as before Phase 7. The amber transition windows stay on the ruler
+   (they say which seconds will be blended). Canvas, panels, timeline,
+   Duration, every Add-to-scene / Add-to-timeline target: as they are,
+   addressing the scene the editor holds.
+
+5. Export (decision g): unchanged — the dev export button stays where it
+   is; the real export screen (Phase 9) will live in the Movie editor.
+
+6. Checks (ADR-015, decision i): posterSeconds validation and the
+   setScenePoster edit round-trip save/reopen and undo; older files load
+   unchanged; the 23 snapshots stay untouched (sceneStage and projectStage
+   do not change); the export check unchanged. Live-verify each screen in
+   the running app with scripted assertions and screenshots as the Phase
+   7 sessions did: the Movie tab on open with cards, pictures, arrows and
+   the total; + Scene / Duplicate / ◀ ▶ / ✕ / rename each one Ctrl+Z; the
+   Transition panel from an arrow; play in the Movie editor flowing
+   across a boundary with the highlighted card following and the sound
+   scheduled once; double-click opening the Scene editor on that scene;
+   the neighbour arrows; play stopping at the scene's end there; "Use
+   this frame for the card" changing the card; reopen with everything
+   kept. Keep `npm run check` inside two minutes and report its time.
+
+7. Manual (decision h): M-1.3's tour rewritten around the two screens
+   (Movie first, then Scene); M-6.1–M-6.3 retold for the Movie editor and
+   the neighbour arrows; the poster-frame button documented. DOC-10 §1,
+   §2 (Phase 7 row: Usable, 7b built, try-out in §5), §3 and §5 updated in
+   the same commits.
+
+Two commits after the verification commit: (1) the Movie editor with the
+tabs, the cards and pictures, the poster field and edit, play-through
+moved there; (2) the Scene editor cleanup, the neighbour hint, the
+"Use this frame" button, the manual, and the closing sweep that runs
+Alek's exact try-out scripted. Commit and push each with its CL entry and
+tracker update in the same commit.
+
+Do not write code yet (after the verification commit). First produce a
+short plan for my approval: the exact layout of the Movie editor (what
+sits where, sizes), how the two screens share App.tsx state (which scene
+each holds, what the tab switch resets), how the card pictures are
+rendered and cached in memory and when they are redrawn, how the play
+loop and previewPlayer split between "whole movie" (Movie editor) and
+"this scene only" (Scene editor) without duplicating either, what moves
+out of Timeline.tsx and SceneStrip.tsx, the decisions you are making
+within a–k, and any questions for me. Decisions a–k are made; do not
+re-ask them.
+
+Out of scope for Phase 7b (decision k): drag-and-drop reorder of cards;
+card pictures on disk; a project-wide timeline; the export screen (9);
+text (8); anything in the document, the edits, projectTime, projectStage
+or export beyond the one poster field. No paid AI calls (DOC-09). No new
+npm dependencies without a DOC-08 row first. Every check cleans up
+tests/output/ on success. Update docs/04-CHANGELOG.md,
+docs/10-PROJECT-TRACKER.md, docs/03-ARCHITECTURE.md (§3 for the poster
+field) and docs/05-MANUAL.md in the same commit as the code, and end with
+the report described in CLAUDE.md — what changed, which checks pass,
+exactly what I should open and try (the Movie tab: add a scene, put a
+background in it via Edit scene, come back, set a crossfade between the
+cards, press play and watch it flow across; the neighbour arrows in the
+Scene editor; reorder, duplicate, delete, rename, reopen), and what is
+next. This kickoff prompt is already archived as docs/11-WORKFLOW.md
+Appendix I (CL-0078); do not add it again.
+```
+
+### Appendix I addendum — Alek's Phase 7b decisions (given with the kickoff; apply, do not re-ask)
+
+a. Two masthead tabs, Movie and Scene (the Scene tab names the scene it
+   holds). Opening a project lands on Movie with its first card selected
+   and a clear Edit scene button. Which screen shows is UI state.
+b. The Movie editor: a preview canvas of the whole video (through
+   projectStage) on top; under it play/pause, a whole-movie scrub bar
+   with scene boundaries, readout and total; below, the row of cards in
+   play order (picture, name, length) with the transition drawn as an
+   arrow between cards; click selects, the selected card carries Edit
+   scene, Duplicate, ◀ ▶, ✕ (greyed for the last scene) and
+   click-to-rename; + Scene at the end; an arrow (or the card's
+   Transition button) opens the Transition panel on the right side;
+   double-click / Enter / Edit scene opens the scene in the Scene editor.
+c. Cards show the scene ALONE at its poster moment — the first frame
+   unless the new optional posterSeconds says otherwise — rendered by the
+   same sceneStage as the canvas, transitions never in the picture, kept
+   in memory for the session, redrawn when the scene changes, nothing on
+   disk. "Use this frame for the card" in the Scene editor's toolbar sets
+   the poster from the playhead, one undo step. DOC-03 §3 updated.
+d. The Scene editor is today's editor without the strip and without the
+   Transition panel, with a neighbour hint "← Scene 1 · [Scene 2] ·
+   Scene 3 →" whose arrows jump to a neighbour (same reset as selecting a
+   card). Play stops at the scene's end; the amber transition windows
+   stay on the ruler.
+e. Playing the whole movie (play-through, sound scheduled once) lives in
+   the Movie editor only; the current scene's card highlights as it runs;
+   play starts from the scrub position or the selected card's start.
+f. Movie editor keys: Delete removes the selected scene (refused for the
+   last), Ctrl+Z/Y, Enter opens the selected scene, Escape closes the
+   Transition panel.
+g. Export unchanged for now; the Phase 9 export screen will live in the
+   Movie editor.
+h. Manual: M-1.3 rewritten around the two screens; M-6.1–M-6.3 retold;
+   the poster-frame button documented.
+i. Checks: poster field validation and edit round-trips; the 23 snapshots
+   and the export check untouched; every screen live-verified; the closing
+   sweep runs Alek's exact try-out.
+j. Model: Fable, one session, two commits (Movie editor; then Scene editor
+   cleanup and manual).
+k. Out of scope: drag-and-drop reorder; card pictures on disk; a
+   project-wide timeline; the export screen (9); text (8); any change to
+   the document, edits, projectTime, projectStage or export beyond the
+   poster field.
