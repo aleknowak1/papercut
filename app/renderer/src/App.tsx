@@ -700,6 +700,13 @@ function ProjectView({
                   onEnterCameraMode={() => {
                     if (!cameraMode) toggleCameraMode();
                   }}
+                  onPlaySceneSwitch={(sceneId, seconds) => {
+                    // Play crossed a boundary (decision k): the switch is
+                    // UI state only — no selection reset, nothing torn
+                    // down, the running sound plays on.
+                    setSelectedSceneId(sceneId);
+                    setPlayhead(seconds);
+                  }}
                   selectedClipId={selectedClip?.id}
                   onSelectClip={selectClip}
                 />

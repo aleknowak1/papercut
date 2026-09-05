@@ -52,7 +52,12 @@ import {
   timeToPixel
 } from '../../../shared/timeline/mapping';
 import { snapDraggedTime, type SnapTarget } from '../../../shared/timeline/snap';
-import { effectiveTransitionSeconds } from '../../../shared/timeline/projectTime';
+import {
+  effectiveTransitionSeconds,
+  projectDurationSeconds,
+  sceneStartSeconds,
+  scenesAtGlobalTime
+} from '../../../shared/timeline/projectTime';
 import type { ProjectDocument, Scene } from '../../../shared/document/types';
 import { AudioLanes } from './AudioLanes';
 import { startAudioPreview } from './previewPlayer';
@@ -82,6 +87,12 @@ export interface TimelineProps {
   readonly applyEdit: ApplyEdit;
   /** Clicking a layer's diamond selects that layer (and leaves camera mode). */
   readonly onSelectLayer: (layerId: string) => void;
+  /**
+   * Play crossed a scene boundary (Phase 7 decision k): switch the
+   * current scene and land the playhead — UI state only, WITHOUT the
+   * manual-selection reset, so the running preview is never torn down.
+   */
+  readonly onPlaySceneSwitch: (sceneId: string, playheadSeconds: number) => void;
   /** Clicking a camera diamond enters camera mode (and deselects the layer). */
   readonly onEnterCameraMode: () => void;
   /** The selected sound clip (UI state owned by the project view). */
@@ -209,6 +220,7 @@ export function Timeline(props: TimelineProps): JSX.Element {
     applyEdit,
     onSelectLayer,
     onEnterCameraMode,
+    onPlaySceneSwitch,
     selectedClipId,
     onSelectClip
   } = props;
@@ -250,38 +262,97 @@ export function Timeline(props: TimelineProps): JSX.Element {
   const scrollSec = trackWidthPx > 0 ? clampScroll(scrollRaw, zoom, trackWidthPx, duration) : 0;
 
   // Fresh values for the play loop without restarting it every frame.
-  const liveRef = useRef({ playhead, duration, fps, onPlayhead, zoom, trackWidthPx });
-  liveRef.current = { playhead, duration, fps, onPlayhead, zoom, trackWidthPx };
+  const liveRef = useRef({
+    playhead,
+    duration,
+    fps,
+    onPlayhead,
+    onPlaySceneSwitch,
+    sceneId: scene.id,
+    zoom,
+    trackWidthPx
+  });
+  liveRef.current = {
+    playhead,
+    duration,
+    fps,
+    onPlayhead,
+    onPlaySceneSwitch,
+    sceneId: scene.id,
+    zoom,
+    trackWidthPx
+  };
 
-  // The preview loop: wall clock in, frame-snapped playhead out; the view
-  // pages along so the playhead stays visible (decision e). The sound
-  // rides along through Web Audio (decision i) and stops the instant the
-  // preview does — pause, the scene end, or any document edit.
+  // The preview loop (Phase 7 decision k): wall clock in, GLOBAL time
+  // through the timing model, frame-snapped LOCAL playhead out. Play no
+  // longer stops at a scene's end unless it is the last scene: at the
+  // end of scene A the current scene switches to B with B's playhead at
+  // the overlap length (scenesAtGlobalTime keeps A current through the
+  // overlap — it is still finishing), and play stops at the end of the
+  // last scene. The sound for the WHOLE run was scheduled once above;
+  // the scene switch is UI state and never touches it. The view pages
+  // along so the playhead stays visible (decision e); pause, the video's
+  // end, or any document edit stops sound at once.
   useEffect(() => {
     if (!playing) return;
     const live = liveRef.current;
-    // Play at the end starts over from the beginning.
-    const from = live.playhead >= live.duration ? 0 : live.playhead;
-    const audio = startAudioPreview(projectDir, doc, scene, from);
+    // Everything is read once per play; any edit pauses (the effect
+    // below), so a stale closure can never play stale sound.
+    const playDoc = doc;
+    const starts = sceneStartSeconds(playDoc);
+    const total = projectDurationSeconds(playDoc);
+    const sceneIndex = playDoc.scenes.findIndex((s) => s.id === scene.id);
+    const lastScene = playDoc.scenes[playDoc.scenes.length - 1];
+    const sceneStart = starts[sceneIndex] ?? 0;
+    // Play at the end of the LAST scene starts this scene over from its
+    // own beginning (Alek's note 1) — never back to scene 1; the end of
+    // any other scene simply plays on into the next.
+    const atVideoEnd =
+      sceneIndex === playDoc.scenes.length - 1 && live.playhead >= live.duration;
+    const from = sceneStart + (atVideoEnd ? 0 : live.playhead);
+    const audio = startAudioPreview(projectDir, playDoc, from);
     const startWall = performance.now();
     let raf = 0;
     const tick = (now: number): void => {
-      const t = from + (now - startWall) / 1000;
-      const { duration: end, fps: rate, onPlayhead: emit, zoom: z, trackWidthPx: w } =
-        liveRef.current;
+      const g = from + (now - startWall) / 1000;
+      const {
+        duration: end,
+        fps: rate,
+        onPlayhead: emit,
+        onPlaySceneSwitch: switchScene,
+        sceneId: currentId,
+        zoom: z,
+        trackWidthPx: w
+      } = liveRef.current;
       const follow = (at: number): void => {
         if (w > 0) setScrollRaw((s) => scrollToFollowPlayhead(s, at, z, w, end));
       };
-      if (t >= end) {
-        const final = secondsOf(frameOf(end, rate), rate);
-        emit(final);
-        follow(final);
+      if (g >= total) {
+        // Land on the last frame of the LAST scene.
+        if (lastScene !== undefined) {
+          const final = secondsOf(frameOf(lastScene.durationSeconds, rate), rate);
+          if (lastScene.id !== currentId) switchScene(lastScene.id, final);
+          else {
+            emit(final);
+            follow(final);
+          }
+        }
         setPlaying(false);
         return;
       }
-      const snapped = snapToFrame(t, rate);
-      emit(snapped);
-      follow(snapped);
+      // Scene starts sit on whole frames (the clamp floors to one), so a
+      // frame-snapped global time gives a frame-exact local time too.
+      const at = scenesAtGlobalTime(playDoc, snapToFrame(g, rate));
+      if (at === undefined) {
+        setPlaying(false);
+        return;
+      }
+      if (at.scene.id !== currentId) {
+        switchScene(at.scene.id, at.localSeconds);
+      } else {
+        emit(at.localSeconds);
+        follow(at.localSeconds);
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -289,8 +360,6 @@ export function Timeline(props: TimelineProps): JSX.Element {
       cancelAnimationFrame(raf);
       audio.stop();
     };
-    // doc and scene are read once per play; any edit pauses (the effect
-    // below), so a stale closure can never play stale sound.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing]);
 
@@ -596,7 +665,11 @@ export function Timeline(props: TimelineProps): JSX.Element {
           type="button"
           className="btn strip-play"
           aria-pressed={playing}
-          title={playing ? 'Pause the preview (Space)' : 'Play the scene from the playhead (Space)'}
+          title={
+            playing
+              ? 'Pause the preview (Space)'
+              : 'Play from the playhead (Space) — through the transitions, to the end of the last scene'
+          }
           onClick={() => setPlaying((was) => !was)}
         >
           {playing ? '❚❚' : '▶'}
