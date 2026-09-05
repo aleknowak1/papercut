@@ -52,6 +52,7 @@ import {
   timeToPixel
 } from '../../../shared/timeline/mapping';
 import { snapDraggedTime, type SnapTarget } from '../../../shared/timeline/snap';
+import { effectiveTransitionSeconds } from '../../../shared/timeline/projectTime';
 import type { ProjectDocument, Scene } from '../../../shared/document/types';
 import { AudioLanes } from './AudioLanes';
 import { startAudioPreview } from './previewPlayer';
@@ -535,6 +536,32 @@ export function Timeline(props: TimelineProps): JSX.Element {
   const playheadPx = timeToPixel(playhead, zoom, scrollSec);
   const playheadVisible = playheadPx >= 0 && playheadPx <= trackWidthPx;
 
+  // The transition windows (Phase 7 decision l): the ruler tints the
+  // transition-IN window at the scene's start (shared with the previous
+  // scene) and the transition-OUT window at its end (shared with the
+  // next). Lengths come from the one tested function; the readout and
+  // everything else stay local to this scene.
+  const sceneIndex = doc.scenes.findIndex((s) => s.id === scene.id);
+  const transitionInSeconds = effectiveTransitionSeconds(doc, sceneIndex - 1);
+  const transitionOutSeconds = effectiveTransitionSeconds(doc, sceneIndex);
+  const tints: { key: string; fromSec: number; toSec: number; title: string }[] = [];
+  if (transitionInSeconds > 0) {
+    tints.push({
+      key: 'in',
+      fromSec: 0,
+      toSec: transitionInSeconds,
+      title: 'Transition in: the previous scene is still finishing over these frames'
+    });
+  }
+  if (transitionOutSeconds > 0) {
+    tints.push({
+      key: 'out',
+      fromSec: duration - transitionOutSeconds,
+      toSec: duration,
+      title: 'Transition out: the next scene is already starting under these frames'
+    });
+  }
+
   // Front-most layer at the top, as the Layers panel lists them
   // (the document's layers[0] is at the back); the camera row above all.
   const layerRows = [...scene.layers].reverse();
@@ -669,6 +696,17 @@ export function Timeline(props: TimelineProps): JSX.Element {
           onPointerDown={onRulerPointerDown}
           onPointerMove={onRulerPointerMove}
         >
+          {tints.map((tint) => (
+            <div
+              key={tint.key}
+              className="tl-ruler-tint"
+              title={tint.title}
+              style={{
+                left: timeToPixel(tint.fromSec, zoom, scrollSec),
+                width: Math.max(0, (tint.toSec - tint.fromSec) * zoom)
+              }}
+            />
+          ))}
           {rulerMarks.map((t) => (
             <span
               key={t}

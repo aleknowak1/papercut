@@ -31,6 +31,7 @@ import { SceneToolbar } from './scene/SceneToolbar';
 import { ClipPanel } from './timeline/ClipPanel';
 import { SceneStrip } from './timeline/SceneStrip';
 import { Timeline } from './timeline/Timeline';
+import { TransitionPanel } from './timeline/TransitionPanel';
 
 // Everything under app/renderer/src/dev/ (and tests/fixtures) is loaded
 // through dynamic imports inside `import.meta.env.DEV` branches. In a
@@ -204,6 +205,12 @@ function ProjectView({
   // The selected scene's id (Phase 7, decision c) — undefined until a
   // card is clicked; the derived `scene` below falls back to the first.
   const [selectedSceneId, setSelectedSceneId] = useState<string | undefined>(undefined);
+  // The Transition panel (decision m): while set, the right panel edits
+  // this scene's transition into the next. UI state like the other
+  // panel modes; Escape steps back out.
+  const [transitionEditSceneId, setTransitionEditSceneId] = useState<string | undefined>(
+    undefined
+  );
   const [opacityPreview, setOpacityPreview] = useState<number | undefined>(undefined);
   // The playhead (seconds, frame-snapped) — UI state like selection: the
   // canvas draws the scene at this time and every edit writes the keyframe
@@ -285,10 +292,29 @@ function ProjectView({
       ? scene?.audioClips.find((c) => c.id === selectedClipId)
       : undefined;
 
-  // Selecting a layer ends any clip selection and vice versa.
+  // The Transition panel is only open while its scene still exists and
+  // still has a next scene; undo or a reorder can end that, and the
+  // stale id is cleared so Escape's ladder stays truthful.
+  const transitionEditIndex =
+    transitionEditSceneId !== undefined
+      ? doc.scenes.findIndex((s) => s.id === transitionEditSceneId)
+      : -1;
+  const transitionEditOpen =
+    transitionEditIndex >= 0 && transitionEditIndex < doc.scenes.length - 1;
+  useEffect(() => {
+    if (transitionEditSceneId !== undefined && !transitionEditOpen) {
+      setTransitionEditSceneId(undefined);
+    }
+  }, [transitionEditSceneId, transitionEditOpen]);
+
+  // Selecting a layer ends any clip selection and vice versa; either one
+  // also closes the Transition panel (the panels displace each other).
   const selectLayer = useCallback((layerId: string | undefined): void => {
     setSelectedLayerId(layerId);
-    if (layerId !== undefined) setSelectedClipId(undefined);
+    if (layerId !== undefined) {
+      setSelectedClipId(undefined);
+      setTransitionEditSceneId(undefined);
+    }
   }, []);
   const selectClip = useCallback((clipId: string | undefined): void => {
     setSelectedClipId(clipId);
@@ -296,6 +322,7 @@ function ProjectView({
       setSelectedLayerId(undefined);
       setCameraMode(false);
       setCameraPreview(undefined);
+      setTransitionEditSceneId(undefined);
     }
   }, []);
 
@@ -383,6 +410,11 @@ function ProjectView({
         setCameraPreview(undefined);
         return;
       }
+      // The Transition panel: Escape steps back out (decision m).
+      if (event.key === 'Escape' && transitionEditSceneId !== undefined) {
+        setTransitionEditSceneId(undefined);
+        return;
+      }
       // A selected sound clip: Escape deselects, Delete removes the clip.
       if (selectedClip !== undefined && scene !== undefined) {
         if (event.key === 'Escape') {
@@ -433,7 +465,7 @@ function ProjectView({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [editingMaskOf, selectedLayer, selectedClip, scene, playhead, applyEdit, canvasPick, cameraMode]);
+  }, [editingMaskOf, selectedLayer, selectedClip, scene, playhead, applyEdit, canvasPick, cameraMode, transitionEditSceneId]);
 
   // Selecting a scene switches the WHOLE editor to it (decision c): the
   // canvas, the panels, the toolbar, every add-target and the timeline
@@ -442,6 +474,18 @@ function ProjectView({
   const selectScene = useCallback((sceneId: string): void => {
     setSelectedSceneId(sceneId);
     setPlayhead(0);
+    setSelectedLayerId(undefined);
+    setSelectedClipId(undefined);
+    setCameraMode(false);
+    setCameraPreview(undefined);
+    setCanvasPick(undefined);
+    setTransitionEditSceneId(undefined);
+  }, []);
+
+  // Opening the Transition panel displaces the other right-panel modes,
+  // exactly as they displace each other.
+  const openTransitionPanel = useCallback((sceneId: string): void => {
+    setTransitionEditSceneId(sceneId);
     setSelectedLayerId(undefined);
     setSelectedClipId(undefined);
     setCameraMode(false);
@@ -587,6 +631,13 @@ function ProjectView({
                   onCameraPreview={setCameraPreview}
                   onClose={toggleCameraMode}
                 />
+              ) : transitionEditOpen && transitionEditSceneId !== undefined ? (
+                <TransitionPanel
+                  document={doc}
+                  sceneId={transitionEditSceneId}
+                  applyEdit={applyEdit}
+                  onClose={() => setTransitionEditSceneId(undefined)}
+                />
               ) : selectedClip !== undefined ? (
                 <ClipPanel
                   document={doc}
@@ -628,10 +679,7 @@ function ProjectView({
                   selectedSceneId={scene.id}
                   applyEdit={applyEdit}
                   onSelectScene={selectScene}
-                  onEditTransition={() => {
-                    // The Transition panel arrives with the next step; the
-                    // arrows already show each transition in their tooltip.
-                  }}
+                  onEditTransition={openTransitionPanel}
                 />
                 <Timeline
                   projectDir={opened.projectDir}

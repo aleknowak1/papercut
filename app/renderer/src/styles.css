@@ -972,6 +972,16 @@ button {
   user-select: none;
 }
 
+.tl-ruler-tint {
+  /* A transition window (Phase 7): the frames this scene shares with a
+     neighbour. Behind the labels, never catching the mouse. */
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  pointer-events: none;
+}
+
 .tl-ruler-mark {
   position: absolute;
   top: 2px;
