@@ -537,8 +537,68 @@ they are computed by the same code, so what you hear is what you get:
 
 ## M-6 Scenes and transitions
 - M-6.1 Adding and reordering scenes
-- M-6.2 Transition types and when to use them
-- M-6.3 Scene duration and timing
+
+### M-6.2 Transition types and when to use them
+
+A transition is how one scene hands over to the next. It belongs to the
+scene it leads OUT of, and there are seven ways to go (plus none):
+
+- **Cut** — the next scene simply starts on the next frame. No overlap,
+  no length. The default, and the right choice most of the time: comedy
+  timing usually wants the hard switch.
+- **Crossfade** — the next scene fades in over this one, evenly. Use it
+  for a gentle change of place or mood, or to show time passing.
+- **Slide left / right / up / down** — a push: this scene slides off in
+  that direction while the next one slides in right behind it, easing in
+  and out. Use it to say "meanwhile, over here" — the direction gives
+  the move its feeling.
+- **Zoom in** — this scene grows to two-and-a-half times its size and
+  fades away, revealing the next scene beneath. A dramatic plunge —
+  good for "and then it got worse".
+- **Zoom out** — the next scene arrives huge and settles down into
+  place, fading in over this one. The mirror move: pulling back to take
+  in something new.
+- **Wipe** — a hard vertical edge sweeps left to right, revealing the
+  next scene behind it. Deliberately old-fashioned; use it with a wink.
+
+**The overlap rule.** A transition of, say, half a second means the two
+scenes SHARE that half-second: the next scene starts half a second
+before this one ends, this scene plays its last half-second under (or
+over) it, and the next scene is already at its half-second mark when it
+has the screen to itself. A cut shares nothing. This is also why
+transitions make the whole video a little shorter — see M-6.3.
+
+During the overlap you hear BOTH scenes' sounds together, at full
+strength — nothing is faded for you. If the sound at a boundary is
+busy, shape it yourself with clip fades (M-5.5).
+
+### M-6.3 Scene duration and timing
+
+**Each scene has its own length.** The **Duration** field in the
+timeline's header sets the current scene's length (1–120 s), and the
+timeline, the playhead and every keyframe time inside a scene are that
+scene's own — they start from 0:00.000 no matter where the scene sits in
+the video.
+
+**The transition's length.** A transition (anything but a cut) runs from
+0.1 to 3 seconds — and never longer than HALF the shorter of the two
+scenes it joins, so a short scene can never be swallowed whole by its
+own transitions. If you shorten a scene later, its transitions shrink
+with it on their own; the length you chose is remembered and comes back
+if the room returns. Lengths land on whole frames, like every other time
+in PAPERCUT.
+
+**How long the video is.** Add up the scenes, then take away the
+transitions: every transition overlaps the two scenes it joins by its
+length, so a 10 s scene and a 4 s scene joined by a half-second
+crossfade make a 13.5 s video. The scene strip shows the total on the
+right, and the export matches it to the frame.
+
+**Sound at a boundary.** Each scene's sounds live inside that scene: a
+clip is cut off at its own scene's end (M-5.5), never stretched across a
+transition. During the overlap the outgoing scene's last sounds and the
+incoming scene's first sounds simply play together. Reordering scenes
+takes each scene's sounds — and its transition — along with it.
 
 ## M-7 Text and captions
 - M-7.1 Titles and captions
