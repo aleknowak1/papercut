@@ -42,7 +42,13 @@ import {
   type CanvasFit,
   type Point
 } from '../../../shared/scene/geometry';
-import { createSceneStage, sceneImageAssetIds, type SceneStage } from './sceneStage';
+import type { SceneStage } from './sceneStage';
+import {
+  createProjectStage,
+  sceneAndNeighbourImageAssetIds,
+  type ProjectStage
+} from './projectStage';
+import { sceneStartSeconds } from '../../../shared/timeline/projectTime';
 import { MAX_UI_ZOOM } from './CameraPanel';
 
 type ApplyEdit = (edit: (current: ProjectDocument) => ProjectDocument) => void;
@@ -134,6 +140,14 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
   // Readable from the stage-building effect without rebuilding per scrub.
   const timeRef = useRef(time);
   timeRef.current = time;
+  // The canvas draws the PROJECT at the global time of (current scene,
+  // local playhead) — so near a transition the neighbouring scene really
+  // shows, exactly as export renders it (Phase 7 decision h). Editing
+  // still addresses only the current scene's own stage.
+  const sceneStart =
+    sceneStartSeconds(doc)[doc.scenes.findIndex((s) => s.id === scene.id)] ?? 0;
+  const sceneStartRef = useRef(sceneStart);
+  sceneStartRef.current = sceneStart;
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const canvasElRef = useRef<HTMLCanvasElement | null>(null);
   const [renderer, setRenderer] = useState<WebGLRenderer | undefined>(undefined);
@@ -146,9 +160,12 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
   const [textureVersion, setTextureVersion] = useState(0);
   const [loadError, setLoadError] = useState<string | undefined>(undefined);
   // The stage currently on screen, kept alive so a drag can move sprites
-  // without rebuilding; replaced whenever the document changes.
+  // without rebuilding; replaced whenever the document changes. `project`
+  // draws every scene a global time needs; `sceneStage` is the CURRENT
+  // scene's own stage inside it, for picking, dragging, the overlay and
+  // the camera preview.
   const stageRef = useRef<
-    { root: Container; sceneStage: SceneStage; overlay: Graphics } | undefined
+    { root: Container; project: ProjectStage; sceneStage: SceneStage; overlay: Graphics } | undefined
   >(undefined);
   const dragRef = useRef<DragState | undefined>(undefined);
   // A camera pan in progress (camera mode): a live preview through the
@@ -193,7 +210,7 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
       cancelled = true;
       dragRef.current = undefined;
       if (stageRef.current !== undefined) {
-        stageRef.current.sceneStage.destroy();
+        stageRef.current.project.destroy();
         stageRef.current.root.destroy({ children: true, texture: false });
         stageRef.current = undefined;
       }
@@ -224,14 +241,19 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
     return () => observer.disconnect();
   }, [doc.format]);
 
-  // Load a texture (and a small alpha map for picking) for every image the
-  // scene needs, keyed by asset id + file so a cutout repointed by the
-  // mask editor reloads its picture.
+  // Load a texture (and a small alpha map for picking) for every image
+  // the CURRENT SCENE AND ITS TWO NEIGHBOURS need (Phase 7: the previous
+  // scene shows during the transition-in window, the next during the
+  // transition-out), keyed by asset id + file so a cutout repointed by
+  // the mask editor reloads its picture. Loading starts the moment the
+  // scene is entered — long before the playhead reaches a boundary — and
+  // every finished load bumps textureVersion, which rebuilds the project
+  // stage below, so a neighbour never stays drawn without its layers.
   useEffect(() => {
     let cancelled = false;
     const cache = texturesRef.current;
     const needed = new Map<string, { key: string; file: string }>();
-    for (const id of sceneImageAssetIds(doc, scene)) {
+    for (const id of sceneAndNeighbourImageAssetIds(doc, scene.id)) {
       const asset = doc.assets.find((a) => a.id === id);
       if (asset !== undefined) needed.set(id, { key: `${id}|${asset.file}`, file: asset.file });
     }
@@ -362,7 +384,7 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
     }
 
     if (stageRef.current !== undefined) {
-      stageRef.current.sceneStage.destroy();
+      stageRef.current.project.destroy();
       stageRef.current.root.destroy({ children: true, texture: false });
       stageRef.current = undefined;
     }
@@ -372,15 +394,23 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
     const root = new Container();
     const textureById = new Map<string, Texture>();
     for (const [id, loaded] of texturesRef.current) textureById.set(id, loaded.texture);
-    const sceneStage = createSceneStage({ document: doc, scene, textures: textureById });
-    sceneStage.container.scale.set(fit.scale);
-    root.addChild(sceneStage.container);
-    sceneStage.update(timeRef.current);
+    const project = createProjectStage({ document: doc, textures: textureById });
+    const sceneStage = project.stageFor(scene.id);
+    if (sceneStage === undefined) {
+      // Cannot happen (the scene comes from this document), but never
+      // leave a half-built stage behind.
+      project.destroy();
+      root.destroy({ children: true, texture: false });
+      return;
+    }
+    project.container.scale.set(fit.scale);
+    root.addChild(project.container);
+    project.update(sceneStartRef.current + timeRef.current);
 
     // Editor-only decoration, outside the shared stage.
     const overlay = new Graphics();
     root.addChild(overlay);
-    stageRef.current = { root, sceneStage, overlay };
+    stageRef.current = { root, project, sceneStage, overlay };
 
     drawOverlay();
     renderer.render(root);
@@ -399,7 +429,8 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
     ) {
       // The camera panel's zoom-slider preview (undefined = the document).
       stage.sceneStage.setCameraPreview(props.cameraPreview);
-      stage.sceneStage.update(time); // poses everything, resets any preview
+      // Poses everything at the GLOBAL time, resets any preview.
+      stage.project.update(sceneStart + time);
       if (selectedLayerId !== undefined && opacityPreview !== undefined) {
         const sprite = stage.sceneStage.getLayerSprite(selectedLayerId);
         if (sprite !== undefined) sprite.alpha = opacityPreview;
@@ -407,7 +438,7 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
     }
     drawOverlay();
     render();
-  }, [renderer, selectedLayerId, time, opacityPreview, props.cameraPreview, textureVersion, doc, scene, drawOverlay, render]);
+  }, [renderer, selectedLayerId, time, sceneStart, opacityPreview, props.cameraPreview, textureVersion, doc, scene, drawOverlay, render]);
 
   /** Pointer position in canvas pixels, or undefined outside the canvas. */
   const toCanvasPoint = (event: React.PointerEvent): Point | undefined => {
@@ -521,7 +552,7 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
         commitCamera(drag.sample); // the document change redraws the stage
       } else {
         // Cancelled (Escape) or never moved: back to the document's camera.
-        stageRef.current?.sceneStage.update(timeRef.current);
+        stageRef.current?.project.update(sceneStartRef.current + timeRef.current);
         render();
       }
     },
@@ -548,7 +579,7 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
         window.clearTimeout(wheelRef.current.timer);
         wheelRef.current = undefined;
         stageRef.current?.sceneStage.setCameraPreview(undefined);
-        stageRef.current?.sceneStage.update(timeRef.current);
+        stageRef.current?.project.update(sceneStartRef.current + timeRef.current);
         render();
       }
     };
@@ -590,7 +621,7 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
       }, 350);
       wheelRef.current = { sample, timer };
       stage.sceneStage.setCameraPreview(sample);
-      stage.sceneStage.update(timeRef.current);
+      stage.project.update(sceneStartRef.current + timeRef.current);
       render();
     };
     wrap.addEventListener('wheel', onWheel, { passive: false });
@@ -753,7 +784,7 @@ export function SceneCanvas(props: SceneCanvasProps): JSX.Element {
       const stage = stageRef.current;
       if (stage !== undefined) {
         stage.sceneStage.setCameraPreview(sample);
-        stage.sceneStage.update(timeRef.current);
+        stage.project.update(sceneStartRef.current + timeRef.current);
         render();
       }
       return;
